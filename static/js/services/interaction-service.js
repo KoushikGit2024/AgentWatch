@@ -7,11 +7,12 @@ export class InteractionService {
         return await ApiClient.getJson(`/api/v1/interactions/pending${query}`);
     }
 
-    static async submitResponse(interactionId, { selectedOptionIds = [], customResponse = null, formValues = null }) {
+    static async submitResponse(interactionId, { selectedOptionIds = [], customResponse = null, formValues = null, idempotencyKey = null }) {
         return await ApiClient.postJson(`/api/v1/interactions/${encodeURIComponent(interactionId)}/respond`, {
             selected_option_ids: selectedOptionIds,
             custom_response: customResponse,
-            form_values: formValues
+            form_values: formValues,
+            idempotency_key: idempotencyKey
         });
     }
 

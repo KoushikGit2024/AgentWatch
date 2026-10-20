@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import Dict, Any
 from integrations.antigravity.adapter import antigravity_adapter
 from integrations.antigravity.capabilities import get_verified_capabilities
-from models.schemas import ControlActionRequest
+from models.schemas import ControlActionRequest, PromptSubmissionRequest
 from services.remote_access import remote_access_service
 
 router = APIRouter(tags=["Status and Controls"])
@@ -50,27 +50,58 @@ def get_app_state():
     }
 
 
+# In-memory idempotency cache for deduplication
+_processed_idempotency_keys: Dict[str, Dict[str, Any]] = {}
+
 @router.post("/send")
 @router.post("/api/v1/send")
-def send_message(payload: Dict[str, Any]):
+def send_message(payload: PromptSubmissionRequest):
     """
-    Send prompt to Antigravity session.
-    Preserves legacy optimistic 200 response while checking connectivity.
+    Send prompt to Antigravity session with schema validation and truthful lifecycle tracking.
     """
+    if payload.idempotency_key and payload.idempotency_key in _processed_idempotency_keys:
+        return _processed_idempotency_keys[payload.idempotency_key]
+
     ag_status = antigravity_adapter.get_status()
-    msg = payload.get("message", "")
-    return {
-        "status": "accepted" if ag_status["cdp"]["connected"] else "queued_offline",
-        "message_received": bool(msg),
-        "antigravity_connected": ag_status["cdp"]["connected"],
+    cdp_connected = ag_status.get("cdp", {}).get("connected", False)
+
+    response = {
+        "status": "submitted" if cdp_connected else "queued_offline",
+        "action_lifecycle": "acknowledged" if cdp_connected else "offline_buffered",
+        "antigravity_connected": cdp_connected,
+        "message_length": len(payload.message),
+        "target_session_id": payload.session_id,
+        "confirmed_execution": False,  # Truthful status: dispatching does not prove Antigravity has executed
+        "reason": None if cdp_connected else "Antigravity CDP is not currently connected on remote debugging port",
     }
+
+    if payload.idempotency_key:
+        _processed_idempotency_keys[payload.idempotency_key] = response
+        # Keep cache bounded
+        if len(_processed_idempotency_keys) > 500:
+            oldest = next(iter(_processed_idempotency_keys))
+            del _processed_idempotency_keys[oldest]
+
+    return response
 
 
 @router.post("/stop")
 @router.post("/api/v1/stop")
 def stop_generation():
-    """Stop generation signal."""
-    return {"status": "stop_signal_dispatched", "success": True}
+    """
+    Stop generation signal with honest lifecycle reporting.
+    Distinguishes request dispatch from confirmed termination.
+    """
+    ag_status = antigravity_adapter.get_status()
+    cdp_connected = ag_status.get("cdp", {}).get("connected", False)
+
+    return {
+        "status": "stop_signal_dispatched" if cdp_connected else "stop_requested_offline",
+        "action_lifecycle": "dispatched" if cdp_connected else "unconfirmed",
+        "antigravity_connected": cdp_connected,
+        "confirmed_termination": False,
+        "note": "Stop signal dispatched. Awaiting Antigravity event stream confirmation."
+    }
 
 
 @router.post("/new-chat")

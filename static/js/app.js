@@ -644,6 +644,9 @@ async function sendMessage() {
     sendBtn.disabled = true;
     sendBtn.style.opacity = '0.5';
 
+    // Generate unique idempotency key for this prompt submission attempt
+    const idempotencyKey = 'prompt-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+
     try {
         // If no chat is open, start a new one first
         if (!chatIsOpen) {
@@ -659,7 +662,10 @@ async function sendMessage() {
         const res = await fetchWithAuth('/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
+            body: JSON.stringify({
+                message,
+                idempotency_key: idempotencyKey
+            })
         });
 
         // Always reload snapshot to check if message appeared
@@ -667,14 +673,15 @@ async function sendMessage() {
         setTimeout(loadSnapshot, 800);
         setTimeout(checkChatStatus, 1000);
 
-        // Don't revert the input - if user sees the message in chat, it was sent
-        // Only log errors for debugging, don't show alert popups
         if (!res.ok) {
-            console.warn('Send response not ok, but message may have been sent:', await res.json().catch(() => ({})));
+            console.warn('Send response not ok:', await res.json().catch(() => ({})));
+            // Restore text if rejected cleanly by backend
+            messageInput.value = previousValue;
         }
     } catch (e) {
-        // Network error - still try to refresh in case it went through
+        // Network error - restore input so user doesn't lose prompt
         console.error('Send error:', e);
+        messageInput.value = previousValue;
         setTimeout(loadSnapshot, 500);
     } finally {
         sendBtn.disabled = false;

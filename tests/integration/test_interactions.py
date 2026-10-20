@@ -98,3 +98,35 @@ def test_custom_text_accepted_when_allowed():
     res = client.post("/api/v1/interactions/test-choice-with-other/respond", json=payload)
     assert res.status_code == 200
     assert res.json()["status"] == "submitted"
+
+
+def test_send_prompt_validation_and_idempotency():
+    # 1. Invalid prompt (empty)
+    res_empty = client.post("/send", json={"message": ""})
+    assert res_empty.status_code == 422  # validation error
+
+    # 2. Valid prompt
+    valid_payload = {
+        "message": "Hello Antigravity Agent",
+        "idempotency_key": "idemp-test-12345"
+    }
+    res_valid = client.post("/send", json=valid_payload)
+    assert res_valid.status_code == 200
+    data = res_valid.json()
+    assert "status" in data
+    assert data["message_length"] == len("Hello Antigravity Agent")
+    assert data["confirmed_execution"] is False  # Truthful status
+
+    # 3. Duplicate prompt with identical idempotency_key returns cached response
+    res_dup = client.post("/send", json=valid_payload)
+    assert res_dup.status_code == 200
+    assert res_dup.json() == data
+
+
+def test_stop_generation_lifecycle_reporting():
+    res = client.post("/stop")
+    assert res.status_code == 200
+    data = res.json()
+    assert "status" in data
+    assert "action_lifecycle" in data
+    assert data["confirmed_termination"] is False

@@ -126,10 +126,13 @@ export class InteractionRenderer {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
 
+                const idempotencyKey = 'resp-' + interaction.interaction_id + '-' + Date.now();
+
                 try {
                     const res = await InteractionService.submitResponse(interaction.interaction_id, {
                         selectedOptionIds: Array.from(this.selectedOptions),
-                        customResponse: customText
+                        customResponse: customText,
+                        idempotencyKey: idempotencyKey
                     });
 
                     if (res.success) {

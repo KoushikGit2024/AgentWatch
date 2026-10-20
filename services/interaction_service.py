@@ -26,6 +26,7 @@ class InteractionService:
     def __init__(self, interaction_repo: Optional[InteractionRepository] = None, session_repo: Optional[SessionRepository] = None):
         self.repo = interaction_repo if interaction_repo is not None else InteractionRepository()
         self.session_repo = session_repo if session_repo is not None else SessionRepository()
+        self._interaction_idempotency_cache: Dict[str, Dict[str, Any]] = {}
 
     def get_capabilities(self) -> List[CapabilityItem]:
         """
@@ -125,6 +126,9 @@ class InteractionService:
         """
         Validate submission against interaction schema, sanitize inputs, and resolve atomically.
         """
+        if payload.idempotency_key and payload.idempotency_key in self._interaction_idempotency_cache:
+            return self._interaction_idempotency_cache[payload.idempotency_key]
+
         interaction = self.repo.get_interaction(interaction_id)
         if not interaction:
             return {"success": False, "error": "Interaction not found", "status": "not_found"}
@@ -166,12 +170,20 @@ class InteractionService:
             status=InteractionStatus.SUBMITTED
         )
 
-        return {
+        res = {
             "success": True,
             "interaction_id": interaction_id,
             "status": "submitted",
             "resolved_at": updated.get("resolved_at") if updated else None,
         }
+
+        if payload.idempotency_key:
+            self._interaction_idempotency_cache[payload.idempotency_key] = res
+            if len(self._interaction_idempotency_cache) > 500:
+                oldest = next(iter(self._interaction_idempotency_cache))
+                del self._interaction_idempotency_cache[oldest]
+
+        return res
 
 
 interaction_service = InteractionService()

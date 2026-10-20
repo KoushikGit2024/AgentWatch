@@ -82,6 +82,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class PromptSubmissionRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=10000, description="Prompt text to dispatch")
+    session_id: Optional[str] = Field(default=None, description="Target session UUID if explicitly specified")
+    idempotency_key: Optional[str] = Field(default=None, max_length=128, description="Client idempotency token to prevent duplicate dispatch")
+
+
 class ControlActionRequest(BaseModel):
     action: str
     parameters: Optional[Dict[str, Any]] = Field(default_factory=dict)
@@ -142,8 +148,9 @@ class InteractionDocument(BaseModel):
 
 class SubmitInteractionRequest(BaseModel):
     selected_option_ids: List[str] = Field(default_factory=list)
-    custom_response: Optional[str] = None
+    custom_response: Optional[str] = Field(default=None, max_length=5000, description="Custom text response when permitted")
     form_values: Optional[Dict[str, Any]] = None
+    idempotency_key: Optional[str] = Field(default=None, max_length=128, description="Client idempotency token to prevent duplicate responses")
 
 
 class CapabilityStatus(str, Enum):
