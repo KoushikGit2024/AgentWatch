@@ -112,10 +112,6 @@ if STATIC_DIR.exists():
     dist_dir = STATIC_DIR / "dist"
     if dist_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
-        
-    css_dir = STATIC_DIR / "css"
-    if css_dir.exists():
-        app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
 
 
 @app.get("/")
@@ -125,8 +121,6 @@ async def serve_index(request: Request):
     dist_index = STATIC_DIR / "dist" / "index.html"
     if dist_index.exists():
         return FileResponse(str(dist_index))
-    index_file = STATIC_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(str(index_file))
     return {"message": "AgentWatch Backend API Running. Static frontend not found."}
+
 
