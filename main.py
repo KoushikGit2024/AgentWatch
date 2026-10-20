@@ -107,19 +107,26 @@ async def auth_middleware(request: Request, call_next):
 # Mount static frontend
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-    # Also mount subdirectories directly for clean root relative asset paths (css, js)
+    
+    # Mount Vite distribution assets
+    dist_dir = STATIC_DIR / "dist"
+    if dist_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+        
     css_dir = STATIC_DIR / "css"
     if css_dir.exists():
         app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
-    js_dir = STATIC_DIR / "js"
-    if js_dir.exists():
-        app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
 
 
 @app.get("/")
 async def serve_index(request: Request):
     """Serve mobile dashboard index page."""
+    # Check for Vite compiled bundle first
+    dist_index = STATIC_DIR / "dist" / "index.html"
+    if dist_index.exists():
+        return FileResponse(str(dist_index))
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
     return {"message": "AgentWatch Backend API Running. Static frontend not found."}
+

@@ -340,6 +340,24 @@ body {
     margin-bottom: 6px;
 }
 
+.interaction-collapse-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, color 0.15s;
+}
+
+.interaction-collapse-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-surface);
+}
+
 .interaction-badge {
     background: var(--bg-surface);
     color: var(--text-secondary);
