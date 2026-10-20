@@ -6,6 +6,8 @@ import { InteractionDrawer } from './components/InteractionDrawer';
 import { PromptComposer } from './components/PromptComposer';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { SelectionModal } from './components/SelectionModal';
+import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
+import { RecoveryCenterModal } from './components/RecoveryCenterModal';
 
 export default function App() {
     // Reactive Application State
@@ -26,6 +28,17 @@ export default function App() {
     const [promptText, setPromptText] = useState('');
     const [isSendingPrompt, setIsSendingPrompt] = useState(false);
 
+    // Timeline & Recovery Center State
+    const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+    const [timelineEvents, setTimelineEvents] = useState([]);
+    const [isTimelineLoading, setIsTimelineLoading] = useState(false);
+    const [timelineCategory, setTimelineCategory] = useState(null);
+    const [timelineSearch, setTimelineSearch] = useState('');
+
+    const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+    const [recoveryItems, setRecoveryItems] = useState([]);
+    const [isRecoveryLoading, setIsRecoveryLoading] = useState(false);
+
     // Drawers & Modals
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [historyChats, setHistoryChats] = useState([]);
@@ -33,32 +46,42 @@ export default function App() {
     const [activeModal, setActiveModal] = useState(null); // 'mode' | 'model'
 
     const chatContainerRef = useRef(null);
+    const snapshotSequenceRef = useRef(0);
+    const isMountedRef = useRef(true);
 
     // Initial load and live polling
     useEffect(() => {
+        isMountedRef.current = true;
         fetchAppState();
         fetchSnapshot();
         fetchPendingInteractions();
 
         const pollTimer = setInterval(() => {
-            fetchAppState();
-            fetchPendingInteractions();
-            fetchSnapshot();
+            if (isMountedRef.current) {
+                fetchAppState();
+                fetchPendingInteractions();
+                fetchSnapshot();
+            }
         }, 3000);
 
-        return () => clearInterval(pollTimer);
+        return () => {
+            isMountedRef.current = false;
+            clearInterval(pollTimer);
+        };
     }, []);
 
     // 1. Fetch App State
     const fetchAppState = async () => {
         try {
             const res = await fetch('/app-state', { headers: { 'ngrok-skip-browser-warning': 'true' } });
+            if (!isMountedRef.current) return;
             if (res.status === 401) {
                 window.location.href = '/login.html';
                 return;
             }
             if (res.ok) {
                 const data = await res.json();
+                if (!isMountedRef.current) return;
                 setAppState({
                     status: data.antigravity_connected ? 'Live' : 'Standby',
                     connected: Boolean(data.antigravity_connected),
@@ -71,12 +94,16 @@ export default function App() {
         }
     };
 
-    // 2. Fetch Viewport Snapshot
+    // 2. Fetch Viewport Snapshot with sequence counter to prevent out-of-order overwrite
     const fetchSnapshot = async () => {
+        const seq = ++snapshotSequenceRef.current;
         try {
             const res = await fetch('/snapshot', { headers: { 'ngrok-skip-browser-warning': 'true' } });
+            if (!isMountedRef.current) return;
             if (res.ok) {
                 const data = await res.json();
+                // Ignore stale out-of-order response
+                if (seq < snapshotSequenceRef.current || !isMountedRef.current) return;
                 setSnapshotData(data);
                 if (data.stats) {
                     const kbs = Math.round(((data.stats.htmlSize || 0) + (data.stats.cssSize || 0)) / 1024);
@@ -92,8 +119,10 @@ export default function App() {
     const fetchPendingInteractions = async () => {
         try {
             const res = await fetch('/api/v1/interactions/pending', { headers: { 'ngrok-skip-browser-warning': 'true' } });
+            if (!isMountedRef.current) return;
             if (res.ok) {
                 const data = await res.json();
+                if (!isMountedRef.current) return;
                 if (data.interactions && data.interactions.length > 0) {
                     const latest = data.interactions[0];
                     setPendingInteraction(prev => {
@@ -113,6 +142,70 @@ export default function App() {
             console.warn('Interaction fetch error:', e);
         }
     };
+
+    // 4. Fetch Activity Timeline Events
+    const fetchTimelineEvents = async () => {
+        setIsTimelineLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (timelineCategory) params.append('category', timelineCategory);
+            if (timelineSearch) params.append('search', timelineSearch);
+            params.append('limit', '50');
+
+            const res = await fetch(`/api/v1/events?${params.toString()}`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+            if (res.ok) {
+                const data = await res.json();
+                setTimelineEvents(data.events || []);
+            }
+        } catch (e) {
+            console.warn('Timeline fetch error:', e);
+        } finally {
+            setIsTimelineLoading(false);
+        }
+    };
+
+    // 5. Fetch Recovery Center Action Items
+    const fetchRecoveryItems = async () => {
+        setIsRecoveryLoading(true);
+        try {
+            const res = await fetch('/api/v1/events/recovery-items', { headers: { 'ngrok-skip-browser-warning': 'true' } });
+            if (res.ok) {
+                const data = await res.json();
+                setRecoveryItems(data || []);
+            }
+        } catch (e) {
+            console.warn('Recovery items fetch error:', e);
+        } finally {
+            setIsRecoveryLoading(false);
+        }
+    };
+
+    // 6. Manual Reconciliation Handler
+    const handleReconcileAction = async ({ scope, idempotency_key, resolution_notes }) => {
+        const res = await fetch('/api/v1/events/reconcile-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+            body: JSON.stringify({ scope, idempotency_key, resolution_notes })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Reconciliation failed');
+        }
+    };
+
+    // Periodic check for recovery items count
+    useEffect(() => {
+        fetchRecoveryItems();
+        const recTimer = setInterval(fetchRecoveryItems, 10000);
+        return () => clearInterval(recTimer);
+    }, []);
+
+    // Fetch timeline when opened or filters change
+    useEffect(() => {
+        if (isTimelineOpen) {
+            fetchTimelineEvents();
+        }
+    }, [isTimelineOpen, timelineCategory, timelineSearch]);
 
     // Prompt Submission with Idempotency
     const handleSendPrompt = async () => {
@@ -280,8 +373,11 @@ export default function App() {
                 isConnected={appState.connected}
                 onNewChat={handleNewChat}
                 onOpenHistory={handleOpenHistory}
+                onOpenTimeline={() => setIsTimelineOpen(true)}
+                onOpenRecovery={() => setIsRecoveryOpen(true)}
+                recoveryCount={recoveryItems.length}
                 onStop={handleStop}
-                onRefresh={() => { fetchAppState(); fetchSnapshot(); }}
+                onRefresh={() => { fetchAppState(); fetchSnapshot(); fetchRecoveryItems(); }}
             />
 
             {/* 2. Settings Bar */}
@@ -345,6 +441,30 @@ export default function App() {
                 chats={historyChats}
                 isLoading={isHistoryLoading}
                 onSelectChat={handleSelectChat}
+            />
+
+            {/* 8. Activity Timeline & Trace Drawer */}
+            <ActivityTimelineDrawer
+                isOpen={isTimelineOpen}
+                onClose={() => setIsTimelineOpen(false)}
+                events={timelineEvents}
+                isLoading={isTimelineLoading}
+                activeCategory={timelineCategory}
+                onSelectCategory={setTimelineCategory}
+                searchQuery={timelineSearch}
+                onChangeSearch={setTimelineSearch}
+                onRefresh={fetchTimelineEvents}
+            />
+
+            {/* 9. Recovery & Diagnostics Center Modal */}
+            <RecoveryCenterModal
+                isOpen={isRecoveryOpen}
+                onClose={() => setIsRecoveryOpen(false)}
+                recoveryItems={recoveryItems}
+                isLoading={isRecoveryLoading}
+                onRefresh={fetchRecoveryItems}
+                onReconcileAction={handleReconcileAction}
+                onOpenInteraction={() => setIsInteractionCollapsed(false)}
             />
         </div>
     );
