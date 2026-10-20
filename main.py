@@ -107,6 +107,13 @@ async def auth_middleware(request: Request, call_next):
 # Mount static frontend
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    # Also mount subdirectories directly for clean root relative asset paths (css, js)
+    css_dir = STATIC_DIR / "css"
+    if css_dir.exists():
+        app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
+    js_dir = STATIC_DIR / "js"
+    if js_dir.exists():
+        app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
 
 
 @app.get("/")
