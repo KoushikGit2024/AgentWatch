@@ -10,8 +10,12 @@ client = TestClient(app)
 def clean_interactions():
     repo = InteractionRepository()
     repo.collection.delete_many({"interaction_id": {"$regex": "^test-"}})
+    from repositories.idempotency_repository import IdempotencyRepository
+    idemp_repo = IdempotencyRepository()
+    idemp_repo.collection.delete_many({"idempotency_key": {"$regex": "^idemp-test-"}})
     yield
     repo.collection.delete_many({"interaction_id": {"$regex": "^test-"}})
+    idemp_repo.collection.delete_many({"idempotency_key": {"$regex": "^idemp-test-"}})
 
 def test_capabilities_endpoint():
     response = client.get("/api/v1/interactions/capabilities")
