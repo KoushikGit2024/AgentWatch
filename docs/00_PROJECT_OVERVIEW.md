@@ -58,7 +58,7 @@ AgentWatch replaces fragile, ad-hoc reverse-engineered scripts with an enterpris
 +---------------------------------------------------------------------------------+
 |                               Android Mobile Device                             |
 |  - Authenticated Browser on Private Tailnet (e.g. 100.x.y.z)                    |
-|  - Modular ES6 UI: Interaction Cards, Viewport Mirror, Timeline, Prompt Box     |
+|  - React 19 + Vite + Tailwind UI: Interaction Cards, Viewport, Mode/Model Selector|
 +---------------------------------------+-----------------------------------------+
                                         |
                   Encrypted Tailscale TLS Tunnel (Port 8000)

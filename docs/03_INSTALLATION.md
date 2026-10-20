@@ -46,7 +46,7 @@ python -m venv .venv
 ```
 
 ### Step 2.3: Install Dependencies
-Install all required production and testing dependencies:
+Install all required Python backend dependencies:
 ```powershell
 pip install --upgrade pip
 pip install -r requirements.txt
@@ -57,7 +57,17 @@ Verify that key packages are correctly installed:
 python -c "import fastapi, pymongo, pydantic, httpx, websockets, pytest; print('All core dependencies installed successfully!')"
 ```
 
-### Step 2.4: Install & Verify Local MongoDB
+### Step 2.4: Build React + Vite Frontend
+Install frontend dependencies and generate production assets:
+```powershell
+cd frontend
+npm install
+npm run build
+cd ..
+```
+This compiles the modern React 19 + Tailwind CSS dashboard into `static/dist/`, which FastAPI serves automatically.
+
+### Step 2.5: Install & Verify Local MongoDB
 AgentWatch requires a local MongoDB Community Server running on `localhost:27017`.
 
 1. **Verify MongoDB Service:**

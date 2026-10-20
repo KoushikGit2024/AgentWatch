@@ -12,11 +12,11 @@
 AgentWatch is engineered specifically for single-handed use on modern mobile devices (e.g. Android smartphones with screen widths between 360px and 430px).
 
 ### Key Usability Enhancements:
-1. **Thumb-Zone Controls:** All primary interactive elements—the prompt composer, send button, and dynamic interaction cards—are anchored to the bottom third of the screen.
-2. **Visual Viewport Keyboard Accommodation:** Employs the modern `window.visualViewport` API in `static/js/app.js`:
-   - When the on-screen keyboard appears, the document height resizes dynamically (`visualViewport.height`).
-   - Automatically scrolls the message input into view, preventing the keyboard from obscuring active text or buttons.
-3. **Touch Targets (44px+ Minimum):** Option pills, buttons, and mode selectors satisfy mobile accessibility guidelines with ample padding and active press scaling (`transform: scale(0.98)`).
+1. **Thumb-Zone Controls:** All primary interactive elements—the `PromptComposer`, send button, and dynamic `InteractionDrawer` cards—are anchored to the bottom third of the screen.
+2. **Visual Viewport Keyboard Accommodation:** Employs responsive padding and flexible flexbox layouts within `frontend/src/components/PromptComposer.jsx`:
+   - When the on-screen keyboard appears, mobile viewports accommodate the input field smoothly without shifting critical navigation.
+   - Preserves message drafts locally during connectivity interruptions so typed prompts are never lost.
+3. **Touch Targets (44px+ Minimum):** Option pills, action chips, and mode/model selectors satisfy mobile touch guidelines with comfortable hit-targets, neutral styling, and tactile active scaling.
 
 ---
 

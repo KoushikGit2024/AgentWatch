@@ -23,7 +23,7 @@ The system is partitioned into four primary layers, with dependencies strictly p
 
 ```
 +-----------------------------------------------------------------------------------+
-| 1. Transport & Presentation Layer (FastAPI Routers, WebSockets, Modular ES6 UI)   |
+| 1. Transport & Presentation Layer (FastAPI Routers, React 19 + Vite + Tailwind)  |
 |    - Handles HTTP serialization, cookie-based session auth, and input validation  |
 +-----------------------------------------+-----------------------------------------+
                                           |
@@ -48,7 +48,7 @@ The system is partitioned into four primary layers, with dependencies strictly p
 
 ### Layer 1: Transport & Presentation
 - **FastAPI Endpoints:** Routers partitioned by domain (`auth.py`, `events.py`, `interactions.py`, `controls.py`, `health.py`).
-- **Static Assets:** Serves `index.html`, `login.html`, design stylesheets, and modular ES6 scripts directly via Starlette static file mounting.
+- **Static Assets:** Serves the compiled Vite bundle (`index.html` and minified JS/CSS chunks under `/assets`) from `static/dist/`, along with the standalone `login.html` authentication page.
 - **WebSocket Streaming:** Upgrades authenticated browser connections for push-based viewport updates and live event notifications.
 
 ### Layer 2: Domain & Business Services

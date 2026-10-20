@@ -26,23 +26,22 @@ AgentWatch/
 │   └── routes/             # FastAPI routers: auth, controls, events, health, interactions
 ├── config/                 # Pydantic settings & MongoDB connection pooling
 ├── docs/                   # Exhaustive project documentation
+├── frontend/               # React 19 + Vite + Tailwind CSS frontend
+│   ├── src/                # Modular JSX components (Header, Viewport, InteractionDrawer, etc.)
+│   ├── index.html          # Vite HTML entry
+│   ├── package.json        # Frontend dependencies
+│   └── vite.config.js      # Build config targeting ../static/dist
 ├── integrations/           # External system adapters
 │   └── antigravity/        # CDP discovery & Antigravity IDE adapter
 ├── models/                 # Pydantic models, enums, and database document schemas
-├── repositories/           # MongoDB data access layer: event, session, interaction
+├── repositories/           # MongoDB data access layer: event, session, interaction, idempotency
 ├── scripts/                # CI verification scripts: check_privacy.py
 ├── services/               # Core business services: interaction_service, remote_access
-├── static/                 # Mobile-first frontend
-│   ├── css/style.css       # Design tokens, interaction card styles, responsive grid
-│   ├── index.html          # Shell layout & viewport container
-│   ├── login.html          # Authentication page
-│   └── js/                 # Modular ES6 components
-│       ├── app.js          # App orchestrator & event listeners
-│       ├── components/     # UI renderers: interaction-renderer.js
-│       ├── services/       # Frontend API clients: api-client.js, interaction-service.js
-│       └── stores/         # State store: app-store.js
+├── static/                 # Production distribution
+│   ├── dist/               # Minified Vite production bundle (index.html, assets)
+│   └── login.html          # Standalone authentication page
 └── tests/                  # Pytest automated test suite
-    ├── integration/        # Endpoint and database integration tests
+    ├── integration/        # Endpoint, database, and adversarial edge-case integration tests
     └── unit/               # Schema, parser, and redaction unit tests
 ```
 
@@ -52,8 +51,8 @@ AgentWatch/
 
 Before opening a pull request or pushing to `main`:
 
-- [ ] All 16 automated pytest tests pass: `python -m pytest -v`.
+- [ ] All automated pytest tests pass: `python -m pytest -v`.
+- [ ] Frontend builds cleanly: `cd frontend && npm run build`.
 - [ ] Privacy scan passes cleanly: `python scripts/check_privacy.py`.
-- [ ] No `node_modules` or bulky build tools introduced.
 - [ ] Tailscale Funnel remains strictly disabled.
 - [ ] Clean commit messages adhering to Conventional Commits format (`feat:`, `fix:`, `docs:`, `test:`).
