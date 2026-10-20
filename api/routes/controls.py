@@ -4,10 +4,21 @@ from fastapi import APIRouter, HTTPException, status
 from typing import Dict, Any
 from integrations.antigravity.adapter import antigravity_adapter
 from integrations.antigravity.capabilities import get_verified_capabilities
-from models.schemas import ControlActionRequest, PromptSubmissionRequest
+from models.schemas import (
+    ControlActionRequest,
+    PromptSubmissionRequest,
+    SetModeRequest,
+    SetModelRequest,
+    RemoteScrollRequest,
+    RemoteClickRequest,
+)
+from repositories.idempotency_repository import IdempotencyRepository
 from services.remote_access import remote_access_service
 
 router = APIRouter(tags=["Status and Controls"])
+
+# Persistent idempotency repository backed by MongoDB
+_idempotency_repo = IdempotencyRepository()
 
 
 @router.get("/snapshot")
@@ -50,17 +61,31 @@ def get_app_state():
     }
 
 
-# In-memory idempotency cache for deduplication
-_processed_idempotency_keys: Dict[str, Dict[str, Any]] = {}
-
 @router.post("/send")
 @router.post("/api/v1/send")
 def send_message(payload: PromptSubmissionRequest):
     """
     Send prompt to Antigravity session with schema validation and truthful lifecycle tracking.
+    Uses persistent MongoDB idempotency reservation with payload fingerprinting.
     """
-    if payload.idempotency_key and payload.idempotency_key in _processed_idempotency_keys:
-        return _processed_idempotency_keys[payload.idempotency_key]
+    if payload.idempotency_key:
+        state, cached = _idempotency_repo.reserve_or_get(
+            scope="prompt_send",
+            idempotency_key=payload.idempotency_key,
+            payload=payload
+        )
+        if state == "completed":
+            return cached
+        elif state == "conflict_mismatch":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Idempotency key was already used with a different request payload."
+            )
+        elif state == "in_progress":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An identical request is currently in progress."
+            )
 
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)
@@ -76,11 +101,31 @@ def send_message(payload: PromptSubmissionRequest):
     }
 
     if payload.idempotency_key:
-        _processed_idempotency_keys[payload.idempotency_key] = response
-        # Keep cache bounded
-        if len(_processed_idempotency_keys) > 500:
-            oldest = next(iter(_processed_idempotency_keys))
-            del _processed_idempotency_keys[oldest]
+        _idempotency_repo.complete(
+            scope="prompt_send",
+            idempotency_key=payload.idempotency_key,
+            response=response
+        )
+
+    # Persist activity event in timeline
+    try:
+        from repositories.event_repository import EventRepository
+        from models.schemas import EventDocument
+        import datetime
+        EventRepository().insert_event(EventDocument(
+            session_id=payload.session_id or "default_session",
+            event_type="PromptSubmitted",
+            category="prompt",
+            summary=f"User prompt submitted ({len(payload.message)} chars)",
+            execution_state="dispatch_acknowledged" if cdp_connected else "request_accepted",
+            correlation_id=payload.idempotency_key,
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            source="mobile_user",
+            source_confidence="observed",
+            sanitized_payload={"message_preview": payload.message[:150], "cdp_connected": cdp_connected}
+        ))
+    except Exception:
+        pass
 
     return response
 
@@ -94,6 +139,24 @@ def stop_generation():
     """
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)
+
+    try:
+        from repositories.event_repository import EventRepository
+        from models.schemas import EventDocument
+        import datetime
+        EventRepository().insert_event(EventDocument(
+            session_id="default_session",
+            event_type="StopRequested",
+            category="execution",
+            summary="Emergency Stop requested by user",
+            execution_state="stop_acknowledged" if cdp_connected else "stop_requested",
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            source="mobile_user",
+            source_confidence="observed",
+            sanitized_payload={"cdp_connected": cdp_connected}
+        ))
+    except Exception:
+        pass
 
     return {
         "status": "stop_signal_dispatched" if cdp_connected else "stop_requested_offline",
@@ -109,47 +172,80 @@ def stop_generation():
 def new_chat():
     """Start new conversation session."""
     ag_status = antigravity_adapter.get_status()
+    cdp_connected = ag_status["cdp"]["connected"]
+
+    try:
+        from repositories.event_repository import EventRepository
+        from models.schemas import EventDocument
+        import datetime
+        EventRepository().insert_event(EventDocument(
+            session_id="default_session",
+            event_type="NewChat",
+            category="system",
+            summary="New conversation session started",
+            execution_state="execution_observed" if cdp_connected else "request_accepted",
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            source="mobile_user",
+            source_confidence="observed",
+            sanitized_payload={"cdp_connected": cdp_connected}
+        ))
+    except Exception:
+        pass
+
     return {
         "success": True,
-        "status": "new_chat_triggered" if ag_status["cdp"]["connected"] else "queued_offline",
-        "antigravity_connected": ag_status["cdp"]["connected"],
+        "status": "new_chat_triggered" if cdp_connected else "queued_offline",
+        "antigravity_connected": cdp_connected,
     }
+
+
+@router.get("/chat-history")
+def get_chat_history():
+    """Retrieve chat history for frontend drawer."""
+    from repositories.session_repository import SessionRepository
+    sessions = SessionRepository().list_sessions(limit=50)
+    chats = [{"title": s.get("title") or s.get("session_id"), "session_id": s.get("session_id")} for s in sessions]
+    return {"count": len(chats), "chats": chats}
+
+
+@router.post("/select-chat")
+def select_chat(payload: Dict[str, Any]):
+    """Select active chat session."""
+    return {"success": True, "selected": payload.get("title") or payload.get("session_id")}
+
 
 
 @router.post("/set-mode")
 @router.post("/api/v1/set-mode")
-def set_mode(payload: Dict[str, Any]):
-    """Set active agent mode (Fast vs Planning)."""
-    mode = payload.get("mode", "Fast")
-    return {"success": True, "mode": mode}
+def set_mode(payload: SetModeRequest):
+    """Set active agent mode (Fast vs Planning) with strict enum validation."""
+    return {"success": True, "mode": payload.mode.value}
 
 
 @router.post("/set-model")
 @router.post("/api/v1/set-model")
-def set_model(payload: Dict[str, Any]):
-    """Select active AI model."""
-    model = payload.get("model", "Default Antigravity Agent")
-    return {"success": True, "model": model}
+def set_model(payload: SetModelRequest):
+    """Select active AI model with strict length and character validation."""
+    return {"success": True, "model": payload.model}
 
 
 @router.post("/remote-scroll")
 @router.post("/api/v1/remote-scroll")
-def remote_scroll(payload: Dict[str, Any]):
-    """Sync mobile scroll position to desktop viewport."""
-    scroll_percent = payload.get("scrollPercent", 0.0)
-    return {"success": True, "scrollPercent": scroll_percent}
+def remote_scroll(payload: RemoteScrollRequest):
+    """Sync mobile scroll position to desktop viewport with bounds validation."""
+    return {"success": True, "scrollPercent": payload.scrollPercent}
 
 
 @router.post("/remote-click")
 @router.post("/api/v1/remote-click")
-def remote_click(payload: Dict[str, Any]):
+def remote_click(payload: RemoteClickRequest):
     """
     Handle remote interaction clicks.
     Guards against unauthorized permission bypass while allowing safe UI toggles (Thought/Worked blocks).
     """
-    element_text = payload.get("text", "")
-    # Check if attempting to bypass native permission dialog
-    if any(k in element_text.lower() for k in ["allow", "authorize", "grant permission"]):
+    element_text = payload.text or ""
+    # Explicit native security boundary check
+    if any(k in element_text.lower() for k in ["allow", "authorize", "grant permission", "approve"]):
         return {
             "success": False,
             "status": "requires_native_ide",

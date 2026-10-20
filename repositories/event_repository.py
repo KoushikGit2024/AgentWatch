@@ -41,6 +41,9 @@ class EventRepository:
         self,
         session_id: Optional[str] = None,
         event_type: Optional[str] = None,
+        category: Optional[str] = None,
+        search: Optional[str] = None,
+        correlation_id: Optional[str] = None,
         limit: int = 50,
         skip: int = 0
     ) -> List[Dict[str, Any]]:
@@ -50,6 +53,15 @@ class EventRepository:
             query["session_id"] = session_id
         if event_type:
             query["event_type"] = event_type
+        if category:
+            query["category"] = category
+        if correlation_id:
+            query["correlation_id"] = correlation_id
+        if search:
+            query["$or"] = [
+                {"summary": {"$regex": search, "$options": "i"}},
+                {"event_type": {"$regex": search, "$options": "i"}},
+            ]
 
         cursor = self.collection.find(query).sort([("timestamp", -1), ("_id", -1)]).skip(skip).limit(limit)
         events = []
@@ -58,7 +70,24 @@ class EventRepository:
             events.append(doc)
         return events
 
-    def count_events(self, session_id: Optional[str] = None) -> int:
+    def count_events(
+        self,
+        session_id: Optional[str] = None,
+        event_type: Optional[str] = None,
+        category: Optional[str] = None,
+        search: Optional[str] = None
+    ) -> int:
         """Count total events matching filter."""
-        query = {"session_id": session_id} if session_id else {}
+        query: Dict[str, Any] = {}
+        if session_id:
+            query["session_id"] = session_id
+        if event_type:
+            query["event_type"] = event_type
+        if category:
+            query["category"] = category
+        if search:
+            query["$or"] = [
+                {"summary": {"$regex": search, "$options": "i"}},
+                {"event_type": {"$regex": search, "$options": "i"}},
+            ]
         return self.collection.count_documents(query)

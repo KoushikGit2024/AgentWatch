@@ -13,6 +13,7 @@ from models.schemas import (
 )
 from repositories.interaction_repository import InteractionRepository
 from repositories.session_repository import SessionRepository
+from repositories.idempotency_repository import IdempotencyRepository
 from integrations.antigravity.adapter import antigravity_adapter
 from security.redaction import redact_secrets
 from datetime import datetime, timezone
@@ -23,10 +24,15 @@ logger = logging.getLogger("services.interaction_service")
 class InteractionService:
     """Coordinates dynamic interactions and truthful capability discovery."""
 
-    def __init__(self, interaction_repo: Optional[InteractionRepository] = None, session_repo: Optional[SessionRepository] = None):
+    def __init__(
+        self,
+        interaction_repo: Optional[InteractionRepository] = None,
+        session_repo: Optional[SessionRepository] = None,
+        idempotency_repo: Optional[IdempotencyRepository] = None,
+    ):
         self.repo = interaction_repo if interaction_repo is not None else InteractionRepository()
         self.session_repo = session_repo if session_repo is not None else SessionRepository()
-        self._interaction_idempotency_cache: Dict[str, Dict[str, Any]] = {}
+        self.idempotency_repo = idempotency_repo if idempotency_repo is not None else IdempotencyRepository()
 
     def get_capabilities(self) -> List[CapabilityItem]:
         """
@@ -125,15 +131,39 @@ class InteractionService:
     def submit_response(self, interaction_id: str, payload: SubmitInteractionRequest) -> Dict[str, Any]:
         """
         Validate submission against interaction schema, sanitize inputs, and resolve atomically.
+        Uses persistent idempotency reservation to prevent race conditions and double answers.
         """
-        if payload.idempotency_key and payload.idempotency_key in self._interaction_idempotency_cache:
-            return self._interaction_idempotency_cache[payload.idempotency_key]
+        scope = f"interaction_respond_{interaction_id}"
+        if payload.idempotency_key:
+            state, cached = self.idempotency_repo.reserve_or_get(
+                scope=scope,
+                idempotency_key=payload.idempotency_key,
+                payload=payload
+            )
+            if state == "completed":
+                return cached
+            elif state == "conflict_mismatch":
+                return {
+                    "success": False,
+                    "error": "Idempotency key was already used with a different answer payload",
+                    "status": "conflict_mismatch"
+                }
+            elif state == "in_progress":
+                return {
+                    "success": False,
+                    "error": "An identical response is currently being processed",
+                    "status": "in_progress"
+                }
 
         interaction = self.repo.get_interaction(interaction_id)
         if not interaction:
+            if payload.idempotency_key:
+                self.idempotency_repo.fail(scope, payload.idempotency_key, "Interaction not found")
             return {"success": False, "error": "Interaction not found", "status": "not_found"}
 
         if interaction.get("status") != InteractionStatus.PENDING.value:
+            if payload.idempotency_key:
+                self.idempotency_repo.fail(scope, payload.idempotency_key, "Interaction already resolved")
             return {
                 "success": False,
                 "error": f"Interaction is already {interaction.get('status')}",
@@ -148,14 +178,22 @@ class InteractionService:
             # If custom response permitted and "other" selected, allow
             is_custom = bool(payload.custom_response and payload.custom_response.strip())
             if not is_custom and not selected:
+                if payload.idempotency_key:
+                    self.idempotency_repo.fail(scope, payload.idempotency_key, "No option selected")
                 return {"success": False, "error": "No option selected", "status": "validation_error"}
             if not is_custom and not selected.issubset(allowed_ids):
+                if payload.idempotency_key:
+                    self.idempotency_repo.fail(scope, payload.idempotency_key, "Invalid option selection")
                 return {"success": False, "error": "Invalid option selection", "status": "validation_error"}
             if kind == InteractionKind.SINGLE_CHOICE.value and len(selected) > 1:
+                if payload.idempotency_key:
+                    self.idempotency_repo.fail(scope, payload.idempotency_key, "Single choice allows only one selection")
                 return {"success": False, "error": "Single choice allows only one selection", "status": "validation_error"}
 
         # Validate custom response permission
         if payload.custom_response and not interaction.get("allow_custom_response", False):
+            if payload.idempotency_key:
+                self.idempotency_repo.fail(scope, payload.idempotency_key, "Forbidden custom response")
             return {"success": False, "error": "Custom text responses are not permitted for this question", "status": "forbidden_custom_response"}
 
         sanitized_response = {
@@ -170,6 +208,16 @@ class InteractionService:
             status=InteractionStatus.SUBMITTED
         )
 
+        if not updated:
+            # Atomic compare-and-set lost the race to a concurrent winner
+            if payload.idempotency_key:
+                self.idempotency_repo.fail(scope, payload.idempotency_key, "Race condition: already resolved")
+            return {
+                "success": False,
+                "error": "Interaction was already resolved by a concurrent request",
+                "status": "stale_interaction",
+            }
+
         res = {
             "success": True,
             "interaction_id": interaction_id,
@@ -178,10 +226,25 @@ class InteractionService:
         }
 
         if payload.idempotency_key:
-            self._interaction_idempotency_cache[payload.idempotency_key] = res
-            if len(self._interaction_idempotency_cache) > 500:
-                oldest = next(iter(self._interaction_idempotency_cache))
-                del self._interaction_idempotency_cache[oldest]
+            self.idempotency_repo.complete(scope, payload.idempotency_key, res)
+
+        try:
+            from repositories.event_repository import EventRepository
+            from models.schemas import EventDocument
+            EventRepository().insert_event(EventDocument(
+                session_id=interaction.get("session_id", "default_session"),
+                event_type="InteractionAnswered",
+                category="interaction",
+                summary=f"Resolved question: '{interaction.get('title', interaction_id)}'",
+                execution_state="execution_observed",
+                correlation_id=interaction_id,
+                timestamp=datetime.now(timezone.utc),
+                source="mobile_user",
+                source_confidence="observed",
+                sanitized_payload={"selected_options": payload.selected_option_ids, "has_custom": bool(payload.custom_response)}
+            ))
+        except Exception:
+            pass
 
         return res
 

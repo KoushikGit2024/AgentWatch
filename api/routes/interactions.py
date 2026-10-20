@@ -64,7 +64,7 @@ def respond_to_interaction(interaction_id: str, payload: SubmitInteractionReques
         error_code = status.HTTP_400_BAD_REQUEST
         if res.get("status") == "not_found":
             error_code = status.HTTP_404_NOT_FOUND
-        elif res.get("status") == "stale_interaction":
+        elif res.get("status") in ("stale_interaction", "conflict_mismatch", "in_progress"):
             error_code = status.HTTP_409_CONFLICT
         raise HTTPException(status_code=error_code, detail=res.get("error"))
     return res

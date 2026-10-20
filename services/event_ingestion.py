@@ -29,23 +29,43 @@ class EventIngestionService:
         # 2. Extract or preserve timestamp
         ts = request.timestamp or datetime.now(timezone.utc)
 
-        # 3. Build Event Document
+        # 3. Determine category and summary if not explicitly provided
+        cat = request.category.value if request.category else "system"
+        if not request.category:
+            if "prompt" in request.event_type.lower():
+                cat = "prompt"
+            elif "tool" in request.event_type.lower():
+                cat = "tool"
+            elif "interaction" in request.event_type.lower():
+                cat = "interaction"
+            elif "stop" in request.event_type.lower():
+                cat = "execution"
+            elif "error" in request.event_type.lower():
+                cat = "error"
+
+        summary = request.summary or f"{request.event_type} event recorded from {request.source}"
+
+        # 4. Build Event Document
         event_doc = EventDocument(
             source_event_id=request.source_event_id,
             agent_id=request.agent_id,
             session_id=request.session_id,
             task_id=request.task_id,
             event_type=request.event_type,
+            category=cat,
+            summary=summary,
+            execution_state=request.execution_state.value if request.execution_state else None,
+            correlation_id=request.correlation_id,
             timestamp=ts,
             source=request.source,
             source_confidence=request.source_confidence.value,
             sanitized_payload=sanitized,
         )
 
-        # 4. Insert into MongoDB with deduplication
+        # 5. Insert into MongoDB with deduplication
         doc_id, is_dup = self.event_repo.insert_event(event_doc)
 
-        # 5. Upsert parent session and agent if not duplicate
+        # 6. Upsert parent session and agent if not duplicate
         if not is_dup:
             self.session_repo.upsert_session(
                 session_id=request.session_id,

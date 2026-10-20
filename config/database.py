@@ -97,6 +97,17 @@ def init_db_indexes(db=None):
         [("event_type", ASCENDING), ("timestamp", DESCENDING)],
         name="idx_events_type_timeline",
     )
+    # 5. Category filtering
+    database.events.create_index(
+        [("category", ASCENDING), ("timestamp", DESCENDING)],
+        name="idx_events_category_timeline",
+    )
+    # 6. Action correlation index
+    database.events.create_index(
+        [("correlation_id", ASCENDING)],
+        sparse=True,
+        name="idx_events_correlation",
+    )
 
     # Sessions collection
     database.sessions.create_index(
@@ -140,6 +151,18 @@ def init_db_indexes(db=None):
     database.interactions.create_index(
         [("session_id", ASCENDING), ("status", ASCENDING)],
         name="idx_interactions_session_status",
+    )
+
+    # Idempotency collection
+    database.idempotency_keys.create_index(
+        [("scope", ASCENDING), ("idempotency_key", ASCENDING)],
+        unique=True,
+        name="uniq_scope_idempotency_key",
+    )
+    database.idempotency_keys.create_index(
+        [("expires_at", ASCENDING)],
+        expireAfterSeconds=0,
+        name="ttl_idempotency_expires",
     )
 
     logger.info("MongoDB indexes verified on database '%s'", database.name)
