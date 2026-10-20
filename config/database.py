@@ -127,4 +127,19 @@ def init_db_indexes(db=None):
         name="idx_tasks_session",
     )
 
+    # Interactions collection
+    database.interactions.create_index(
+        [("interaction_id", ASCENDING)],
+        unique=True,
+        name="uniq_interaction_id",
+    )
+    database.interactions.create_index(
+        [("status", ASCENDING), ("created_at", DESCENDING)],
+        name="idx_interactions_status_time",
+    )
+    database.interactions.create_index(
+        [("session_id", ASCENDING), ("status", ASCENDING)],
+        name="idx_interactions_session_status",
+    )
+
     logger.info("MongoDB indexes verified on database '%s'", database.name)
