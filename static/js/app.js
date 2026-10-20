@@ -1,3 +1,6 @@
+import { InteractionRenderer } from './components/interaction-renderer.js';
+import { InteractionService } from './services/interaction-service.js';
+
 // --- Elements ---
 const chatContainer = document.getElementById('chatContainer');
 const chatContent = document.getElementById('chatContent');
@@ -20,6 +23,16 @@ const modeText = document.getElementById('modeText');
 const modelText = document.getElementById('modelText');
 const historyLayer = document.getElementById('historyLayer');
 const historyList = document.getElementById('historyList');
+const interactionContainer = document.getElementById('interactionContainer');
+
+// Mount Dynamic Interaction Renderer
+let interactionRenderer = null;
+if (interactionContainer) {
+    interactionRenderer = new InteractionRenderer(interactionContainer, (resolvedId) => {
+        console.log('[INTERACTION] Resolved interaction:', resolvedId);
+        loadSnapshot();
+    });
+}
 
 // New elements for event listeners
 const enableHttpsBtn = document.getElementById('enableHttpsBtn');
@@ -82,6 +95,16 @@ async function fetchAppState() {
         }
 
         console.log('[SYNC] State refreshed from Desktop:', data);
+
+        // Dynamic Interaction Check
+        if (interactionRenderer) {
+            const intData = await InteractionService.fetchPendingInteractions().catch(() => ({ interactions: [] }));
+            if (intData && intData.interactions && intData.interactions.length > 0) {
+                interactionRenderer.render(intData.interactions[0]);
+            } else {
+                interactionRenderer.render(null);
+            }
+        }
     } catch (e) { console.error('[SYNC] Failed to sync state', e); }
 }
 

@@ -894,3 +894,175 @@ textarea::-webkit-scrollbar {
 .mt-4 {
     margin-top: 24px;
 }
+
+/* --- Dynamic Interaction Card & Elements --- */
+.dynamic-interaction-container {
+    padding: 12px 16px;
+    background: rgba(19, 28, 47, 0.95);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 100;
+}
+
+.interaction-card {
+    background: linear-gradient(145deg, #182238 0%, #111a2d 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.interaction-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.interaction-badge {
+    background: var(--accent-gradient);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.interaction-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.interaction-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.interaction-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.interaction-option-pill {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.interaction-option-pill:active {
+    transform: scale(0.98);
+}
+
+.interaction-option-pill.selected {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent);
+}
+
+.option-check {
+    font-size: 16px;
+    color: var(--accent);
+    margin-top: 1px;
+}
+
+.option-label {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.option-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.rec-badge {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    font-size: 9.5px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.custom-response-section {
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.custom-response-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.custom-response-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.custom-response-input:focus {
+    border-color: var(--accent);
+}
+
+.interaction-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.interaction-submit-btn {
+    background: var(--accent-gradient);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px var(--accent-glow);
+    transition: opacity 0.2s;
+}
+
+.interaction-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.interaction-success-card {
+    padding: 16px;
+    text-align: center;
+    color: #4ade80;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
