@@ -10,7 +10,7 @@ import os
 
 from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
-from api.routes import health, events, sessions, controls, auth
+from api.routes import health, events, sessions, controls, auth, interactions
 from security.authentication import check_auth_required
 import logging
 
@@ -67,6 +67,7 @@ app.include_router(events.router)
 app.include_router(sessions.router)
 app.include_router(controls.router)
 app.include_router(auth.router)
+app.include_router(interactions.router)
 
 # Static files path
 BASE_DIR = Path(__file__).resolve().parent
