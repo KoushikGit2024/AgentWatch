@@ -1,13 +1,49 @@
-# 10 — Android Access Guide
+# 10 — Android Mobile Usability Guide
 
-## Step-by-Step Connection from Android Phone
+**Document ID:** CW-DOC-010  
+**Version:** 2.0.0  
+**Project:** CloudWatchV2 (AgentWatch)  
+**Classification:** Mobile Usability & Interaction Guide  
 
-1. Install the official **Tailscale** app from the Google Play Store on your Android phone.
-2. Sign in using the same account and join your private tailnet.
-3. Verify that your laptop appears in the Tailscale device list.
-4. On your laptop, run:
-   ```powershell
-   .\scripts\remote-status.ps1
-   ```
-5. Open your mobile browser (Chrome/Firefox) on your phone and navigate to your laptop's private tailnet HTTPS address (e.g., `https://<laptop-tailnet-name>.ts.net`).
-6. Enter your `APP_PASSWORD` configured in `.env` to log in and observe your Antigravity agent!
+---
+
+## 1. Mobile-First Ergonomics & Design
+
+CloudWatchV2 is engineered specifically for single-handed use on modern mobile devices (e.g. Android smartphones with screen widths between 360px and 430px).
+
+### Key Usability Enhancements:
+1. **Thumb-Zone Controls:** All primary interactive elements—the prompt composer, send button, and dynamic interaction cards—are anchored to the bottom third of the screen.
+2. **Visual Viewport Keyboard Accommodation:** Employs the modern `window.visualViewport` API in `static/js/app.js`:
+   - When the on-screen keyboard appears, the document height resizes dynamically (`visualViewport.height`).
+   - Automatically scrolls the message input into view, preventing the keyboard from obscuring active text or buttons.
+3. **Touch Targets (44px+ Minimum):** Option pills, buttons, and mode selectors satisfy mobile accessibility guidelines with ample padding and active press scaling (`transform: scale(0.98)`).
+
+---
+
+## 2. Navigating the Mobile Interface
+
+### 2.1 The Top Navigation Bar
+- **Status Indicator:** Displays a glowing green dot (`Live`) when connected to the local server, transitioning to an amber dot (`Reconnecting`) during network transitions.
+- **Node & Bandwidth Counter:** Shows live DOM node counts and serialized snapshot payload sizes (e.g. `245 Nodes · 38KB`).
+- **Action Buttons:**
+  - 🔄 **Refresh:** Manually forces an immediate viewport and capability re-sync.
+  - ⏹ **Stop:** Dispatches a halt command to active agent tasks.
+  - ➕ **New Chat:** Clears the desktop conversation window for a fresh session.
+  - 📋 **History:** Slides up a drawer displaying recent conversation sessions.
+
+### 2.2 The Main Viewport
+- Renders the desktop Antigravity conversation window with forced dark-mode styling.
+- Tap any collapsed thought block ("Thinking...", "Thought for 15s") to expand it.
+- Tap any code block copy button to copy code directly to your phone's clipboard.
+
+### 2.3 The Dynamic Interaction Container
+- Appears automatically above the prompt composer whenever the agent asks a question.
+- **Single Choice:** Tap an option pill (turns indigo with a solid indicator ●).
+- **Multiple Choice:** Tap multiple option pills (checkbox indicators ☑).
+- **Custom Other:** Enter custom guidance in the textarea if enabled.
+- **Submit:** Tap **Submit Response**. The card turns green, flashes a confirmation checkmark, and dismisses cleanly.
+
+### 2.4 The Bottom Prompt Composer
+- Type instructions or follow-ups.
+- Tap the **Send** button (paper airplane icon).
+- If network connection drops while sending, the input text is automatically restored so you never have to re-type instructions.
