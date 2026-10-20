@@ -1,6 +1,6 @@
-# CloudWatchV2 📱 — Service-Oriented Local-First Antigravity Observer & Mobile Monitor
+# AgentWatch 📱 — Service-Oriented Local-First Antigravity Observer & Mobile Monitor
 
-CloudWatchV2 is an independent, service-oriented system designed for local-first observation of Google Antigravity coding agents from your phone or mobile browser over secure, private **Tailscale** networking, backed by **local MongoDB Community Server**.
+AgentWatch is an independent, service-oriented system designed for local-first observation of Google Antigravity coding agents from your phone or mobile browser over secure, private **Tailscale** networking, backed by **local MongoDB Community Server**.
 
 ---
 
@@ -26,7 +26,7 @@ CloudWatchV2 is an independent, service-oriented system designed for local-first
                                      | Event metadata & CDP Status
                                      v
 +--------------------------------------------------------------------------+
-|                            CloudWatchV2 Backend                          |
+|                            AgentWatch Backend                          |
 |                                                                          |
 |  +--------------------+   +---------------------+   +-----------------+  |
 |  | Antigravity Adapter|-->| Event Ingestion Svc |-->| Redaction Engine|  |
@@ -41,7 +41,7 @@ CloudWatchV2 is an independent, service-oriented system designed for local-first
                                        v
                      +----------------------------------+
                      | Local MongoDB Community Server   |
-                     | (127.0.0.1:27017/cloudwatch_v2)  |
+                     | (127.0.0.1:27017/AgentWatch_v2)  |
                      +----------------------------------+
                                        ^
                                        |

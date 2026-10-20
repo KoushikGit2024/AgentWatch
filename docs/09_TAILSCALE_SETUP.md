@@ -2,7 +2,7 @@
 
 **Document ID:** CW-DOC-009  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Network Infrastructure Guide  
 
 ---
@@ -47,7 +47,7 @@ Verify that:
 1. `Serve` is active pointing to `http://127.0.0.1:8000`.
 2. `Funnel` is **OFF** (Funnel must never appear in active status).
 
-To verify programmatically within CloudWatchV2:
+To verify programmatically within AgentWatch:
 ```powershell
 python -c "from services.remote_access import remote_access_service; print(remote_access_service.get_tailscale_status())"
 ```

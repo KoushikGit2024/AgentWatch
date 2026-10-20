@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-001  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Technical Architecture Specification  
 
 ---
 
 ## 1. Architectural Philosophy
 
-CloudWatchV2 is engineered following the principles of **Clean Architecture** and **Layered Separation of Concerns**. The design prioritizes:
+AgentWatch is engineered following the principles of **Clean Architecture** and **Layered Separation of Concerns**. The design prioritizes:
 1. **Local Autonomy:** Zero dependency on remote cloud infrastructure for monitoring, persistence, or telemetry parsing.
 2. **Deterministic Processing:** Invariant handling of events, idempotency across mobile actions, and transactional status transitions in MongoDB.
 3. **Graceful Degradation:** The application remains fully functional as a historical telemetry viewer and interaction queue even if Antigravity's live CDP debugging port is temporarily unreachable.

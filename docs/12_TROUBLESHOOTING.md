@@ -2,7 +2,7 @@
 
 **Document ID:** CW-DOC-012  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Operational Diagnostics Runbook  
 
 ---

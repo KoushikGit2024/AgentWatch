@@ -62,7 +62,7 @@ def dispatch_from_stdin(event_type: str = "PreToolUse") -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CloudWatchV2 Antigravity Hook Dispatcher")
+    parser = argparse.ArgumentParser(description="AgentWatch Antigravity Hook Dispatcher")
     parser.add_argument("--from-env", action="store_true", help="Capture metadata from active subprocess environment")
     parser.add_argument("--event-type", default="PreToolUse", help="Lifecycle hook event type")
     args = parser.parse_args()

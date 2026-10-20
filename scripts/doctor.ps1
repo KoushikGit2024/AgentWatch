@@ -1,9 +1,9 @@
-# CloudWatchV2 System Doctor
+# AgentWatch System Doctor
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "                CloudWatchV2 Doctor                      " -ForegroundColor Cyan
+Write-Host "                AgentWatch Doctor                      " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Python Environment

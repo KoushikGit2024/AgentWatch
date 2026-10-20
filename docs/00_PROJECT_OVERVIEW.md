@@ -2,7 +2,7 @@
 
 **Document ID:** CW-DOC-000  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Database:** MongoDB Community Server 8.x (Localhost:27017)  
 **Backend:** Python 3.12 / FastAPI / Uvicorn (ASGI)  
 **Frontend:** Modular Component-Based ES6 Architecture (Native Browser Modules)  
@@ -12,24 +12,24 @@
 
 ## 1. Executive Summary & Purpose
 
-**CloudWatchV2** is a production-grade, local-first observation, remote interaction, and telemetry platform engineered specifically for **Google Antigravity**—the agentic AI coding environment developed by DeepMind and Google.
+**AgentWatch** is a production-grade, local-first observation, remote interaction, and telemetry platform engineered specifically for **Google Antigravity**—the agentic AI coding environment developed by DeepMind and Google.
 
-When developers work with advanced autonomous coding agents like Antigravity, tasks frequently run for extended durations—analyzing massive codebases, planning multi-file refactors, executing test suites, and proposing iterative changes. Prior to CloudWatchV2, observing progress or answering agent questions required remaining tied to the physical workstation.
+When developers work with advanced autonomous coding agents like Antigravity, tasks frequently run for extended durations—analyzing massive codebases, planning multi-file refactors, executing test suites, and proposing iterative changes. Prior to AgentWatch, observing progress or answering agent questions required remaining tied to the physical workstation.
 
-CloudWatchV2 transforms this workflow into a seamless, mobile-first experience. From an Android phone or any authenticated mobile device on your private mesh network, you can:
+AgentWatch transforms this workflow into a seamless, mobile-first experience. From an Android phone or any authenticated mobile device on your private mesh network, you can:
 - Observe live agent thinking processes, execution timelines, and code edits in real time.
 - Answer agent questions, single-choice and multiple-choice decision points, and supply custom guidance.
 - Submit follow-up prompts, start new conversations, switch agent modes (Fast vs. Planning), and choose AI models.
 - Safely monitor native desktop permission dialogs with strict security boundaries that prevent unauthorized remote execution.
 
-CloudWatchV2 replaces fragile, ad-hoc reverse-engineered scripts with an enterprise-grade service-oriented architecture, comprehensive MongoDB event persistence, recursive secret redaction, and an unpolluted, verified code standard.
+AgentWatch replaces fragile, ad-hoc reverse-engineered scripts with an enterprise-grade service-oriented architecture, comprehensive MongoDB event persistence, recursive secret redaction, and an unpolluted, verified code standard.
 
 ---
 
 ## 2. Core Pillars & Design Philosophy
 
 ### Pillar 1: Local-First & Zero Paid Cloud Dependencies
-- **100% On-Premise Execution:** CloudWatchV2 runs entirely on your local machine. It does not send code, telemetry, or credentials to third-party monitoring servers, SaaS dashboards, or external cloud databases.
+- **100% On-Premise Execution:** AgentWatch runs entirely on your local machine. It does not send code, telemetry, or credentials to third-party monitoring servers, SaaS dashboards, or external cloud databases.
 - **Zero Ongoing Cost:** Operates on free local infrastructure: Python 3.12, local MongoDB Community Server, and Tailscale's free tier for personal mesh networking.
 - **Strict Local Binding:** The backend binds strictly to `127.0.0.1:8000`. MongoDB binds strictly to `127.0.0.1:27017`. Neither is directly reachable from the public internet.
 
@@ -44,7 +44,7 @@ CloudWatchV2 replaces fragile, ad-hoc reverse-engineered scripts with an enterpr
 
 ### Pillar 4: Truthful Native Security Boundaries
 - **No Fabricated Confirmations:** Sending a prompt or issuing a stop signal returns explicit lifecycle states (`acknowledged`, `dispatched`, `unconfirmed`), never falsely reporting that the IDE has completed execution until confirmed by incoming telemetry.
-- **Native IDE Permission Preservation:** CloudWatchV2 **never** attempts to automatically click or bypass native OS/IDE permission dialogs (e.g., executing unsandboxed shell commands or mutating system files). These dialogs are categorized with status `requires_native_ide`, directing the user to confirm them on the physical workstation.
+- **Native IDE Permission Preservation:** AgentWatch **never** attempts to automatically click or bypass native OS/IDE permission dialogs (e.g., executing unsandboxed shell commands or mutating system files). These dialogs are categorized with status `requires_native_ide`, directing the user to confirm them on the physical workstation.
 
 ### Pillar 5: Zero Secret Leaks & Privacy by Design
 - **Recursive Key and Value Redaction:** Every event payload, log line, diagnostic bundle, and custom text submission is processed through recursive sanitization. API keys, JWT tokens, Bearer tokens, passwords, and private SSH credentials are replaced with `[REDACTED]` before hitting the database or logs.
@@ -93,7 +93,7 @@ CloudWatchV2 replaces fragile, ad-hoc reverse-engineered scripts with an enterpr
 |                          v                             v                        |
 |  +-------------------------------+   +---------------------------------------+  |
 |  |  MongoDB Community 8.x        |   |   Google Antigravity IDE Session      |  |
-|  |  - DB: cloudwatch_v2          |   |   - Active Coding Agent               |  |
+|  |  - DB: AgentWatch_v2          |   |   - Active Coding Agent               |  |
 |  |  - Collections: events,       |   |   - Workbench DOM & Chat Window       |  |
 |  |    sessions, interactions     |   |   - Terminal Execution Engine         |  |
 |  +-------------------------------+   +---------------------------------------+  |

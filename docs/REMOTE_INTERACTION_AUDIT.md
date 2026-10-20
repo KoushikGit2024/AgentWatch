@@ -1,14 +1,14 @@
-# REMOTE INTERACTION AUDIT — CloudWatchV2
+# REMOTE INTERACTION AUDIT — AgentWatch
 
 **Date:** 2026-10-20  
-**Project:** CloudWatchV2  
+**Project:** AgentWatch  
 **Purpose:** Comprehensive inventory and security audit of all remote agent interaction capabilities, dynamic request renderers, prompt lifecycles, and frontend architecture.
 
 ---
 
 ## 1. Executive Summary
 
-The objective of this phase is to elevate CloudWatchV2 from an observation viewport into a rich, bidirectional remote interaction dashboard. Rather than relying solely on binary accept/reject prompts or raw screen snapshots, CloudWatchV2 provides a typed, dynamic interaction model capable of rendering:
+The objective of this phase is to elevate AgentWatch from an observation viewport into a rich, bidirectional remote interaction dashboard. Rather than relying solely on binary accept/reject prompts or raw screen snapshots, AgentWatch provides a typed, dynamic interaction model capable of rendering:
 - Structured questions (single choice, multiple choice, free text).
 - Dynamic custom "Other" inputs when permitted by the agent question.
 - Prompt composer with multiline editing and execution feedback.

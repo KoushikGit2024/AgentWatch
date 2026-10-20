@@ -1,8 +1,8 @@
-# Frontend Architecture: CloudWatchV2
+# Frontend Architecture: AgentWatch
 
 ## 1. Technology Selection & Trade-Offs
 
-For CloudWatchV2, we evaluated multiple architecture approaches for remote mobile interaction:
+For AgentWatch, we evaluated multiple architecture approaches for remote mobile interaction:
 
 1. **Framework SPA (React/Vite/Next.js):**
    - *Pros:* Rich ecosystem, component JSX structure.

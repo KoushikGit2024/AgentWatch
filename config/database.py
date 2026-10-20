@@ -1,4 +1,4 @@
-"""MongoDB client and database lifecycle management for CloudWatchV2."""
+"""MongoDB client and database lifecycle management for AgentWatch."""
 
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError

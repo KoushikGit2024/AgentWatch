@@ -11,7 +11,7 @@ def test_health_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-    assert data["service"] == "CloudWatchV2"
+    assert data["service"] == "AgentWatch"
 
 
 def test_readiness_endpoint():

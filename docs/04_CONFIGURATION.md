@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-004  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Operational Configuration Reference  
 
 ---
 
 ## 1. Overview & Precedence
 
-CloudWatchV2 employs Pydantic Settings (`pydantic-settings`) to validate configuration on startup. Configuration is loaded with the following precedence order:
+AgentWatch employs Pydantic Settings (`pydantic-settings`) to validate configuration on startup. Configuration is loaded with the following precedence order:
 1. Direct Operating System Environment Variables (highest priority)
 2. Local `.env` file located in the project root
 3. Default values declared in `config/settings.py` (lowest priority)
@@ -31,7 +31,7 @@ If any required variable is missing or fails type validation (e.g. an invalid in
 | **`SESSION_COOKIE_NAME`** | `str` | `cw_session` | No | Name of the authentication cookie sent to mobile browsers. |
 | **`SESSION_MAX_AGE_SECONDS`**| `int` | `86400` | No | Cookie lifespan in seconds (default is 24 hours). After expiration, users must re-authenticate. |
 | **`MONGODB_URI`** | `str` | `mongodb://127.0.0.1:27017` | **Yes** | Connection string for MongoDB Community Server. Must point to local instance without public routes. |
-| **`MONGODB_DB_NAME`** | `str` | `cloudwatch_v2` | No | Database name where collections (`events`, `sessions`, `interactions`) are maintained. |
+| **`MONGODB_DB_NAME`** | `str` | `AgentWatch_v2` | No | Database name where collections (`events`, `sessions`, `interactions`) are maintained. |
 | **`CDP_PORTS`** | `str` | `9000,9222` | No | Comma-separated list of TCP ports scanned to discover Antigravity's remote debugging interface. |
 | **`CDP_TARGET_DOMAIN`** | `str` | `127.0.0.1` | No | Authorized hostname/IP domain for CDP targets. Rejects any non-local targets for SSRF prevention. |
 | **`TAILSCALE_CLI_PATH`** | `str` | `tailscale` | No | Path or binary name for the Tailscale command-line tool. |
@@ -43,7 +43,7 @@ If any required variable is missing or fails type validation (e.g. an invalid in
 ## 3. Production Configuration Template (`.env.production`)
 
 ```ini
-# --- CloudWatchV2 Production Environment Configuration ---
+# --- AgentWatch Production Environment Configuration ---
 
 # Operational Environment
 ENVIRONMENT=production
@@ -61,7 +61,7 @@ PORT=8000
 
 # Local MongoDB Storage
 MONGODB_URI=mongodb://127.0.0.1:27017
-MONGODB_DB_NAME=cloudwatch_v2
+MONGODB_DB_NAME=AgentWatch_v2
 
 # Antigravity Remote Debugging Discovery
 CDP_PORTS=9000,9222
@@ -81,7 +81,7 @@ python -c "from config.settings import settings; print('Loaded DB:', settings.mo
 ```
 Output:
 ```
-Loaded DB: cloudwatch_v2
+Loaded DB: AgentWatch_v2
 CDP_Ports: [9000, 9222]
 Host: 127.0.0.1
 Funnel Protection Verified: Active

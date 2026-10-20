@@ -1,8 +1,8 @@
-# CloudWatchV2 — Remote Access and Tailscale Status Check
+# AgentWatch — Remote Access and Tailscale Status Check
 $ErrorActionPreference = "SilentlyContinue"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  CloudWatchV2 -- Remote Access and Tailscale Status Check" -ForegroundColor Cyan
+Write-Host "  AgentWatch -- Remote Access and Tailscale Status Check" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Check Tailscale CLI
@@ -55,10 +55,10 @@ if ($funnelText -match "funnel is on" -or $funnelText -match "public") {
 try {
     $resp = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -TimeoutSec 2 -ErrorAction Stop
     if ($resp.status -eq "healthy") {
-        Write-Host "[OK] Local CloudWatchV2 backend is running and reachable on http://127.0.0.1:8000/health." -ForegroundColor Green
+        Write-Host "[OK] Local AgentWatch backend is running and reachable on http://127.0.0.1:8000/health." -ForegroundColor Green
     }
 } catch {
-    Write-Host "[INFO] Local CloudWatchV2 backend is not currently running on http://127.0.0.1:8000." -ForegroundColor Gray
+    Write-Host "[INFO] Local AgentWatch backend is not currently running on http://127.0.0.1:8000." -ForegroundColor Gray
     Write-Host "   Start it using: .\scripts\start.ps1" -ForegroundColor Gray
 }
 

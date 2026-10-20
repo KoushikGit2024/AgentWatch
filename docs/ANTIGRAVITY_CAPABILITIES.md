@@ -1,6 +1,6 @@
 # Antigravity Remote Interaction Capability Matrix
 
-This matrix documents the verification status, API contracts, integration mechanisms, and failure behaviors of all user-facing remote controls in **CloudWatchV2**.
+This matrix documents the verification status, API contracts, integration mechanisms, and failure behaviors of all user-facing remote controls in **AgentWatch**.
 
 ---
 

@@ -2,20 +2,20 @@
 
 **Document ID:** CW-DOC-008  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Security Architecture & Privacy Specification  
 
 ---
 
 ## 1. Threat Model & Security Invariants
 
-CloudWatchV2 operates in a sensitive environment—observing source code edits, terminal outputs, and architectural decisions made by autonomous AI coding agents.
+AgentWatch operates in a sensitive environment—observing source code edits, terminal outputs, and architectural decisions made by autonomous AI coding agents.
 
 The security architecture is built around four strict invariants:
 
 1. **Zero External Exposure:** The backend binds exclusively to `127.0.0.1:8000`. MongoDB binds strictly to `127.0.0.1:27017`. Public inbound ports are never opened.
 2. **Private Encrypted Mesh Only:** Remote access is strictly limited to authenticated devices on your private Tailscale Tailnet. **Tailscale Funnel is strictly disabled.**
-3. **No Native Permission Bypasses:** CloudWatchV2 will **never** simulate clicks or submit automated responses to bypass native OS/IDE security dialogs.
+3. **No Native Permission Bypasses:** AgentWatch will **never** simulate clicks or submit automated responses to bypass native OS/IDE security dialogs.
 4. **Recursive Zero-Leak Redaction:** Secrets, credentials, tokens, and private keys are redacted before persistence, logging, or transmission to mobile clients.
 
 ---

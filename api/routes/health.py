@@ -13,11 +13,11 @@ router = APIRouter(tags=["Health"])
 @router.get("/health")
 def get_health():
     """
-    Liveness check indicating whether the CloudWatchV2 process is responsive.
+    Liveness check indicating whether the AgentWatch process is responsive.
     """
     return {
         "status": "healthy",
-        "service": "CloudWatchV2",
+        "service": "AgentWatch",
         "version": "2.0.0",
     }
 

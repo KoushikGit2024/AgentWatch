@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Privacy and Secret Scanner for CloudWatchV2.
+Privacy and Secret Scanner for AgentWatch.
 Scans tracked repository files for accidental secrets, private IPs, credentials, or personal emails.
 Ensures zero leaks before git commits.
 """

@@ -1,4 +1,4 @@
-"""Main FastAPI application entry point for CloudWatchV2."""
+"""Main FastAPI application entry point for AgentWatch."""
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -24,7 +24,7 @@ logger = logging.getLogger("main")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown lifecycle management."""
-    logger.info("Starting CloudWatchV2 server on %s:%d (env: %s)", settings.host, settings.port, settings.environment)
+    logger.info("Starting AgentWatch server on %s:%d (env: %s)", settings.host, settings.port, settings.environment)
     # 1. Initialize MongoDB indexes and verify connectivity
     mongo_status = check_mongo_connection()
     if mongo_status["status"] == "connected":
@@ -39,13 +39,13 @@ async def lifespan(app: FastAPI):
     yield
 
     # Application shutdown
-    logger.info("Shutting down CloudWatchV2 server...")
+    logger.info("Shutting down AgentWatch server...")
     close_mongo_client()
     logger.info("Shutdown complete.")
 
 
 app = FastAPI(
-    title="CloudWatchV2",
+    title="AgentWatch",
     description="Service-Oriented Local-First Antigravity Observer and Mobile Monitor",
     version="2.0.0",
     lifespan=lifespan,
@@ -115,4 +115,4 @@ async def serve_index(request: Request):
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
-    return {"message": "CloudWatchV2 Backend API Running. Static frontend not found."}
+    return {"message": "AgentWatch Backend API Running. Static frontend not found."}

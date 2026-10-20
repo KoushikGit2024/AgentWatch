@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-002  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Product & Feature Specification  
 
 ---
 
 ## 1. Feature Index
 
-CloudWatchV2 organizes capabilities into six primary functional domains:
+AgentWatch organizes capabilities into six primary functional domains:
 1. **Dynamic Agent Interaction Engine** (Questions, Choices, Custom Input, Validations)
 2. **Mobile Viewport Mirroring & Synchronization** (DOM Mirroring, Scroll & Click Sync)
 3. **Session & Conversation Management** (Session History, New Chats, Mode Switching)

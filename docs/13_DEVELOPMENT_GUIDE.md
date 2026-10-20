@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-013  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Engineering Guidelines  
 
 ---
 
 ## 1. Development Principles
 
-When contributing to CloudWatchV2, adhere to the following principles:
+When contributing to AgentWatch, adhere to the following principles:
 
 1. **Modular Architecture Integrity:** Never place business logic directly in API route handlers or UI DOM files. Business logic belongs in `services/`; database access belongs in `repositories/`.
 2. **Schema-Driven Development:** When adding or extending endpoints, define explicit Pydantic models in `models/schemas.py` with field validations, min/max lengths, and descriptions.
@@ -21,7 +21,7 @@ When contributing to CloudWatchV2, adhere to the following principles:
 ## 2. Directory Layout & Module Responsibilities
 
 ```
-CloudWatchV2/
+AgentWatch/
 ├── api/                    # Transport layer
 │   └── routes/             # FastAPI routers: auth, controls, events, health, interactions
 ├── config/                 # Pydantic settings & MongoDB connection pooling

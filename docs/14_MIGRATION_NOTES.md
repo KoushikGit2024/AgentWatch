@@ -2,7 +2,7 @@
 
 **Document ID:** CW-DOC-014  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Migration & Architecture Evolution  
 
 ---
@@ -17,9 +17,9 @@ The original AgentWatch prototype demonstrated the value of observing Antigravit
 
 ---
 
-## 2. Key Architectural Upgrades in CloudWatchV2
+## 2. Key Architectural Upgrades in AgentWatch
 
-| Dimension | Legacy V1 Implementation | CloudWatchV2 Architecture |
+| Dimension | Legacy V1 Implementation | AgentWatch Architecture |
 | :--- | :--- | :--- |
 | **Backend Framework** | Node/Flask ad-hoc scripts | Modern Python 3.12 / FastAPI (Asynchronous ASGI) |
 | **Data Persistence** | In-memory arrays / JSON files | Local MongoDB Community 8.x with compound indexes |

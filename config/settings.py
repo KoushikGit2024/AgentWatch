@@ -1,4 +1,4 @@
-"""Configuration management for CloudWatchV2."""
+"""Configuration management for AgentWatch."""
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -17,12 +17,12 @@ class Settings(BaseSettings):
 
     # Application Security
     app_password: str = Field(default="antigravity", alias="APP_PASSWORD")
-    jwt_secret: str = Field(default="cloudwatch_v2_default_secret_key", alias="JWT_SECRET")
+    jwt_secret: str = Field(default="AgentWatch_v2_default_secret_key", alias="JWT_SECRET")
     allowed_origins: str = Field(default="*", alias="ALLOWED_ORIGINS")
 
     # MongoDB Local Persistence
     mongodb_uri: str = Field(default="mongodb://127.0.0.1:27017/", alias="MONGODB_URI")
-    mongodb_database: str = Field(default="cloudwatch_v2", alias="MONGODB_DATABASE")
+    mongodb_database: str = Field(default="AgentWatch_v2", alias="MONGODB_DATABASE")
     mongodb_connect_timeout_ms: int = Field(default=3000, alias="MONGODB_CONNECT_TIMEOUT_MS")
     mongodb_server_selection_timeout_ms: int = Field(default=3000, alias="MONGODB_SERVER_SELECTION_TIMEOUT_MS")
 

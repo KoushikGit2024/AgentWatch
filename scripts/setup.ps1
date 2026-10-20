@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    CloudWatchV2 Setup Script — initializes Python venv and installs all dependencies reproducibly.
+    AgentWatch Setup Script — initializes Python venv and installs all dependencies reproducibly.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -10,7 +10,7 @@ $projectRoot = Split-Path -Parent $scriptDir
 Set-Location -Path $projectRoot
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "                CloudWatchV2 Setup                       " -ForegroundColor Cyan
+Write-Host "                AgentWatch Setup                       " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Locate System Python
@@ -51,6 +51,6 @@ if (-not (Test-Path $envFile) -and (Test-Path $envExample)) {
     Write-Host "✅ Created default local .env file from .env.example template." -ForegroundColor Green
 }
 
-Write-Host "`nSetup complete! You can now start CloudWatchV2 using:" -ForegroundColor Cyan
+Write-Host "`nSetup complete! You can now start AgentWatch using:" -ForegroundColor Cyan
 Write-Host "  .\scripts\start.ps1" -ForegroundColor White
 Write-Host "==========================================================" -ForegroundColor Cyan

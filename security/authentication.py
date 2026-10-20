@@ -1,4 +1,4 @@
-"""Authentication and session cookie protection for CloudWatchV2."""
+"""Authentication and session cookie protection for AgentWatch."""
 
 import hmac
 import hashlib

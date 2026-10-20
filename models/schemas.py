@@ -1,4 +1,4 @@
-"""Domain models and Pydantic schemas for CloudWatchV2."""
+"""Domain models and Pydantic schemas for AgentWatch."""
 
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List

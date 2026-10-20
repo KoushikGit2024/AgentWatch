@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Starts the CloudWatchV2 backend service cleanly on 127.0.0.1:8000 using the project virtual environment.
+    Starts the AgentWatch backend service cleanly on 127.0.0.1:8000 using the project virtual environment.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -10,7 +10,7 @@ $projectRoot = Split-Path -Parent $scriptDir
 Set-Location -Path $projectRoot
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "             Starting CloudWatchV2 Service               " -ForegroundColor Cyan
+Write-Host "             Starting AgentWatch Service               " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Check Python Virtual Environment
@@ -34,8 +34,8 @@ if ($mongoSvc -and $mongoSvc.Status -ne "Running") {
     Write-Host "   Start it via: Start-Service MongoDB" -ForegroundColor Gray
 }
 
-# 4. Start CloudWatchV2
-Write-Host "🚀 Launching CloudWatchV2 on http://127.0.0.1:8000 ..." -ForegroundColor Green
+# 4. Start AgentWatch
+Write-Host "🚀 Launching AgentWatch on http://127.0.0.1:8000 ..." -ForegroundColor Green
 $env:PYTHONPATH = $projectRoot
 
 # Execute Uvicorn server

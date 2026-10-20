@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-005  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Integration & Adapter Specification  
 
 ---
 
 ## 1. Overview of Antigravity Integration
 
-**Google Antigravity** is built upon modern web and desktop technologies (Electron / Chromium / Node.js). To enable rich remote observation, mobile interaction, and viewport mirroring without injecting invasive binary patches into the IDE, CloudWatchV2 interfaces with Antigravity through two distinct, complementary channels:
+**Google Antigravity** is built upon modern web and desktop technologies (Electron / Chromium / Node.js). To enable rich remote observation, mobile interaction, and viewport mirroring without injecting invasive binary patches into the IDE, AgentWatch interfaces with Antigravity through two distinct, complementary channels:
 
 1. **The Chrome DevTools Protocol (CDP) Adapter (Observation & UI Synchronization):**  
    Connects via HTTP and WebSockets to Chromium's remote debugging interface to capture live DOM snapshots, extract stylesheets, evaluate mode states, and synchronize viewport scrolling.
@@ -75,11 +75,11 @@ To enable the live visual viewport snapshot and remote scroll synchronization, l
 
 ## 4. DOM Snapshotting & Mobile Viewport Mirroring
 
-When connected via CDP, CloudWatchV2 executes targeted JavaScript evaluation inside the Antigravity conversation window:
+When connected via CDP, AgentWatch executes targeted JavaScript evaluation inside the Antigravity conversation window:
 
 1. **DOM Extraction:** Serializes the `#conversation` or `#cascade` container.
 2. **CSS Extraction:** Collects applied stylesheets and fonts.
-3. **Dark Mode Theme Overrides:** CloudWatchV2 injects custom CSS rules to guarantee maximum readability on small mobile screens:
+3. **Dark Mode Theme Overrides:** AgentWatch injects custom CSS rules to guarantee maximum readability on small mobile screens:
    - Sets background to deep slate (`#0f172a`).
    - Forces inline dark text (`rgb(0, 0, 0)`) to clean light typography (`#e2e8f0`).
    - Normalizes embedded code blocks with responsive horizontal scrollbars and mobile copy buttons.
@@ -92,7 +92,7 @@ When connected via CDP, CloudWatchV2 executes targeted JavaScript evaluation ins
 ### The Strict Native Permission Boundary
 Antigravity coding agents periodically execute consequential operations (e.g. executing commands in the terminal or modifying system files). The IDE presents a native security dialog requiring user confirmation.
 
-**CloudWatchV2 explicitly preserves this security boundary:**
+**AgentWatch explicitly preserves this security boundary:**
 - Remote clicks dispatched through `/remote-click` inspect the target element's text.
 - If the text contains permission-granting verbs (e.g., `"Allow"`, `"Authorize"`, `"Grant Permission"`), the request is **rejected** with:
   ```json
@@ -102,4 +102,4 @@ Antigravity coding agents periodically execute consequential operations (e.g. ex
     "message": "Security policy requires approving permission dialogs in native desktop IDE."
   }
   ```
-- **Rationale:** Simulating automated clicks on native security dialogs would create a critical vulnerability, allowing malicious remote inputs to bypass agent sandboxes. CloudWatchV2 strictly enforces that native confirmations must occur locally on the physical workstation.
+- **Rationale:** Simulating automated clicks on native security dialogs would create a critical vulnerability, allowing malicious remote inputs to bypass agent sandboxes. AgentWatch strictly enforces that native confirmations must occur locally on the physical workstation.

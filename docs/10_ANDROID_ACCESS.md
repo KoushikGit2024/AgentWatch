@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-010  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Mobile Usability & Interaction Guide  
 
 ---
 
 ## 1. Mobile-First Ergonomics & Design
 
-CloudWatchV2 is engineered specifically for single-handed use on modern mobile devices (e.g. Android smartphones with screen widths between 360px and 430px).
+AgentWatch is engineered specifically for single-handed use on modern mobile devices (e.g. Android smartphones with screen widths between 360px and 430px).
 
 ### Key Usability Enhancements:
 1. **Thumb-Zone Controls:** All primary interactive elements—the prompt composer, send button, and dynamic interaction cards—are anchored to the bottom third of the screen.

@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-003  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Operational Installation Guide  
 
 ---
 
 ## 1. System Requirements & Prerequisites
 
-Before installing CloudWatchV2, ensure your workstation meets the following minimum requirements:
+Before installing AgentWatch, ensure your workstation meets the following minimum requirements:
 
 | Component | Requirement | Recommended | Notes |
 | :--- | :--- | :--- | :--- |
@@ -28,8 +28,8 @@ Before installing CloudWatchV2, ensure your workstation meets the following mini
 Clone the repository to your local development drive:
 ```powershell
 cd "d:\All Codes\AllProjects"
-git clone https://github.com/KoushikGit2024/AgentWatch.git CloudWatchV2
-cd CloudWatchV2
+git clone https://github.com/KoushikGit2024/AgentWatch.git AgentWatch
+cd AgentWatch
 ```
 
 ### Step 2.2: Set Up Python Virtual Environment
@@ -58,7 +58,7 @@ python -c "import fastapi, pymongo, pydantic, httpx, websockets, pytest; print('
 ```
 
 ### Step 2.4: Install & Verify Local MongoDB
-CloudWatchV2 requires a local MongoDB Community Server running on `localhost:27017`.
+AgentWatch requires a local MongoDB Community Server running on `localhost:27017`.
 
 1. **Verify MongoDB Service:**
    ```powershell
@@ -99,7 +99,7 @@ PORT=8000
 
 # MongoDB Configuration
 MONGODB_URI=mongodb://127.0.0.1:27017
-MONGODB_DB_NAME=cloudwatch_v2
+MONGODB_DB_NAME=AgentWatch_v2
 
 # Antigravity CDP Discovery Ports
 CDP_PORTS=9000,9222

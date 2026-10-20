@@ -2,14 +2,14 @@
 
 **Document ID:** CW-DOC-011  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Quality Assurance & Testing Specification  
 
 ---
 
 ## 1. Test Architecture & Coverage Goals
 
-CloudWatchV2 enforces strict verification standards across all layers:
+AgentWatch enforces strict verification standards across all layers:
 - **Unit Tests:** Validates secret redaction engines, environment metadata parsers, and input schemas.
 - **Integration Tests:** Exercises live FastAPI endpoints against local MongoDB collections using `TestClient`.
 - **Interaction Contract Tests:** Exercises single/multi-choice validation, duplicate submission rejection (409 Conflict), custom "Other" text guards, and prompt idempotency.

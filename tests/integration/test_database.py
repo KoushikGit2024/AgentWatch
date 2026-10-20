@@ -14,7 +14,7 @@ from models.schemas import EventDocument
 @pytest.fixture(scope="module")
 def test_db():
     """Create dedicated test database and drop only test database afterwards."""
-    test_db_name = f"cloudwatch_v2_test_{uuid.uuid4().hex[:8]}"
+    test_db_name = f"AgentWatch_v2_test_{uuid.uuid4().hex[:8]}"
     client = MongoClient("mongodb://127.0.0.1:27017/", serverSelectionTimeoutMS=2000)
     db = client[test_db_name]
     init_db_indexes(db)

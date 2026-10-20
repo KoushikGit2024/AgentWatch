@@ -1,4 +1,4 @@
-// API Client Service for CloudWatchV2
+// API Client Service for AgentWatch
 export class ApiClient {
     static async request(url, options = {}) {
         if (!options.headers) options.headers = {};

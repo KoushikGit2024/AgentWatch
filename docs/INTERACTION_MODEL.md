@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-CloudWatchV2 implements a structured, dynamic interaction model to support rich agent dialogues beyond binary accept/reject buttons.
+AgentWatch implements a structured, dynamic interaction model to support rich agent dialogues beyond binary accept/reject buttons.
 
 Supported interaction classes:
 - **`single_choice`**: Select exactly one option among provided alternatives.

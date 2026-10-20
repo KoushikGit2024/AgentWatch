@@ -2,7 +2,7 @@
 
 **Document ID:** CW-DOC-006  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** REST API Specification  
 
 ---
@@ -162,7 +162,7 @@ Dispatches a halt signal to currently executing agent tasks.
 - **Route:** `GET /health`
 - **Response:** `200 OK`
   ```json
-  {"status": "healthy", "service": "CloudWatchV2", "timestamp": "2026-10-20T14:45:00Z"}
+  {"status": "healthy", "service": "AgentWatch", "timestamp": "2026-10-20T14:45:00Z"}
   ```
 
 ### 4.2 Readiness Probe

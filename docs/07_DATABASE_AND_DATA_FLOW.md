@@ -2,7 +2,7 @@
 
 **Document ID:** CW-DOC-007  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Database:** MongoDB Community Server 8.x  
 **Classification:** Database Architecture Specification  
 
@@ -10,11 +10,11 @@
 
 ## 1. MongoDB Collections & Schemas
 
-CloudWatchV2 maintains its state within the local database `cloudwatch_v2` partitioned across three core collections:
+AgentWatch maintains its state within the local database `AgentWatch_v2` partitioned across three core collections:
 
 ```
 +-------------------------------------------------------------+
-|                     MongoDB: cloudwatch_v2                  |
+|                     MongoDB: AgentWatch_v2                  |
 +-------------------------------------------------------------+
 |                                                             |
 |  1. events                                                  |
@@ -75,7 +75,7 @@ Stores dynamic interactive questions and their resolutions.
 
 ## 3. Database Indexes Specification
 
-To guarantee sub-millisecond query latency and absolute data integrity, CloudWatchV2 provisions indexes automatically on startup via `config/database.py`:
+To guarantee sub-millisecond query latency and absolute data integrity, AgentWatch provisions indexes automatically on startup via `config/database.py`:
 
 ```python
 # 1. Events Deduplication Index

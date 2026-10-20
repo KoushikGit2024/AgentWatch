@@ -2,26 +2,26 @@
 
 **Document ID:** CW-DOC-015  
 **Version:** 2.0.0  
-**Project:** CloudWatchV2 (AgentWatch)  
+**Project:** AgentWatch  
 **Classification:** Operational Limitations & Security Boundaries  
 
 ---
 
 ## 1. Truthful Capability Boundaries
 
-CloudWatchV2 prioritizes **truthful reporting over fabricated functionality**. This document details intentional design boundaries and known environmental limitations.
+AgentWatch prioritizes **truthful reporting over fabricated functionality**. This document details intentional design boundaries and known environmental limitations.
 
 ---
 
 ## 2. Intentional Security Boundaries
 
 ### Boundary 1: Native Desktop IDE Permission Dialogs
-- **Limitation:** CloudWatchV2 **cannot** and **will not** approve native Antigravity permission popups remotely.
+- **Limitation:** AgentWatch **cannot** and **will not** approve native Antigravity permission popups remotely.
 - **Rationale:** Native permission dialogs (e.g. running arbitrary unsandboxed shell scripts or modifying root filesystem configurations) represent the fundamental security perimeter of the user's workstation. Allowing unauthenticated or remote one-tap approvals would enable privilege escalation.
 - **Behavior:** The capability registry marks `remote_permission_bypass` as `requires_native_ide`, and the remote click handler actively blocks clicks targeting permission verbs.
 
 ### Boundary 2: Tailscale Funnel Disabled by Policy
-- **Limitation:** CloudWatchV2 cannot be accessed over the open, unauthenticated public internet.
+- **Limitation:** AgentWatch cannot be accessed over the open, unauthenticated public internet.
 - **Rationale:** Exposing an AI coding agent with file-editing and code-execution abilities to the public internet invites unauthorized access, credential theft, and prompt-injection exploits.
 - **Behavior:** Remote access requires the client device to be an authorized node in your private Tailscale Tailnet.
 

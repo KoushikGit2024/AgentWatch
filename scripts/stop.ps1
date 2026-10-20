@@ -1,13 +1,13 @@
-# Stop CloudWatchV2 process listening on port 8000 safely
+# Stop AgentWatch process listening on port 8000 safely
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 
-Write-Host "Stopping CloudWatchV2 instance on port 8000..." -ForegroundColor Cyan
+Write-Host "Stopping AgentWatch instance on port 8000..." -ForegroundColor Cyan
 
 $connections = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" }
 
 if (-not $connections) {
-    Write-Host "No active CloudWatchV2 process detected listening on port 8000." -ForegroundColor Green
+    Write-Host "No active AgentWatch process detected listening on port 8000." -ForegroundColor Green
     exit 0
 }
 
@@ -18,7 +18,7 @@ foreach ($conn in $connections) {
         if ($proc.ProcessName -like "*python*" -or $proc.ProcessName -like "*uvicorn*") {
             Write-Host "Stopping process PID $procId ($($proc.ProcessName))..." -ForegroundColor Yellow
             Stop-Process -Id $procId -Force
-            Write-Host "CloudWatchV2 process stopped." -ForegroundColor Green
+            Write-Host "AgentWatch process stopped." -ForegroundColor Green
         } else {
             Write-Host "Process PID $procId is '$($proc.ProcessName)' (not a python process). Skipping for safety." -ForegroundColor Yellow
         }
