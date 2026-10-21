@@ -27,9 +27,9 @@ export default function ChatTurn({
 
     if (isUser) {
         return (
-            <div className="flex justify-end animate-in fade-in duration-150">
-                <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white shadow-md">
-                    <p className="whitespace-pre-wrap leading-relaxed">{turn.text}</p>
+            <div className="flex justify-end w-full min-w-0 animate-in fade-in duration-150">
+                <div className="max-w-[88%] md:max-w-[85%] min-w-0 rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white shadow-md break-words [overflow-wrap:anywhere] [word-break:break-word]">
+                    <p className="whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere]">{turn.text}</p>
                     {timeStr && (
                         <span className="block text-right text-[10px] text-blue-200 mt-1">{timeStr}</span>
                     )}
@@ -74,8 +74,8 @@ export default function ChatTurn({
     const hasStream = streamItems.length > 0 || turn.is_working;
 
     return (
-        <div className="flex justify-start animate-in fade-in duration-150">
-            <div className="max-w-[92%] md:max-w-[85%] rounded-2xl rounded-bl-sm bg-zinc-850 border border-zinc-750/70 p-4 text-sm text-zinc-100 shadow-md space-y-2.5">
+        <div className="flex justify-start w-full min-w-0 animate-in fade-in duration-150">
+            <div className="max-w-[95%] md:max-w-[88%] w-full min-w-0 rounded-2xl rounded-bl-sm bg-zinc-850 border border-zinc-750/70 p-3.5 sm:p-4 text-sm text-zinc-100 shadow-md space-y-2.5 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word]">
                 {/* Agent Header */}
                 <div className="flex items-center gap-2 pb-1 border-b border-zinc-750/40 text-xs text-zinc-400">
                     <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />

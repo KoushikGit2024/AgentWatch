@@ -34,43 +34,152 @@ export default function StreamItem({
     }
 
     const isReactFile = item.target?.includes('.jsx') || item.target?.includes('.tsx');
+    const isCommand = item.kind === 'command';
+    const isEdit = item.kind === 'edit';
+    const hasDetails = Boolean(item.command || item.output || item.diff || item.instruction || item.file);
 
     return (
-        <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap font-sans text-xs leading-snug py-0.5">
-                <span className="text-zinc-400">{item.verb || 'Analyzed'}</span>
+        <div className="space-y-1.5 w-full min-w-0 max-w-full overflow-hidden">
+            {/* Header / Clickable Summary Row */}
+            <div
+                onClick={() => hasDetails && onToggle(itemKey)}
+                className={`flex items-center justify-between gap-2 px-2 py-1 -mx-2 rounded-lg transition select-none w-full min-w-0 ${
+                    hasDetails ? 'cursor-pointer hover:bg-zinc-800/50' : ''
+                }`}
+            >
+                <div className="flex items-center gap-2 flex-wrap font-sans text-xs leading-snug min-w-0 max-w-full">
+                    <span className="text-zinc-400 font-medium">{item.verb || 'Used'}</span>
 
-                <div className="inline-flex items-center gap-1 text-zinc-200">
-                    {item.kind === 'analyze' && (
-                        isReactFile ? (
-                            <div className="w-3.5 h-3.5 text-cyan-400 shrink-0">{Icon.react}</div>
-                        ) : (
-                            <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.file}</div>
-                        )
-                    )}
-                    {item.kind === 'search' && (
-                        <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>
-                    )}
-                    {item.kind === 'edit' && (
-                        <div className="w-3.5 h-3.5 text-emerald-400 shrink-0">{Icon.fileEdit}</div>
-                    )}
-                    {item.kind === 'command' && (
-                        <div className="w-3.5 h-3.5 text-amber-400 shrink-0">{Icon.terminal}</div>
-                    )}
-                    {item.kind === 'browser' && (
-                        <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>
-                    )}
-                    <span className="text-zinc-200 font-mono text-[11px] font-medium break-all">{item.target}</span>
+                    <div className="inline-flex items-center gap-1.5 text-zinc-200">
+                        {item.kind === 'analyze' && (
+                            isReactFile ? (
+                                <div className="w-3.5 h-3.5 text-cyan-400 shrink-0">{Icon.react}</div>
+                            ) : (
+                                <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.file}</div>
+                            )
+                        )}
+                        {item.kind === 'search' && (
+                            <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>
+                        )}
+                        {isEdit && (
+                            <div className="w-3.5 h-3.5 text-emerald-400 shrink-0">{Icon.fileEdit}</div>
+                        )}
+                        {isCommand && (
+                            <div className="w-3.5 h-3.5 text-amber-400 shrink-0">{Icon.terminal}</div>
+                        )}
+                        {item.kind === 'browser' && (
+                            <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>
+                        )}
 
-                    {item.extra && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[10px] ml-1 font-sans">
-                            {item.extra}
+                        <span className="text-zinc-200 font-mono text-[11px] font-medium break-all">{item.target}</span>
+
+                        {item.extra && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-zinc-800/90 text-zinc-300 text-[10px] font-mono border border-zinc-700/50">
+                                {item.extra}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Status Badge & Chevron */}
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                    {isCommand && item.exit_code !== undefined && item.exit_code !== null && (
+                        <span className={`px-1.5 py-0.5 text-[9px] font-mono font-medium rounded ${
+                            item.exit_code === 0
+                                ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/50'
+                                : 'bg-rose-950/70 text-rose-300 border border-rose-800/50'
+                        }`}>
+                            {item.exit_code === 0 ? 'exit 0' : `exit ${item.exit_code}`}
                         </span>
+                    )}
+
+                    {isCommand && item.exit_code === undefined && item.status !== 'done' && isWorking && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    )}
+
+                    {hasDetails && (
+                        <div className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
+                            {Icon.chevronRight}
+                        </div>
                     )}
                 </div>
             </div>
 
-            {item.requires_permission && (isWorking || approvalState) && (
+            {/* Expandable Details Card (Terminal Output / Diff Preview) */}
+            {isOpen && hasDetails && (
+                <div className="mt-1 mb-2.5 ml-2 pl-3 border-l-2 border-zinc-700/70 space-y-2 text-xs w-full min-w-0 max-w-full overflow-hidden">
+                    {/* Command Details */}
+                    {isCommand && (
+                        <div className="space-y-1.5 w-full min-w-0 max-w-full">
+                            {item.cwd && (
+                                <div className="text-[10px] text-zinc-500 font-mono truncate max-w-full">
+                                    in <span className="text-zinc-400">{item.cwd}</span>
+                                </div>
+                            )}
+                            {item.command && (
+                                <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-[11px] text-zinc-300 w-full max-w-full overflow-x-auto select-text break-all">
+                                    <span className="text-amber-500 select-none">$ </span>
+                                    {item.command}
+                                </div>
+                            )}
+                            {item.output ? (
+                                <div className="space-y-1 w-full min-w-0 max-w-full">
+                                    <div className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Output</div>
+                                    <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-850 font-mono text-[11px] text-zinc-300 whitespace-pre-wrap [word-break:break-word] leading-relaxed max-h-64 overflow-y-auto overflow-x-auto select-text w-full max-w-full">
+                                        {item.output}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-[11px] text-zinc-500 italic py-1">
+                                    {item.status === 'done' ? 'Completed with no standard output.' : 'Command executing…'}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* File Modification Details */}
+                    {isEdit && (
+                        <div className="space-y-1.5">
+                            {item.file && (
+                                <div className="text-[10px] text-zinc-500 font-mono truncate">
+                                    file: <span className="text-zinc-400">{item.file}</span>
+                                </div>
+                            )}
+                            {item.instruction && (
+                                <div className="text-xs text-zinc-300 italic bg-zinc-900/60 p-2 rounded-lg border border-zinc-800">
+                                    {item.instruction}
+                                </div>
+                            )}
+                            {item.diff && (
+                                <div className="space-y-1 font-mono text-[11px] select-text w-full min-w-0 max-w-full">
+                                    {item.diff.target_content && (
+                                        <div className="p-2 rounded-lg bg-rose-950/30 border border-rose-900/40 text-rose-300 max-h-48 overflow-y-auto overflow-x-auto whitespace-pre-wrap [word-break:break-word] w-full max-w-full">
+                                            <div className="text-[9px] uppercase tracking-wider text-rose-400/80 mb-1 font-sans select-none">Removed Lines</div>
+                                            {item.diff.target_content}
+                                        </div>
+                                    )}
+                                    {item.diff.replacement_content && (
+                                        <div className="p-2 rounded-lg bg-emerald-950/30 border border-emerald-900/40 text-emerald-300 max-h-48 overflow-y-auto overflow-x-auto whitespace-pre-wrap [word-break:break-word] w-full max-w-full">
+                                            <div className="text-[9px] uppercase tracking-wider text-emerald-400/80 mb-1 font-sans select-none">Added Lines</div>
+                                            {item.diff.replacement_content}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* File Analysis Details */}
+                    {item.kind === 'analyze' && item.file && (
+                        <div className="text-[10px] font-mono text-zinc-400 break-all bg-zinc-950 p-2 rounded border border-zinc-850">
+                            {item.file}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Approval Decision Card if elevation required */}
+            {item.requires_permission && item.status !== 'done' && !item.output && (isWorking || approvalState) && (
                 <ApprovalCard
                     item={item}
                     itemKey={itemKey}

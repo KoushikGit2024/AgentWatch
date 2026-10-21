@@ -14,15 +14,15 @@ const ChatStream = forwardRef(function ChatStream({
     messagesEndRef
 }, ref) {
     return (
-        <div className="relative flex-1 min-h-0">
+        <div className="relative flex-1 min-h-0 w-full overflow-hidden">
             <div
                 ref={ref}
                 onScroll={onScroll}
-                className="absolute inset-0 overflow-y-auto px-4 py-4 space-y-4 select-text"
+                className="absolute inset-0 overflow-y-auto overflow-x-hidden w-full px-3 sm:px-4 py-4 space-y-4 select-text"
             >
                 {/* Bottom-anchoring spacer pushes conversation directly above composer */}
-                <div className="min-h-full flex flex-col justify-end">
-                    <div className="space-y-4">
+                <div className="min-h-full w-full min-w-0 max-w-full flex flex-col justify-end">
+                    <div className="space-y-4 w-full min-w-0 max-w-full">
                         {/* Empty Conversation Welcome State */}
                         {chatMessages.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
