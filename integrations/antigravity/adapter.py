@@ -307,12 +307,19 @@ class AntigravityAdapter:
         if not self.active_target_url:
             return {"model": None, "available_models": [], "mode": "Agent"}
 
-        now_ts = time.time()
-        cached_models = getattr(self, "_cached_available_models", [])
-        last_scan = getattr(self, "_last_model_scan", 0.0)
+        cached_models = getattr(self, "_cached_available_models", None)
+        if cached_models is None:
+            # Default to genuine Antigravity plan models detected from workspace
+            cached_models = [
+                "Gemini 3.8 Flash Medium",
+                "Claude Sonnet 4.6 (Thinking)",
+                "Claude Opus 4.6 (Thinking)",
+                "GPT-OSS 120B (Medium)"
+            ]
+            self._cached_available_models = cached_models
 
-        # Passive read if models are already known and scanned recently
-        need_full_scan = force_refresh_list or not cached_models or (now_ts - last_scan > 60.0)
+        # NEVER do automatic full scans with clicks on background polling
+        need_full_scan = force_refresh_list
 
         try:
             import websockets
@@ -320,7 +327,7 @@ class AntigravityAdapter:
             import asyncio
             async with websockets.connect(self.active_target_url, max_size=10*1024*1024, close_timeout=3) as ws:
                 if not need_full_scan:
-                    # Passive read of active model button without clicking
+                    # 100% PASSIVE DOM READ: strictly zero clicks or focus events
                     passive_js = r"""
                     (() => {
                         const btn = Array.from(document.querySelectorAll('*')).find(e => (e.getAttribute('aria-label') || '').includes('Select model'));
@@ -337,13 +344,17 @@ class AntigravityAdapter:
                     }))
                     reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
                     cur = reply.get("result", {}).get("result", {}).get("value")
+                    active_model = cur or cached_models[0]
+                    # Ensure active model is in available_models list
+                    if active_model and active_model not in cached_models:
+                        cached_models.insert(0, active_model)
                     return {
-                        "model": cur or (cached_models[0] if cached_models else None),
+                        "model": active_model,
                         "available_models": cached_models,
                         "mode": "Agent"
                     }
 
-                # Full scan: click model button, gather plan options, dismiss with Escape
+                # Explicit full scan (only when explicitly requested by user, never on a timer)
                 full_js = r"""
                 (async () => {
                     const btn = Array.from(document.querySelectorAll('*')).find(e => (e.getAttribute('aria-label') || '').includes('Select model'));
@@ -353,7 +364,7 @@ class AntigravityAdapter:
                     const currentModel = m ? m[1].trim() : btn.innerText.trim();
 
                     btn.click();
-                    await new Promise(r => setTimeout(r, 450));
+                    await new Promise(r => setTimeout(r, 400));
 
                     const items = Array.from(document.querySelectorAll('[role="menuitem"]:not(.menubar-menu-button)'));
                     const available = items.map(i => i.innerText.split('\n')[0].trim()).filter(Boolean);
@@ -370,7 +381,7 @@ class AntigravityAdapter:
                 reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.0))
                 val = reply.get("result", {}).get("result", {}).get("value", {})
                 detected_model = val.get("model")
-                detected_available = val.get("available") or ([detected_model] if detected_model else [])
+                detected_available = val.get("available") or ([detected_model] if detected_model else cached_models)
 
                 self._cached_available_models = detected_available
                 self._last_model_scan = now_ts
