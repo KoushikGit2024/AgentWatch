@@ -1,27 +1,96 @@
 import React from 'react';
+import { Icon } from '../constants/icons';
 
-export function PromptComposer({ promptText, onChangePrompt, onSend, isSending, onSelectQuickAction }) {
-    const quickActions = ['Continue', 'Explain Code', 'Fix Bugs', 'Create Docs'];
+export function PromptComposer({
+    promptText,
+    onChangePrompt,
+    onSend,
+    isSending,
+    appState,
+    onOpenModeModal,
+    onOpenModelModal,
+    onOpenReviewChanges,
+    onOpenLogs,
+    onOpenRecovery,
+    onToggleViewMode,
+    viewMode,
+    recoveryCount = 0,
+    onStop
+}) {
+    const quickActions = ['Continue working', 'Explain what you did', 'Fix latest bug', 'Summarize progress'];
 
     return (
-        <div className="bg-zinc-900 border-t border-zinc-800 shrink-0 z-20 pb-safe select-none">
-            {/* Quick Action Chips */}
-            <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto border-b border-zinc-800/60 no-scrollbar">
-                {quickActions.map(action => (
-                    <button
-                        key={action}
-                        type="button"
-                        onClick={() => onSelectQuickAction(action)}
-                        className="text-[11px] font-medium text-zinc-400 hover:text-zinc-200 bg-zinc-800/80 hover:bg-zinc-800 px-2.5 py-1 rounded-md border border-zinc-700/60 transition shrink-0"
-                    >
-                        {action}
-                    </button>
-                ))}
-            </div>
+        <div className="p-3 md:p-4 bg-zinc-900/90 border-t border-zinc-800 shrink-0 pb-safe select-none">
+            <div className="max-w-3xl mx-auto w-full space-y-2">
+                {/* Quick Suggestion Chips */}
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                    {quickActions.map(action => (
+                        <button
+                            key={action}
+                            type="button"
+                            onClick={() => onChangePrompt(action)}
+                            className="text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-750 px-3 py-1 rounded-full border border-zinc-750 transition shrink-0 active:scale-95 cursor-pointer"
+                        >
+                            {action}
+                        </button>
+                    ))}
+                </div>
 
-            {/* Message Textarea & Send Button */}
-            <div className="p-3 flex items-center gap-2">
-                <div className="flex-1 flex items-center bg-zinc-950 border border-zinc-800 focus-within:border-zinc-700 rounded-lg px-3 py-1.5 transition">
+                {/* Antigravity Control Row (Files, Terminal, Screen, Recovery & Review Changes) */}
+                <div className="flex items-center justify-between px-1 text-xs pt-0.5">
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={onOpenReviewChanges}
+                            title="Inspect modified workspace files"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95 cursor-pointer"
+                        >
+                            <div className="w-4 h-4">{Icon.file}</div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onOpenLogs}
+                            title="Terminal & System Logs"
+                            className="relative p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95 cursor-pointer"
+                        >
+                            <div className="w-4 h-4">{Icon.terminal}</div>
+                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onToggleViewMode}
+                            title="Toggle Workspace Viewport"
+                            className="relative p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95 cursor-pointer"
+                        >
+                            <div className="w-4 h-4">{Icon.screen}</div>
+                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onOpenRecovery}
+                            title="Recovery Center & Safeguards"
+                            className="relative p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95 cursor-pointer"
+                        >
+                            <div className="w-4 h-4">{Icon.shield}</div>
+                            {recoveryCount > 0 && (
+                                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Review Changes Pill Button */}
+                    <button
+                        type="button"
+                        onClick={onOpenReviewChanges}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-750/90 text-xs font-medium transition active:scale-95 shadow-sm cursor-pointer"
+                    >
+                        <div className="w-3.5 h-3.5 text-zinc-400">{Icon.file}</div>
+                        <span>Review Changes</span>
+                    </button>
+                </div>
+
+                {/* Rounded Composer Card */}
+                <div className="rounded-2xl bg-zinc-950 border border-zinc-800 focus-within:border-zinc-700 p-3 shadow-lg transition">
                     <textarea
                         value={promptText}
                         onChange={e => onChangePrompt(e.target.value)}
@@ -31,21 +100,58 @@ export function PromptComposer({ promptText, onChangePrompt, onSend, isSending, 
                                 onSend();
                             }
                         }}
-                        placeholder="Message agent..."
-                        rows={1}
-                        className="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-500 resize-none outline-none max-h-32"
+                        placeholder="Ask anything, @ to mention, / for actions…"
+                        rows={2}
+                        className="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-500 resize-none outline-none max-h-36 leading-relaxed select-text"
                     />
+
+                    {/* Bottom controls row inside composer */}
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs">
+                        <div className="flex items-center gap-2">
+                            {/* Mode Selector Pill */}
+                            <button
+                                type="button"
+                                onClick={onOpenModeModal}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition cursor-pointer"
+                            >
+                                <div className="w-3.5 h-3.5 text-amber-400">{Icon.zap}</div>
+                                <span>{appState?.mode || 'Fast'}</span>
+                            </button>
+
+                            {/* Model Selector Pill */}
+                            <button
+                                type="button"
+                                onClick={onOpenModelModal}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition cursor-pointer"
+                            >
+                                <div className="w-3.5 h-3.5 text-blue-400">{Icon.sparkles}</div>
+                                <span className="max-w-[130px] truncate">{appState?.model ? appState.model.split(' ')[0] : 'Default'}</span>
+                                <div className="w-3 h-3 text-zinc-500">{Icon.chevronDown}</div>
+                            </button>
+                        </div>
+
+                        {/* Send / Stop Controls */}
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={onStop}
+                                title="Stop agent run"
+                                className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-900/40 transition active:scale-95 cursor-pointer"
+                            >
+                                <div className="w-4 h-4">{Icon.stop}</div>
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={!promptText.trim() || isSending}
+                                onClick={onSend}
+                                className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition active:scale-95 shadow-md shadow-blue-900/40 cursor-pointer"
+                            >
+                                <div className="w-4 h-4">{Icon.send}</div>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button
-                    type="button"
-                    disabled={!promptText.trim() || isSending}
-                    onClick={onSend}
-                    className="p-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition shrink-0"
-                >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                    </svg>
-                </button>
             </div>
         </div>
     );
