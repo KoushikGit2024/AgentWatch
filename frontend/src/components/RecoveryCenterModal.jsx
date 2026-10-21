@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, AlertTriangle } from 'lucide-react';
 
 export function RecoveryCenterModal({
     isOpen,
@@ -133,7 +134,7 @@ export function RecoveryCenterModal({
                     ) : recoveryItems.length === 0 ? (
                         <div className="p-8 text-center space-y-2">
                             <div className="w-10 h-10 mx-auto rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
-                                ✓
+                                <Check className="w-5 h-5 text-emerald-400" />
                             </div>
                             <h3 className="text-xs font-semibold text-zinc-200">System Healthy & Consistent</h3>
                             <p className="text-[11px] text-zinc-500 max-w-xs mx-auto">
@@ -175,7 +176,17 @@ export function RecoveryCenterModal({
                                     {/* Action Button */}
                                     <div className="flex items-center justify-between pt-2">
                                         <span className={`text-[10px] font-medium ${item.is_retry_safe ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                            {item.is_retry_safe ? '● Safe to recheck/open' : '⚠ Automatic replay prohibited'}
+                                            {item.is_retry_safe ? (
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                    <span>Safe to recheck/open</span>
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 text-amber-400">
+                                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                                    <span>Automatic replay prohibited</span>
+                                                </span>
+                                            )}
                                         </span>
                                         {item.action_type === 'open_interaction' && (
                                             <button

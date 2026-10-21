@@ -24,9 +24,14 @@ const Icon = {
     maximize: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1={21} y1={3} x2={14} y2={10}/><line x1={3} y1={21} x2={10} y2={14}/></svg>,
     x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1={18} y1={6} x2={6} y2={18}/><line x1={6} y1={6} x2={18} y2={18}/></svg>,
     file: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+    fileEdit: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M4 13.5V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-5.5"/><polyline points="14 2 14 8 20 8"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/></svg>,
     copy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
     thumbsUp: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>,
     thumbsDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>,
+    brain: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M12 5v14"/></svg>,
+    globe: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+    search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+    zap: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
 };
 
 // ─── Main Application ─────────────────────────────────────────────────────────
@@ -684,12 +689,12 @@ export default function App() {
                                                             className="w-full flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-400 hover:text-zinc-200 select-none transition"
                                                         >
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-zinc-400">💭</span>
+                                                                <div className="w-3.5 h-3.5 text-zinc-400">{Icon.brain}</div>
                                                                 <span className="font-medium text-zinc-300">Thinking Process</span>
                                                             </div>
-                                                            <span className={`text-[10px] text-zinc-500 font-mono transition-transform duration-150 ${openThinkingIds.has(turn.id || idx) ? 'rotate-90' : ''}`}>
-                                                                ▶
-                                                            </span>
+                                                            <div className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${openThinkingIds.has(turn.id || idx) ? 'rotate-90' : ''}`}>
+                                                                {Icon.chevronRight}
+                                                            </div>
                                                         </button>
                                                         {openThinkingIds.has(turn.id || idx) && (
                                                             <div className="px-3.5 py-2.5 bg-zinc-950/80 border-t border-zinc-800/80 font-mono text-[11px] text-zinc-400 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
@@ -716,19 +721,19 @@ export default function App() {
                                                                         className="w-full flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/40 select-none transition text-left"
                                                                     >
                                                                         <div className="flex items-center gap-2 min-w-0 pr-2">
-                                                                            {step.kind === 'browser' && <span className="text-blue-400 shrink-0">🌐</span>}
-                                                                            {step.kind === 'command' && <span className="text-amber-400 shrink-0">💻</span>}
-                                                                            {step.kind === 'file_edit' && <span className="text-emerald-400 shrink-0">📄</span>}
-                                                                            {step.kind === 'file_view' && <span className="text-zinc-400 shrink-0">🔍</span>}
-                                                                            {step.kind === 'search' && <span className="text-purple-400 shrink-0">🔎</span>}
-                                                                            {step.kind === 'generic' && <span className="text-zinc-400 shrink-0">⚡</span>}
+                                                                            {step.kind === 'browser' && <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>}
+                                                                            {step.kind === 'command' && <div className="w-3.5 h-3.5 text-amber-400 shrink-0">{Icon.terminal}</div>}
+                                                                            {step.kind === 'file_edit' && <div className="w-3.5 h-3.5 text-emerald-400 shrink-0">{Icon.fileEdit}</div>}
+                                                                            {step.kind === 'file_view' && <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.file}</div>}
+                                                                            {step.kind === 'search' && <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>}
+                                                                            {step.kind === 'generic' && <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.zap}</div>}
                                                                             <span className="font-medium text-zinc-200 truncate font-mono text-[11px]">
                                                                                 {step.summary || step.name}
                                                                             </span>
                                                                         </div>
-                                                                        <span className={`text-[10px] text-zinc-500 font-mono shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
-                                                                            ▶
-                                                                        </span>
+                                                                        <div className={`w-3.5 h-3.5 text-zinc-500 shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
+                                                                            {Icon.chevronRight}
+                                                                        </div>
                                                                     </button>
 
                                                                     {/* Step Content */}
@@ -809,12 +814,15 @@ export default function App() {
                                                                                             </button>
                                                                                         </div>
                                                                                     ) : (
-                                                                                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0 ${
+                                                                                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0 ${
                                                                                             approvalState === 'deny'
                                                                                                 ? 'text-rose-400 bg-rose-950/60 border border-rose-800/60'
                                                                                                 : 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/60'
                                                                                         }`}>
-                                                                                            {approvalState === 'always_allow' ? '✓ Always Allowed' : approvalState === 'allow' ? '✓ Allowed' : '✕ Denied'}
+                                                                                            <div className="w-3 h-3">
+                                                                                                {approvalState === 'deny' ? Icon.x : Icon.check}
+                                                                                            </div>
+                                                                                            <span>{approvalState === 'always_allow' ? 'Always Allowed' : approvalState === 'allow' ? 'Allowed' : 'Denied'}</span>
                                                                                         </span>
                                                                                     )}
                                                                                 </div>
@@ -1071,9 +1079,10 @@ export default function App() {
                                             <button
                                                 type="button"
                                                 onClick={() => setActiveModal('mode')}
-                                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition"
+                                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition"
                                             >
-                                                <span>⚡ {appState.mode}</span>
+                                                <div className="w-3.5 h-3.5 text-amber-400">{Icon.zap}</div>
+                                                <span>{appState.mode}</span>
                                             </button>
 
                                             {/* Model Selector Pill */}
@@ -1082,7 +1091,8 @@ export default function App() {
                                                 onClick={() => setActiveModal('model')}
                                                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-zinc-300 hover:text-white border border-zinc-800 transition font-medium"
                                             >
-                                                <span>✦ {appState.model.split(' ')[0]}</span>
+                                                <div className="w-3.5 h-3.5 text-blue-400">{Icon.sparkles}</div>
+                                                <span>{appState.model.split(' ')[0]}</span>
                                                 <div className="w-3 h-3 text-zinc-500">{Icon.chevronDown}</div>
                                             </button>
                                         </div>
@@ -1126,9 +1136,10 @@ export default function App() {
                             <div className="flex items-center gap-2 text-xs">
                                 <button
                                     onClick={() => setFitMode(f => f === 'fit' ? 'full' : 'fit')}
-                                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
                                 >
-                                    {fitMode === 'fit' ? '🔍 Zoom 100%' : '📏 Fit to Screen'}
+                                    <div className="w-3.5 h-3.5">{Icon.search}</div>
+                                    <span>{fitMode === 'fit' ? 'Zoom 100%' : 'Fit to Screen'}</span>
                                 </button>
                                 <button
                                     onClick={() => setLightboxOpen(true)}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Check, Copy } from 'lucide-react';
 
 export function SystemLogsDrawer({ isOpen, onClose, logs = [], isLoading = false, onRefresh }) {
     const [levelFilter, setLevelFilter] = useState('ALL');
@@ -100,9 +101,19 @@ export function SystemLogsDrawer({ isOpen, onClose, logs = [], isLoading = false
                         </label>
                         <button
                             onClick={handleCopy}
-                            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-zinc-800 hover:bg-zinc-750 text-zinc-200 transition active:scale-95"
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-zinc-800 hover:bg-zinc-750 text-zinc-200 transition active:scale-95"
                         >
-                            {copied ? '✓ Copied' : 'Copy'}
+                            {copied ? (
+                                <>
+                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>Copied</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span>Copy</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

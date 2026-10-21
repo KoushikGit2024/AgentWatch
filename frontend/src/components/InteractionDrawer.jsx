@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check, CheckSquare, Square, CheckCircle2, Circle, CheckCircle } from 'lucide-react';
 
 export function InteractionDrawer({
     interaction,
@@ -68,8 +69,12 @@ export function InteractionDrawer({
                                                     : 'bg-zinc-900/90 border-zinc-800 hover:border-zinc-700 text-zinc-300'
                                             }`}
                                         >
-                                            <div className={`text-xs mt-0.5 ${isSelected ? 'text-blue-500 font-bold' : 'text-zinc-500'}`}>
-                                                {isMulti ? (isSelected ? '☑' : '☐') : (isSelected ? '●' : '○')}
+                                            <div className={`mt-0.5 ${isSelected ? 'text-blue-500' : 'text-zinc-500'}`}>
+                                                {isMulti ? (
+                                                    isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />
+                                                ) : (
+                                                    isSelected ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-xs font-medium text-zinc-200 flex items-center gap-1.5">
@@ -109,8 +114,9 @@ export function InteractionDrawer({
                         {/* Submit Button */}
                         <div className="flex justify-end pt-1">
                             {submitSuccess ? (
-                                <div className="text-xs text-emerald-400 font-medium py-1.5">
-                                    ✅ Response Submitted Successfully
+                                <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium py-1.5">
+                                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                    <span>Response Submitted Successfully</span>
                                 </div>
                             ) : (
                                 <button

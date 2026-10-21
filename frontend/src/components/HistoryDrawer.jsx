@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 
 export function HistoryDrawer({ isOpen, onClose, chats, isLoading, onSelectChat }) {
     if (!isOpen) return null;
@@ -19,7 +20,7 @@ export function HistoryDrawer({ isOpen, onClose, chats, isLoading, onSelectChat 
                         onClick={onClose}
                         className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition"
                     >
-                        ✕
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
