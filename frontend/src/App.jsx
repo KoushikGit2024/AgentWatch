@@ -77,6 +77,46 @@ export default function App() {
     const [promptText, setPromptText] = useState('');
     const [isSendingPrompt, setIsSendingPrompt] = useState(false);
 
+    const [approvals, setApprovals] = useState({});
+    const [openStepIds, setOpenStepIds] = useState(new Set());
+    const [openThinkingIds, setOpenThinkingIds] = useState(new Set());
+
+    const toggleStep = (stepId) => {
+        setOpenStepIds(prev => {
+            const next = new Set(prev);
+            if (next.has(stepId)) next.delete(stepId);
+            else next.add(stepId);
+            return next;
+        });
+    };
+
+    const toggleThinking = (turnId) => {
+        setOpenThinkingIds(prev => {
+            const next = new Set(prev);
+            if (next.has(turnId)) next.delete(turnId);
+            else next.add(turnId);
+            return next;
+        });
+    };
+
+    const handleApproval = async (requestType, target, decision, stepId) => {
+        setApprovals(prev => ({ ...prev, [stepId]: decision }));
+        try {
+            await fetch('/api/v1/approvals/respond', {
+                method: 'POST',
+                headers: { ...h, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    request_type: requestType,
+                    target: target || 'unknown',
+                    decision: decision,
+                    step_id: stepId
+                })
+            });
+        } catch (err) {
+            console.error('Failed to record approval decision:', err);
+        }
+    };
+
     const chatScrollRef = useRef(null);
     const messagesEndRef = useRef(null);
     const isMountedRef = useRef(true);
@@ -635,27 +675,164 @@ export default function App() {
                                                     )}
                                                 </div>
 
-                                                {/* Tool Execution Steps if present */}
-                                                {turn.tools && turn.tools.length > 0 && (
-                                                    <details className="group rounded-xl border border-zinc-800 bg-zinc-900/90 overflow-hidden text-xs">
-                                                        <summary className="flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-400 hover:text-zinc-200 list-none select-none">
+                                                {/* ─── Antigravity Thinking Process ─────────────────── */}
+                                                {turn.thinking && (
+                                                    <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 overflow-hidden text-xs">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleThinking(turn.id || idx)}
+                                                            className="w-full flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-400 hover:text-zinc-200 select-none transition"
+                                                        >
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-emerald-400">⚡</span>
-                                                                <span className="font-medium text-zinc-300">
-                                                                    Used {turn.tools.length} tool {turn.tools.length === 1 ? 'action' : 'actions'}
-                                                                </span>
+                                                                <span className="text-zinc-400">💭</span>
+                                                                <span className="font-medium text-zinc-300">Thinking Process</span>
                                                             </div>
-                                                            <span className="text-[10px] text-zinc-500 font-mono">▶</span>
-                                                        </summary>
-                                                        <div className="px-3.5 py-2.5 bg-zinc-950 border-t border-zinc-800/80 font-mono text-[11px] text-zinc-300 space-y-1.5">
-                                                            {turn.tools.map((t, ti) => (
-                                                                <div key={ti} className="flex items-center gap-2">
-                                                                    <span className="text-emerald-400">✓</span>
-                                                                    <span className="text-zinc-300">{t.summary || t.name}</span>
+                                                            <span className={`text-[10px] text-zinc-500 font-mono transition-transform duration-150 ${openThinkingIds.has(turn.id || idx) ? 'rotate-90' : ''}`}>
+                                                                ▶
+                                                            </span>
+                                                        </button>
+                                                        {openThinkingIds.has(turn.id || idx) && (
+                                                            <div className="px-3.5 py-2.5 bg-zinc-950/80 border-t border-zinc-800/80 font-mono text-[11px] text-zinc-400 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                                                                {turn.thinking}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* ─── Antigravity Tool Steps & Permissions ──────────── */}
+                                                {turn.steps && turn.steps.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        {turn.steps.map((step, sidx) => {
+                                                            const stepKey = `${turn.id || idx}-${step.id || sidx}`;
+                                                            const isOpen = openStepIds.has(stepKey) || (turn.is_working && sidx === turn.steps.length - 1);
+                                                            const approvalState = approvals[stepKey];
+
+                                                            return (
+                                                                <div key={sidx} className="rounded-xl border border-zinc-800/90 bg-zinc-900/80 overflow-hidden text-xs">
+                                                                    {/* Step Header Accordion Toggle */}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleStep(stepKey)}
+                                                                        className="w-full flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/40 select-none transition text-left"
+                                                                    >
+                                                                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                                                                            {step.kind === 'browser' && <span className="text-blue-400 shrink-0">🌐</span>}
+                                                                            {step.kind === 'command' && <span className="text-amber-400 shrink-0">💻</span>}
+                                                                            {step.kind === 'file_edit' && <span className="text-emerald-400 shrink-0">📄</span>}
+                                                                            {step.kind === 'file_view' && <span className="text-zinc-400 shrink-0">🔍</span>}
+                                                                            {step.kind === 'search' && <span className="text-purple-400 shrink-0">🔎</span>}
+                                                                            {step.kind === 'generic' && <span className="text-zinc-400 shrink-0">⚡</span>}
+                                                                            <span className="font-medium text-zinc-200 truncate font-mono text-[11px]">
+                                                                                {step.summary || step.name}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className={`text-[10px] text-zinc-500 font-mono shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
+                                                                            ▶
+                                                                        </span>
+                                                                    </button>
+
+                                                                    {/* Step Content */}
+                                                                    {isOpen && (
+                                                                        <div className="p-3 bg-zinc-950/90 border-t border-zinc-800/80 space-y-2.5">
+                                                                            {/* Command Box (Exact Antigravity Terminal Styling) */}
+                                                                            {step.kind === 'command' && (
+                                                                                <div className="relative rounded-xl bg-zinc-900/90 border border-zinc-800 p-3 font-mono text-[12px] text-amber-200/95 overflow-x-auto select-text">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => navigator.clipboard.writeText(step.command || '')}
+                                                                                        title="Copy command"
+                                                                                        className="absolute top-2.5 right-2.5 p-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                                                                                    >
+                                                                                        <div className="w-3.5 h-3.5">{Icon.copy}</div>
+                                                                                    </button>
+                                                                                    <span className="text-zinc-500 select-none">{step.cwd_short || '.../workspace'} &gt; </span>
+                                                                                    <span>{step.command}</span>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* File Edit Details */}
+                                                                            {step.kind === 'file_edit' && (
+                                                                                <div className="rounded-xl bg-zinc-900/90 border border-zinc-800 p-2.5 text-[11px] font-mono text-zinc-300 space-y-1">
+                                                                                    <div className="text-zinc-400"><span className="text-zinc-500">File:</span> {step.file}</div>
+                                                                                    {step.instruction && (
+                                                                                        <div className="text-zinc-300 font-sans text-xs">{step.instruction}</div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Browser Exploration Details */}
+                                                                            {step.kind === 'browser' && (
+                                                                                <div className="rounded-xl bg-zinc-900/90 border border-zinc-800 p-2.5 text-xs text-zinc-300">
+                                                                                    <span className="text-zinc-400 font-medium">Task: </span>
+                                                                                    <span>{step.task_name || 'Automated browser verification'}</span>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* ─── Permission / Approval Request Card ─── */}
+                                                                            {step.requires_permission && (
+                                                                                <div className="p-2.5 rounded-xl bg-gradient-to-r from-zinc-900 to-zinc-850 border border-zinc-750 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm">
+                                                                                    <div>
+                                                                                        <div className="font-semibold text-zinc-200 text-xs flex items-center gap-1.5">
+                                                                                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                                                                            <span>{step.permission_title || 'Authorization Required'}</span>
+                                                                                        </div>
+                                                                                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                                                                                            {step.permission_desc || 'Allow the agent to proceed with this action.'}
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    {/* Actions */}
+                                                                                    {!approvalState ? (
+                                                                                        <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0">
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => handleApproval(step.permission_type || 'command', step.command || step.file || step.task_name, 'allow', stepKey)}
+                                                                                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition active:scale-95 shadow-sm"
+                                                                                            >
+                                                                                                Allow
+                                                                                            </button>
+                                                                                            {step.kind === 'command' && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => handleApproval('command', step.command, 'always_allow', stepKey)}
+                                                                                                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium text-[11px] transition active:scale-95"
+                                                                                                >
+                                                                                                    Always Allow
+                                                                                                </button>
+                                                                                            )}
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => handleApproval(step.permission_type || 'command', step.command || step.file || step.task_name, 'deny', stepKey)}
+                                                                                                className="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 font-medium text-[11px] transition active:scale-95"
+                                                                                            >
+                                                                                                Deny
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0 ${
+                                                                                            approvalState === 'deny'
+                                                                                                ? 'text-rose-400 bg-rose-950/60 border border-rose-800/60'
+                                                                                                : 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/60'
+                                                                                        }`}>
+                                                                                            {approvalState === 'always_allow' ? '✓ Always Allowed' : approvalState === 'allow' ? '✓ Allowed' : '✕ Denied'}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    </details>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+
+                                                {/* ─── Active Working Status Indicator ─────────────────── */}
+                                                {turn.is_working && (
+                                                    <div className="flex items-center gap-2 text-xs text-zinc-400 pt-1 font-mono">
+                                                        <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                                                        <span className="text-zinc-300 font-medium animate-pulse">Working..</span>
+                                                    </div>
                                                 )}
 
                                                 {/* Agent Response Text (Rich Markdown with Code Highlighting) */}

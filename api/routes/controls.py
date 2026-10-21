@@ -12,6 +12,7 @@ from models.schemas import (
     RemoteScrollRequest,
     RemoteClickRequest,
 )
+from pydantic import BaseModel, Field
 from repositories.idempotency_repository import IdempotencyRepository
 from services.remote_access import remote_access_service
 
@@ -93,6 +94,61 @@ def get_git_review():
             "stat": "",
             "diff": f"Git review unavailable: {str(exc)}"
         }
+
+
+class ApprovalDecisionRequest(BaseModel):
+    request_type: str = Field(..., description="command, file, browser, or decision")
+    target: str = Field(..., description="Target command, file path, or task name")
+    decision: str = Field(..., description="allow, always_allow, or deny")
+    step_id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@router.post("/api/v1/approvals/respond")
+async def respond_to_approval(payload: ApprovalDecisionRequest):
+    """
+    Record user approval or rejection for command execution, file changes, or browser access.
+    Persists a security audit event and broadcasts the resolution.
+    """
+    from repositories.event_repository import EventRepository
+    from models.schemas import EventDocument
+    from datetime import datetime, timezone
+
+    event_repo = EventRepository()
+    doc = EventDocument(
+        session_id="active-session",
+        event_type=f"permission_{payload.decision}",
+        category="security",
+        summary=f"User {payload.decision.upper()}: {payload.request_type.title()} Request for {payload.target}",
+        timestamp=datetime.now(timezone.utc),
+        sanitized_payload={
+            "request_type": payload.request_type,
+            "target": payload.target,
+            "decision": payload.decision,
+            "step_id": payload.step_id,
+            "metadata": payload.metadata or {}
+        }
+    )
+    event_repo.insert_event(doc)
+
+    await websocket_manager.broadcast({
+        "type": "approval_resolved",
+        "data": {
+            "step_id": payload.step_id,
+            "request_type": payload.request_type,
+            "target": payload.target,
+            "decision": payload.decision,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    })
+
+    return {
+        "success": True,
+        "status": "recorded",
+        "decision": payload.decision,
+        "request_type": payload.request_type,
+        "target": payload.target
+    }
 
 
 @router.get("/snapshot")
