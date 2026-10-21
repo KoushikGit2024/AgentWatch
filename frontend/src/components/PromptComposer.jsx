@@ -17,24 +17,9 @@ export function PromptComposer({
     recoveryCount = 0,
     onStop
 }) {
-    const quickActions = ['Continue working', 'Explain what you did', 'Fix latest bug', 'Summarize progress'];
-
     return (
         <div className="p-3 md:p-4 bg-zinc-900/90 border-t border-zinc-800 shrink-0 pb-safe select-none">
             <div className="max-w-3xl mx-auto w-full space-y-2">
-                {/* Quick Suggestion Chips */}
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                    {quickActions.map(action => (
-                        <button
-                            key={action}
-                            type="button"
-                            onClick={() => onChangePrompt(action)}
-                            className="text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-750 px-3 py-1 rounded-full border border-zinc-750 transition shrink-0 active:scale-95 cursor-pointer"
-                        >
-                            {action}
-                        </button>
-                    ))}
-                </div>
 
                 {/* Antigravity Control Row (Files, Terminal, Screen, Recovery & Review Changes) */}
                 <div className="flex items-center justify-between px-1 text-xs pt-0.5">
