@@ -304,3 +304,91 @@ class CapabilityItem(BaseModel):
     description: str
     reason: Optional[str] = None
 
+
+class OperationalDiagnostics(BaseModel):
+    """Sanitized operational system health and readiness diagnostics."""
+    fastapi_live: bool = True
+    mongodb_ready: bool
+    mongodb_database: str
+    mongodb_version: Optional[str] = None
+    cdp_connected: bool
+    cdp_port: Optional[int] = None
+    cdp_target: Optional[str] = None
+    last_successful_observation: Optional[datetime] = None
+    last_event_ingestion: Optional[datetime] = None
+    pending_interactions_count: int = 0
+    in_progress_operations_count: int = 0
+    outcome_unknown_count: int = 0
+    reconnection_attempts: int = 0
+    last_error: Optional[str] = None
+    server_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+VALID_ACTION_TRANSITIONS = {
+    ActionExecutionState.REQUEST_RECEIVED: {
+        ActionExecutionState.REQUEST_ACCEPTED,
+        ActionExecutionState.REJECTED,
+        ActionExecutionState.FAILED,
+    },
+    ActionExecutionState.REQUEST_ACCEPTED: {
+        ActionExecutionState.DISPATCH_ATTEMPTED,
+        ActionExecutionState.FAILED,
+        ActionExecutionState.TIMED_OUT,
+    },
+    ActionExecutionState.DISPATCH_ATTEMPTED: {
+        ActionExecutionState.DISPATCH_ACKNOWLEDGED,
+        ActionExecutionState.EXECUTION_OBSERVED,
+        ActionExecutionState.OUTCOME_UNKNOWN,
+        ActionExecutionState.FAILED,
+    },
+    ActionExecutionState.DISPATCH_ACKNOWLEDGED: {
+        ActionExecutionState.EXECUTION_OBSERVED,
+        ActionExecutionState.COMPLETION_CONFIRMED,
+        ActionExecutionState.OUTCOME_UNKNOWN,
+        ActionExecutionState.FAILED,
+    },
+    ActionExecutionState.EXECUTION_OBSERVED: {
+        ActionExecutionState.COMPLETION_CONFIRMED,
+        ActionExecutionState.OUTCOME_UNKNOWN,
+        ActionExecutionState.FAILED,
+        ActionExecutionState.STOP_REQUESTED,
+    },
+    ActionExecutionState.STOP_REQUESTED: {
+        ActionExecutionState.STOP_ACKNOWLEDGED,
+        ActionExecutionState.TERMINATION_CONFIRMED,
+        ActionExecutionState.OUTCOME_UNKNOWN,
+        ActionExecutionState.FAILED,
+    },
+    ActionExecutionState.STOP_ACKNOWLEDGED: {
+        ActionExecutionState.TERMINATION_CONFIRMED,
+        ActionExecutionState.OUTCOME_UNKNOWN,
+    },
+    ActionExecutionState.OUTCOME_UNKNOWN: {
+        ActionExecutionState.EXECUTION_OBSERVED,
+        ActionExecutionState.COMPLETION_CONFIRMED,
+        ActionExecutionState.FAILED,
+    },
+    # Terminal states
+    ActionExecutionState.COMPLETION_CONFIRMED: set(),
+    ActionExecutionState.TERMINATION_CONFIRMED: set(),
+    ActionExecutionState.REJECTED: set(),
+    ActionExecutionState.FAILED: set(),
+    ActionExecutionState.TIMED_OUT: set(),
+}
+
+
+def validate_action_transition(current: Optional[ActionExecutionState], target: ActionExecutionState) -> bool:
+    """Validate whether an action execution state transition is permitted."""
+    if current is None:
+        # Initial transition is valid for entry states
+        return target in (
+            ActionExecutionState.REQUEST_RECEIVED,
+            ActionExecutionState.REQUEST_ACCEPTED,
+            ActionExecutionState.DISPATCH_ATTEMPTED,
+            ActionExecutionState.REJECTED,
+        )
+    if current == target:
+        return True  # Idempotent state assertion
+    allowed = VALID_ACTION_TRANSITIONS.get(current, set())
+    return target in allowed
+

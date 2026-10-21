@@ -4,11 +4,13 @@ export function RecoveryCenterModal({
     isOpen,
     onClose,
     recoveryItems = [],
+    diagnostics = null,
     isLoading = false,
     onRefresh,
     onReconcileAction,
     onOpenInteraction
 }) {
+    const [activeTab, setActiveTab] = useState('recovery'); // 'recovery' | 'diagnostics'
     const [selectedItem, setSelectedItem] = useState(null);
     const [reconcileNotes, setReconcileNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,8 +48,22 @@ export function RecoveryCenterModal({
                             </svg>
                         </span>
                         <div>
-                            <h2 className="text-sm font-semibold text-zinc-100">Recovery & Diagnostics Center</h2>
-                            <p className="text-[11px] text-zinc-400">Actionable recovery guidance without blind resubmission</p>
+                            <h2 className="text-sm font-semibold text-zinc-100">Recovery & Diagnostics</h2>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <button
+                                    onClick={() => setActiveTab('recovery')}
+                                    className={`text-[11px] font-medium transition ${activeTab === 'recovery' ? 'text-amber-400 border-b border-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                >
+                                    Action Items ({recoveryItems.length})
+                                </button>
+                                <span className="text-zinc-700">·</span>
+                                <button
+                                    onClick={() => setActiveTab('diagnostics')}
+                                    className={`text-[11px] font-medium transition ${activeTab === 'diagnostics' ? 'text-amber-400 border-b border-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                >
+                                    System Diagnostics
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <button
@@ -63,7 +79,56 @@ export function RecoveryCenterModal({
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {isLoading ? (
+                    {activeTab === 'diagnostics' ? (
+                        diagnostics ? (
+                            <div className="space-y-3 text-xs">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                                        <div className="text-[10px] text-zinc-500 uppercase font-semibold">FastAPI Backend</div>
+                                        <div className="text-sm font-semibold text-emerald-400 mt-1 flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                            Live & Healthy
+                                        </div>
+                                    </div>
+                                    <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                                        <div className="text-[10px] text-zinc-500 uppercase font-semibold">MongoDB Database</div>
+                                        <div className={`text-sm font-semibold mt-1 flex items-center gap-1.5 ${diagnostics.mongodb_ready ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            <span className={`w-2 h-2 rounded-full ${diagnostics.mongodb_ready ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                            {diagnostics.mongodb_ready ? 'Connected' : 'Disconnected'}
+                                        </div>
+                                        <div className="text-[10px] text-zinc-500 mt-0.5">{diagnostics.mongodb_database} (v{diagnostics.mongodb_version || 'unknown'})</div>
+                                    </div>
+                                    <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                                        <div className="text-[10px] text-zinc-500 uppercase font-semibold">Antigravity CDP (Port {diagnostics.cdp_port || 9000})</div>
+                                        <div className={`text-sm font-semibold mt-1 flex items-center gap-1.5 ${diagnostics.cdp_connected ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                            <span className={`w-2 h-2 rounded-full ${diagnostics.cdp_connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                            {diagnostics.cdp_connected ? 'Active & Paired' : 'Standby / Offline'}
+                                        </div>
+                                        <div className="text-[10px] text-zinc-500 mt-0.5 truncate" title={diagnostics.cdp_target || ''}>
+                                            Target: {diagnostics.cdp_target || 'None'}
+                                        </div>
+                                    </div>
+                                    <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                                        <div className="text-[10px] text-zinc-500 uppercase font-semibold">In-Progress / Unknown</div>
+                                        <div className="text-sm font-semibold text-zinc-200 mt-1">
+                                            {diagnostics.in_progress_operations_count} / {diagnostics.outcome_unknown_count}
+                                        </div>
+                                        <div className="text-[10px] text-zinc-500 mt-0.5">Pending questions: {diagnostics.pending_interactions_count}</div>
+                                    </div>
+                                </div>
+                                <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800 space-y-1 text-[11px] text-zinc-400">
+                                    <div><strong className="text-zinc-300">Last Observation:</strong> {diagnostics.last_successful_observation ? new Date(diagnostics.last_successful_observation).toLocaleTimeString() : 'None recorded'}</div>
+                                    <div><strong className="text-zinc-300">Last Ingested Event:</strong> {diagnostics.last_event_ingestion ? new Date(diagnostics.last_event_ingestion).toLocaleTimeString() : 'None recorded'}</div>
+                                    <div><strong className="text-zinc-300">Reconnect Attempts:</strong> {diagnostics.reconnection_attempts}</div>
+                                    {diagnostics.last_error && (
+                                        <div className="text-rose-400"><strong className="text-rose-300">Last Error:</strong> {diagnostics.last_error}</div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-8 text-center text-xs text-zinc-500">Loading system diagnostics...</div>
+                        )
+                    ) : isLoading ? (
                         <div className="p-8 text-center text-xs text-zinc-500">Checking system diagnostics...</div>
                     ) : recoveryItems.length === 0 ? (
                         <div className="p-8 text-center space-y-2">

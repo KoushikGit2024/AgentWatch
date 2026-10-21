@@ -139,7 +139,7 @@ export function ActivityTimelineDrawer({
                                                     {timeStr}
                                                 </span>
                                             </div>
-                                            <p className="text-xs font-medium text-zinc-200 leading-snug break-words">
+                                            <p className="text-xs font-medium text-zinc-200 leading-snug wrap-break-word">
                                                 {e.summary || e.event_type}
                                             </p>
                                         </div>
@@ -156,7 +156,7 @@ export function ActivityTimelineDrawer({
                                             <div className="flex items-center justify-between text-[10px]">
                                                 <span>Source: <strong className="text-zinc-300 font-normal">{e.source}</strong> ({e.source_confidence})</span>
                                                 {e.correlation_id && (
-                                                    <span className="truncate max-w-[150px]" title={e.correlation_id}>
+                                                    <span className="truncate max-w-37.5" title={e.correlation_id}>
                                                         Corr: <code className="text-zinc-300 font-mono">{e.correlation_id}</code>
                                                     </span>
                                                 )}

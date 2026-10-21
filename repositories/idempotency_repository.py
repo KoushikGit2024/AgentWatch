@@ -126,3 +126,24 @@ class IdempotencyRepository:
             }
         )
         return res.modified_count > 0
+
+    def mark_outcome_unknown(self, scope: str, idempotency_key: str, reason: str) -> bool:
+        """
+        Transition an operation to outcome_unknown when external dispatch was attempted
+        but completion could not be verified (e.g. timeout, process crash, network drop).
+        Pushes out expiration so evidence is not deleted before manual or machine reconciliation.
+        """
+        now = datetime.now(timezone.utc)
+        safe_extended_expiry = now + timedelta(days=7)  # Retain for at least 7 days for audit/reconciliation
+        res = self.collection.update_one(
+            {"scope": scope, "idempotency_key": idempotency_key},
+            {
+                "$set": {
+                    "status": "outcome_unknown",
+                    "reason": reason,
+                    "updated_at": now,
+                    "expires_at": safe_extended_expiry,
+                }
+            }
+        )
+        return res.modified_count > 0
