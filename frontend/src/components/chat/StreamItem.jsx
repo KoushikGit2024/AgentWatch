@@ -2,6 +2,7 @@ import React from 'react';
 import { Icon } from '../../constants/icons';
 import { FileIcon, getFileInfo } from '../../constants/fileIcons';
 import ApprovalCard from './ApprovalCard';
+import DiffViewer from './DiffViewer';
 
 export default function StreamItem({
     item,
@@ -162,20 +163,10 @@ export default function StreamItem({
                                 </div>
                             )}
                             {item.diff && (
-                                <div className="space-y-1 font-mono text-[11px] select-text w-full min-w-0 max-w-full">
-                                    {item.diff.target_content && (
-                                        <div className="p-2 rounded-lg bg-rose-950/30 border border-rose-900/40 text-rose-300 max-h-48 overflow-y-auto overflow-x-auto whitespace-pre-wrap [word-break:break-word] w-full max-w-full">
-                                            <div className="text-[9px] uppercase tracking-wider text-rose-400/80 mb-1 font-sans select-none">Removed Lines</div>
-                                            {item.diff.target_content}
-                                        </div>
-                                    )}
-                                    {item.diff.replacement_content && (
-                                        <div className="p-2 rounded-lg bg-emerald-950/30 border border-emerald-900/40 text-emerald-300 max-h-48 overflow-y-auto overflow-x-auto whitespace-pre-wrap [word-break:break-word] w-full max-w-full">
-                                            <div className="text-[9px] uppercase tracking-wider text-emerald-400/80 mb-1 font-sans select-none">Added Lines</div>
-                                            {item.diff.replacement_content}
-                                        </div>
-                                    )}
-                                </div>
+                                <DiffViewer
+                                    diff={item.diff}
+                                    filename={item.target || item.file}
+                                />
                             )}
                         </div>
                     )}
