@@ -23,8 +23,8 @@ def compute_payload_fingerprint(payload: Any) -> str:
             data = str(payload)
 
         if isinstance(data, dict):
-            # Omit None keys to normalize differences between raw dicts and Pydantic models with default None fields
-            cleaned = {k: v for k, v in data.items() if v is not None}
+            # Omit None keys and empty collections to normalize differences between raw dicts and Pydantic models with default fields
+            cleaned = {k: v for k, v in data.items() if v is not None and v != []}
             serialized = json.dumps(cleaned, sort_keys=True, default=str)
         else:
             serialized = str(data)

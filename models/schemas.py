@@ -192,6 +192,7 @@ class PromptSubmissionRequest(BaseModel):
     prompt: Optional[str] = Field(default=None, max_length=10000, exclude=True, description="Prompt text alias")
     session_id: Optional[str] = Field(default=None, max_length=128, description="Target session UUID if explicitly specified")
     idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128, description="Client idempotency token to prevent duplicate dispatch")
+    attachments: Optional[List[Dict[str, Any]]] = Field(default=None, description="Attached images or files metadata")
 
     @model_validator(mode="before")
     @classmethod

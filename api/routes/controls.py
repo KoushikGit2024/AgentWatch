@@ -191,7 +191,18 @@ async def send_message(payload: PromptSubmissionRequest):
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)
 
-    prompt_msg = payload.message or getattr(payload, "prompt", None) or ""
+    raw_msg = payload.message or getattr(payload, "prompt", None) or ""
+    prompt_msg = raw_msg
+    if payload.attachments:
+        attachment_lines = ["\n\n[Attached Files]:"]
+        for att in payload.attachments:
+            name = att.get("original_name") or att.get("filename") or "file"
+            path = att.get("storage_path") or att.get("relative_path") or ""
+            is_img = att.get("is_image", False)
+            tag = "Image" if is_img else "File"
+            attachment_lines.append(f"- {tag} ({name}): {path}")
+        prompt_msg = prompt_msg + "\n".join(attachment_lines)
+
     is_testing = os.environ.get("ENVIRONMENT") == "testing" or settings.environment == "testing"
     dispatch_res = {"success": True, "test_mode": True} if is_testing else {"success": False}
     if not is_testing:
@@ -208,7 +219,9 @@ async def send_message(payload: PromptSubmissionRequest):
         "status": "submitted" if dispatched else ("cdp_dispatch_failed" if cdp_connected else "queued_offline"),
         "action_lifecycle": "acknowledged" if dispatched else "offline_buffered",
         "antigravity_connected": cdp_connected,
-        "message_length": len(prompt_msg),
+        "message_length": len(raw_msg),
+        "attachments_count": len(payload.attachments or []),
+        "attachments": payload.attachments or [],
         "target_session_id": payload.session_id,
         "confirmed_execution": dispatched,
         "dispatch_details": dispatch_res,

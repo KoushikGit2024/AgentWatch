@@ -10,7 +10,7 @@ import os
 
 from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
-from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics
+from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics, attachments
 from security.authentication import check_auth_required
 from services.log_buffer import attach_to_all_loggers
 import logging
@@ -112,10 +112,13 @@ app.include_router(auth.router)
 app.include_router(interactions.router)
 app.include_router(git_review.router)
 app.include_router(diagnostics.router)
+app.include_router(attachments.router)
 
-# Static files path
+# Static files and uploads path
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # Authentication Guard Middleware for Protected API / Dashboard
@@ -129,6 +132,7 @@ async def auth_middleware(request: Request, call_next):
         "/login.html",
         "/api/v1/login",
         "/static",
+        "/uploads",
         "/favicon.ico",
         "/docs",
         "/openapi.json",
@@ -149,7 +153,7 @@ async def auth_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-# Mount static frontend
+# Mount static frontend and uploads
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     
@@ -157,6 +161,8 @@ if STATIC_DIR.exists():
     dist_dir = STATIC_DIR / "dist"
     if dist_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 @app.get("/")
