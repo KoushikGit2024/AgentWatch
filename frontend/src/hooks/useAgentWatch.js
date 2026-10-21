@@ -7,8 +7,10 @@ export function useAgentWatch() {
     const [appState, setAppState] = useState({
         status: 'Connecting…',
         connected: false,
-        mode: 'Fast',
-        model: 'Gemini 3.8 Flash (Medium)'
+        mode: null,
+        model: null,
+        available_models: [],
+        available_modes: []
     });
     const [snapshotData, setSnapshotData] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
@@ -214,19 +216,13 @@ export function useAgentWatch() {
         });
     }, [pendingInteraction]);
 
-    const handleSetMode = useCallback(async (mode) => {
-        try {
-            await api.setMode(mode);
-            setAppState(prev => ({ ...prev, mode }));
-        } catch {}
-    }, []);
-
     const handleSetModel = useCallback(async (model) => {
         try {
             await api.setModel(model);
             setAppState(prev => ({ ...prev, model }));
+            await fetchAppState();
         } catch {}
-    }, []);
+    }, [fetchAppState]);
 
     const handleStopAgent = useCallback(async () => {
         try {
@@ -302,7 +298,6 @@ export function useAgentWatch() {
         handleSendPrompt,
         handleInteractionSubmit,
         handleToggleOption,
-        handleSetMode,
         handleSetModel,
         handleStopAgent,
         fetchSnapshot,

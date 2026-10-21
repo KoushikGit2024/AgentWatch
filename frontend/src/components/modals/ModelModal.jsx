@@ -1,17 +1,24 @@
 import React from 'react';
 import { Icon } from '../../constants/icons';
 
-export default function ModelModal({ isOpen, onClose, currentModel, onSelectModel }) {
+function parseModelTier(rawName) {
+    if (!rawName) return { name: '', tier: '' };
+    const match = rawName.match(/^(.*?)\s*(?:\((Thinking|High|Medium|Low)\)|(Thinking|High|Medium|Low))$/i);
+    if (match) {
+        return {
+            name: match[1].trim(),
+            tier: match[2] || match[3] || ''
+        };
+    }
+    return { name: rawName, tier: '' };
+}
+
+export default function ModelModal({ isOpen, onClose, currentModel, availableModels = [], onSelectModel }) {
     if (!isOpen) return null;
 
-    const models = [
-        'Default Antigravity Agent',
-        'Gemini 3.8 Flash (Medium)',
-        'Gemini 3.1 Pro (High)',
-        'Claude Sonnet 4.6 (Thinking)',
-        'Claude Opus 4.6 (Thinking)',
-        'GPT-OSS 120B (Medium)'
-    ];
+    const list = Array.isArray(availableModels) && availableModels.length > 0
+        ? availableModels
+        : (currentModel ? [currentModel] : []);
 
     return (
         <div
@@ -23,7 +30,10 @@ export default function ModelModal({ isOpen, onClose, currentModel, onSelectMode
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                    <h3 className="text-sm font-semibold text-zinc-100">Select Model</h3>
+                    <div>
+                        <h3 className="text-sm font-semibold text-zinc-100">Plan Models</h3>
+                        <p className="text-[11px] text-zinc-400">Fetched from Antigravity IDE</p>
+                    </div>
                     <button
                         type="button"
                         onClick={onClose}
@@ -32,19 +42,41 @@ export default function ModelModal({ isOpen, onClose, currentModel, onSelectMode
                         <div className="w-4 h-4">{Icon.x}</div>
                     </button>
                 </div>
-                <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-                    {models.map(m => (
-                        <button
-                            key={m}
-                            type="button"
-                            onClick={() => onSelectModel(m)}
-                            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
-                                currentModel === m ? 'bg-blue-600 text-white' : 'hover:bg-zinc-800 text-zinc-200'
-                            }`}
-                        >
-                            {m}
-                        </button>
-                    ))}
+                <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
+                    {list.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-zinc-400">
+                            Connecting to IDE to detect plan models…
+                        </div>
+                    ) : (
+                        list.map(m => {
+                            const { name, tier } = parseModelTier(m);
+                            const isActive = currentModel === m || (currentModel && currentModel.includes(name));
+                            return (
+                                <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => onSelectModel(m)}
+                                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer flex items-center justify-between ${
+                                        isActive ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-zinc-800 text-zinc-200'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2 truncate">
+                                        <span className="truncate">{name}</span>
+                                        {tier && (
+                                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                                                isActive ? 'bg-blue-700/80 text-blue-100' : 'bg-zinc-800 text-zinc-400 border border-zinc-750'
+                                            }`}>
+                                                {tier}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {isActive && (
+                                        <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blue-700 text-white shrink-0 ml-2">Active</span>
+                                    )}
+                                </button>
+                            );
+                        })
+                    )}
                 </div>
             </div>
         </div>

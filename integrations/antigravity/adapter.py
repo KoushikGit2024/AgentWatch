@@ -293,9 +293,140 @@ class AntigravityAdapter:
                 }))
                 reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.5))
                 res = reply.get("result", {}).get("result", {}).get("value", {})
-                return {"success": True, "details": res}
         except Exception as exc:
             logger.error("Failed to forward approval via CDP: %s", str(exc))
+            return {"success": False, "error": str(exc)}
+
+    async def get_active_model_and_plan(self, force_refresh_list: bool = False) -> Dict[str, Any]:
+        """
+        Extract active model and genuine available models from Antigravity IDE UI via CDP.
+        Never statically guesses or hardcodes third-party models.
+        """
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"model": None, "available_models": [], "mode": "Agent"}
+
+        now_ts = time.time()
+        cached_models = getattr(self, "_cached_available_models", [])
+        last_scan = getattr(self, "_last_model_scan", 0.0)
+
+        # Passive read if models are already known and scanned recently
+        need_full_scan = force_refresh_list or not cached_models or (now_ts - last_scan > 60.0)
+
+        try:
+            import websockets
+            import json
+            import asyncio
+            async with websockets.connect(self.active_target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+                if not need_full_scan:
+                    # Passive read of active model button without clicking
+                    passive_js = r"""
+                    (() => {
+                        const btn = Array.from(document.querySelectorAll('*')).find(e => (e.getAttribute('aria-label') || '').includes('Select model'));
+                        if (!btn) return null;
+                        const aria = btn.getAttribute('aria-label') || '';
+                        const m = aria.match(/current:\s*([^,]+)/i);
+                        return m ? m[1].trim() : btn.innerText.trim();
+                    })()
+                    """
+                    await ws.send(json.dumps({
+                        "id": 220,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": passive_js, "returnByValue": True}
+                    }))
+                    reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
+                    cur = reply.get("result", {}).get("result", {}).get("value")
+                    return {
+                        "model": cur or (cached_models[0] if cached_models else None),
+                        "available_models": cached_models,
+                        "mode": "Agent"
+                    }
+
+                # Full scan: click model button, gather plan options, dismiss with Escape
+                full_js = r"""
+                (async () => {
+                    const btn = Array.from(document.querySelectorAll('*')).find(e => (e.getAttribute('aria-label') || '').includes('Select model'));
+                    if (!btn) return { model: null, available: [] };
+                    const aria = btn.getAttribute('aria-label') || '';
+                    const m = aria.match(/current:\s*([^,]+)/i);
+                    const currentModel = m ? m[1].trim() : btn.innerText.trim();
+
+                    btn.click();
+                    await new Promise(r => setTimeout(r, 450));
+
+                    const items = Array.from(document.querySelectorAll('[role="menuitem"]:not(.menubar-menu-button)'));
+                    const available = items.map(i => i.innerText.split('\n')[0].trim()).filter(Boolean);
+
+                    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }));
+                    return { model: currentModel, available: available.length ? available : [currentModel] };
+                })()
+                """
+                await ws.send(json.dumps({
+                    "id": 221,
+                    "method": "Runtime.evaluate",
+                    "params": {"expression": full_js, "awaitPromise": True, "returnByValue": True}
+                }))
+                reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.0))
+                val = reply.get("result", {}).get("result", {}).get("value", {})
+                detected_model = val.get("model")
+                detected_available = val.get("available") or ([detected_model] if detected_model else [])
+
+                self._cached_available_models = detected_available
+                self._last_model_scan = now_ts
+                return {
+                    "model": detected_model,
+                    "available_models": detected_available,
+                    "mode": "Agent"
+                }
+        except Exception as exc:
+            logger.warning("CDP model detection failed: %s", str(exc))
+            return {
+                "model": getattr(self, "_last_detected_model", None),
+                "available_models": cached_models,
+                "mode": "Agent"
+            }
+
+    async def set_active_model(self, target_model: str) -> Dict[str, Any]:
+        """Switch active model in Antigravity IDE by clicking the matching menu item."""
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
+
+        try:
+            import websockets
+            import json
+            import asyncio
+            async with websockets.connect(self.active_target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+                switch_js = f"""
+                (async () => {{
+                    const target = {json.dumps(target_model.lower())};
+                    const btn = Array.from(document.querySelectorAll('*')).find(e => (e.getAttribute('aria-label') || '').includes('Select model'));
+                    if (!btn) return {{ success: false, error: 'Model button not found' }};
+                    btn.click();
+                    await new Promise(r => setTimeout(r, 450));
+
+                    const items = Array.from(document.querySelectorAll('[role="menuitem"]:not(.menubar-menu-button)'));
+                    const match = items.find(i => i.innerText.toLowerCase().includes(target));
+                    if (match) {{
+                        match.click();
+                        return {{ success: true, selected: match.innerText.split('\\n')[0].trim() }};
+                    }}
+                    window.dispatchEvent(new KeyboardEvent('keydown', {{ key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }}));
+                    return {{ success: false, error: 'Model option not in current plan' }};
+                }})()
+                """
+                await ws.send(json.dumps({
+                    "id": 225,
+                    "method": "Runtime.evaluate",
+                    "params": {"expression": switch_js, "awaitPromise": True, "returnByValue": True}
+                }))
+                reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.0))
+                val = reply.get("result", {}).get("result", {}).get("value", {})
+                return val
+        except Exception as exc:
+            logger.error("Failed to switch model via CDP: %s", str(exc))
             return {"success": False, "error": str(exc)}
 
     def get_status(self) -> Dict[str, Any]:

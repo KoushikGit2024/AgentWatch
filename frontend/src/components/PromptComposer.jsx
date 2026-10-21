@@ -7,7 +7,6 @@ export function PromptComposer({
     onSend,
     isSending,
     appState,
-    onOpenModeModal,
     onOpenModelModal,
     onOpenReviewChanges,
     onOpenLogs,
@@ -108,25 +107,18 @@ export function PromptComposer({
                     {/* Bottom controls row inside composer */}
                     <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs">
                         <div className="flex items-center gap-2">
-                            {/* Mode Selector Pill */}
-                            <button
-                                type="button"
-                                onClick={onOpenModeModal}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition cursor-pointer"
-                            >
-                                <div className="w-3.5 h-3.5 text-amber-400">{Icon.zap}</div>
-                                <span>{appState?.mode || 'Fast'}</span>
-                            </button>
-
                             {/* Model Selector Pill */}
                             <button
                                 type="button"
                                 onClick={onOpenModelModal}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition cursor-pointer"
+                                title={appState?.model ? `Active Model: ${appState.model}` : 'Detecting active plan model…'}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 text-zinc-300 hover:text-white border border-zinc-800 transition active:scale-95 cursor-pointer max-w-[260px]"
                             >
-                                <div className="w-3.5 h-3.5 text-blue-400">{Icon.sparkles}</div>
-                                <span className="max-w-[130px] truncate">{appState?.model ? appState.model.split(' ')[0] : 'Default'}</span>
-                                <div className="w-3 h-3 text-zinc-500">{Icon.chevronDown}</div>
+                                <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.sparkles}</div>
+                                <span className="truncate text-xs font-medium">
+                                    {appState?.model || 'Detecting plan model…'}
+                                </span>
+                                <div className="w-3 h-3 text-zinc-500 shrink-0">{Icon.chevronDown}</div>
                             </button>
                         </div>
 

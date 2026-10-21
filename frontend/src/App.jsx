@@ -8,7 +8,6 @@ import { SystemLogsDrawer } from './components/SystemLogsDrawer';
 import { RecoveryCenterModal } from './components/RecoveryCenterModal';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { ReviewChangesModal } from './components/ReviewChangesModal';
-import ModeModal from './components/modals/ModeModal';
 import ModelModal from './components/modals/ModelModal';
 import LightboxModal from './components/modals/LightboxModal';
 import { useAgentWatch } from './hooks/useAgentWatch';
@@ -40,7 +39,6 @@ export default function App() {
         handleSendPrompt,
         handleInteractionSubmit,
         handleToggleOption,
-        handleSetMode,
         handleSetModel,
         handleStopAgent,
         fetchTimelineEvents,
@@ -163,7 +161,6 @@ export default function App() {
                             onSend={handleSend}
                             isSending={false}
                             appState={appState}
-                            onOpenModeModal={() => setActiveModal('mode')}
                             onOpenModelModal={() => setActiveModal('model')}
                             onOpenReviewChanges={() => setReviewChangesOpen(true)}
                             onOpenLogs={() => { setLogsOpen(true); fetchSystemLogs(); }}
@@ -266,17 +263,11 @@ export default function App() {
                 onClose={() => setReviewChangesOpen(false)}
             />
 
-            <ModeModal
-                isOpen={activeModal === 'mode'}
-                onClose={() => setActiveModal(null)}
-                currentMode={appState.mode}
-                onSelectMode={(m) => { handleSetMode(m); setActiveModal(null); }}
-            />
-
             <ModelModal
                 isOpen={activeModal === 'model'}
                 onClose={() => setActiveModal(null)}
                 currentModel={appState.model}
+                availableModels={appState.available_models}
                 onSelectModel={(m) => { handleSetModel(m); setActiveModal(null); }}
             />
 

@@ -1,10 +1,12 @@
 import React from 'react';
 import { Icon } from '../../constants/icons';
 
-export default function ModeModal({ isOpen, onClose, currentMode, onSelectMode }) {
+export default function ModeModal({ isOpen, onClose, currentMode, availableModes = [], onSelectMode }) {
     if (!isOpen) return null;
 
-    const modes = ['Fast', 'Planning'];
+    const modes = Array.isArray(availableModes) && availableModes.length > 0
+        ? availableModes
+        : (currentMode ? [currentMode] : ['Agent']);
 
     return (
         <div
@@ -16,7 +18,10 @@ export default function ModeModal({ isOpen, onClose, currentMode, onSelectMode }
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                    <h3 className="text-sm font-semibold text-zinc-100">Agent Mode</h3>
+                    <div>
+                        <h3 className="text-sm font-semibold text-zinc-100">Agent Mode</h3>
+                        <p className="text-[11px] text-zinc-400">Environment execution setting</p>
+                    </div>
                     <button
                         type="button"
                         onClick={onClose}
@@ -31,11 +36,14 @@ export default function ModeModal({ isOpen, onClose, currentMode, onSelectMode }
                             key={m}
                             type="button"
                             onClick={() => onSelectMode(m)}
-                            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+                            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer flex items-center justify-between ${
                                 currentMode === m ? 'bg-blue-600 text-white' : 'hover:bg-zinc-800 text-zinc-200'
                             }`}
                         >
-                            {m}
+                            <span>{m}</span>
+                            {currentMode === m && (
+                                <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blue-700 text-white">Active</span>
+                            )}
                         </button>
                     ))}
                 </div>

@@ -200,14 +200,17 @@ def get_system_logs(limit: int = 150, min_level: Optional[str] = None):
 
 @router.get("/app-state")
 @router.get("/api/v1/app-state")
-def get_app_state():
-    """Return application state preserving legacy contract."""
+async def get_app_state():
+    """Return genuine application state and active plan models without static guessing."""
     ag_status = antigravity_adapter.get_status()
     tailscale_info = remote_access_service.get_tailscale_status()
+    model_info = await antigravity_adapter.get_active_model_and_plan()
     return {
         "status": "online",
-        "mode": "Fast",
-        "model": "Default Antigravity Agent",
+        "mode": model_info.get("mode", "Agent"),
+        "model": model_info.get("model"),
+        "available_models": model_info.get("available_models", []),
+        "available_modes": [model_info.get("mode", "Agent")],
         "antigravity_connected": ag_status["cdp"]["connected"],
         "tailscale_serve": tailscale_info["serve_active"],
         "tailscale_funnel_disabled": tailscale_info["funnel_disabled_verified"],
@@ -396,9 +399,10 @@ def set_mode(payload: SetModeRequest):
 
 @router.post("/set-model")
 @router.post("/api/v1/set-model")
-def set_model(payload: SetModelRequest):
-    """Select active AI model with strict length and character validation."""
-    return {"success": True, "model": payload.model}
+async def set_model(payload: SetModelRequest):
+    """Switch active AI model in Antigravity IDE without static guessing."""
+    res = await antigravity_adapter.set_active_model(payload.model)
+    return {"success": res.get("success", True), "model": payload.model, "details": res}
 
 
 @router.post("/remote-scroll")
