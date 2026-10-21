@@ -15,6 +15,9 @@ from models.schemas import (
 from repositories.idempotency_repository import IdempotencyRepository
 from services.remote_access import remote_access_service
 
+from services.log_buffer import log_buffer_handler
+from typing import Dict, Any, Optional
+
 router = APIRouter(tags=["Status and Controls"])
 
 # Persistent idempotency repository backed by MongoDB
@@ -23,10 +26,10 @@ _idempotency_repo = IdempotencyRepository()
 
 @router.get("/snapshot")
 @router.get("/api/v1/snapshot")
-def get_snapshot():
+async def get_snapshot():
     """
-    Return latest snapshot view. If CDP connection is not available, returns
-    clear diagnostic instructions rather than synthetic or fabricated activity.
+    Return latest snapshot view. If CDP connection is available, captures
+    a live viewport screenshot from the Antigravity IDE workbench.
     """
     cdp_status = antigravity_adapter.get_status()
     if not cdp_status["cdp"]["connected"]:
@@ -34,14 +37,32 @@ def get_snapshot():
             "status": "unavailable",
             "message": "Antigravity CDP is not currently connected.",
             "instructions": "Start Antigravity with '--remote-debugging-port=9000' to enable live visual viewport capture.",
+            "screenshot": None,
+            "has_screenshot": False,
+            "target": None,
             "html": "<div class='empty-snapshot'><p>Antigravity not connected via CDP (port 9000).</p></div>",
         }
+
+    screenshot_b64 = await antigravity_adapter.capture_screenshot()
+    has_shot = bool(screenshot_b64)
+    img_tag = f"<img src='data:image/jpeg;base64,{screenshot_b64}' alt='Antigravity IDE Viewport' class='rounded-lg max-w-full shadow-lg'/>" if has_shot else "<p>Connected to Antigravity Workbench via CDP.</p>"
 
     return {
         "status": "active",
         "port": cdp_status["cdp"]["port"],
         "target": cdp_status["cdp"]["title"],
-        "html": "<div class='active-snapshot'><p>Connected to Antigravity Workbench via CDP.</p></div>",
+        "screenshot": f"data:image/jpeg;base64,{screenshot_b64}" if has_shot else None,
+        "has_screenshot": has_shot,
+        "html": f"<div class='active-snapshot'>{img_tag}</div>",
+    }
+
+
+@router.get("/api/v1/logs")
+def get_system_logs(limit: int = 150, min_level: Optional[str] = None):
+    """Return live circular-buffer logs for frontend monitoring."""
+    return {
+        "logs": log_buffer_handler.get_logs(limit=limit, min_level=min_level),
+        "total_captured": len(log_buffer_handler.buffer),
     }
 
 

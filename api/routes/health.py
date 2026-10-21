@@ -36,13 +36,15 @@ def get_readiness():
     is_ready = mongo_status["status"] == "connected"
     http_code = status.HTTP_200_OK if is_ready else status.HTTP_503_SERVICE_UNAVAILABLE
 
+    from fastapi.encoders import jsonable_encoder
+
     return JSONResponse(
         status_code=http_code,
-        content={
+        content=jsonable_encoder({
             "ready": is_ready,
             "database": mongo_status,
             "antigravity": ag_status,
             "tailscale": tailscale_status,
             "capabilities": capabilities,
-        }
+        })
     )

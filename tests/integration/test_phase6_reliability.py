@@ -83,7 +83,10 @@ def test_mark_outcome_unknown_preserves_ttl_and_audit():
     
     # TTL should be extended into future (~7 days)
     now = datetime.now(timezone.utc)
-    assert record["expires_at"] > now
+    exp = record["expires_at"]
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    assert exp > now
 
 
 def test_cdp_antigravity_target_validation():

@@ -12,6 +12,7 @@ from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
 from api.routes import health, events, sessions, controls, auth, interactions
 from security.authentication import check_auth_required
+from services.log_buffer import attach_to_all_loggers
 import logging
 
 logging.basicConfig(
@@ -24,6 +25,7 @@ logger = logging.getLogger("main")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown lifecycle management."""
+    attach_to_all_loggers()
     logger.info("Starting AgentWatch server on %s:%d (env: %s)", settings.host, settings.port, settings.environment)
     # 1. Initialize MongoDB indexes and verify connectivity
     mongo_status = check_mongo_connection()

@@ -141,6 +141,7 @@ class IdempotencyRepository:
                 "$set": {
                     "status": "outcome_unknown",
                     "reason": reason,
+                    "metadata.outcome_reason": reason,
                     "updated_at": now,
                     "expires_at": safe_extended_expiry,
                 }

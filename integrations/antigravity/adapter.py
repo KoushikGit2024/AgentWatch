@@ -41,6 +41,20 @@ class AntigravityAdapter:
             or "workbench.html" in url
         )
 
+    def _target_priority(self, target: Dict[str, Any]) -> int:
+        """Score target priority so active workspace workbench.html is favored over settings."""
+        url = (target.get("url") or "").lower()
+        title = (target.get("title") or "").lower()
+        if "workbench.html" in url:
+            return 100
+        if "workbench" in url and "settings" not in title:
+            return 80
+        if "antigravity" in title and "settings" not in title:
+            return 70
+        if "workbench" in url:
+            return 40
+        return 10
+
     def discover_cdp(self, force: bool = False) -> Dict[str, Any]:
         """
         Scan configured ports to locate Antigravity remote debugging interface.
@@ -66,12 +80,14 @@ class AntigravityAdapter:
                 if resp.status_code == 200:
                     targets = resp.json()
                     # Priority: Find validated Antigravity Workbench target
-                    valid_target = next(
-                        (t for t in targets if self._is_antigravity_target(t) and t.get("webSocketDebuggerUrl")),
-                        None
-                    )
+                    valid_targets = [
+                        t for t in targets
+                        if self._is_antigravity_target(t) and t.get("webSocketDebuggerUrl")
+                    ]
 
-                    if valid_target:
+                    if valid_targets:
+                        valid_targets.sort(key=self._target_priority, reverse=True)
+                        valid_target = valid_targets[0]
                         target_id = valid_target.get("id")
                         now_dt = datetime.now(timezone.utc)
 
@@ -126,6 +142,45 @@ class AntigravityAdapter:
             "last_error": self.last_error,
             "message": "Antigravity CDP not responding on ports " + settings.cdp_ports,
         }
+
+    async def capture_screenshot(self, quality: int = 65) -> Optional[str]:
+        """
+        Capture viewport screenshot from active Antigravity target via CDP Page.captureScreenshot.
+        Returns base64 JPEG string or cached screenshot.
+        """
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return None
+
+        now = time.time()
+        cached = getattr(self, "_cached_screenshot", None)
+        last_time = getattr(self, "_last_screenshot_time", 0.0)
+        if cached and (now - last_time < 1.0):
+            return cached
+
+        try:
+            import websockets
+            import json
+            import asyncio
+            async with websockets.connect(self.active_target_url, close_timeout=2) as ws:
+                await ws.send(json.dumps({
+                    "id": 100,
+                    "method": "Page.captureScreenshot",
+                    "params": {"format": "jpeg", "quality": quality}
+                }))
+                reply = await asyncio.wait_for(ws.recv(), timeout=2.5)
+                res = json.loads(reply)
+                data = res.get("result", {}).get("data")
+                if data:
+                    self._cached_screenshot = data
+                    self._last_screenshot_time = now
+                    return data
+        except Exception as e:
+            logger.debug("CDP screenshot capture notice: %s", str(e))
+            if cached:
+                return cached
+        return None
 
     def get_status(self) -> Dict[str, Any]:
         """Return cached or refreshed status of Antigravity connection."""
