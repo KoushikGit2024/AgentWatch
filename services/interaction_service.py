@@ -1,6 +1,8 @@
 """Central Interaction and Capability Management Service."""
 
 import logging
+import hashlib
+import os
 from typing import List, Dict, Any, Optional, Tuple
 from models.schemas import (
     InteractionDocument,
@@ -128,7 +130,7 @@ class InteractionService:
         """Get interaction details."""
         return self.repo.get_interaction(interaction_id)
 
-    def submit_response(self, interaction_id: str, payload: SubmitInteractionRequest) -> Dict[str, Any]:
+    async def submit_response(self, interaction_id: str, payload: SubmitInteractionRequest) -> Dict[str, Any]:
         """
         Validate submission against interaction schema, sanitize inputs, and resolve atomically.
         Uses persistent idempotency reservation to prevent race conditions and double answers.
@@ -218,6 +220,26 @@ class InteractionService:
                 "status": "stale_interaction",
             }
 
+        # Formulate answer text and dispatch to Antigravity IDE if connected
+        selected_labels = [
+            opt["label"] for opt in interaction.get("options", [])
+            if opt["id"] in payload.selected_option_ids
+        ]
+        parts = []
+        if selected_labels:
+            parts.append(", ".join(selected_labels))
+        if payload.custom_response and payload.custom_response.strip():
+            parts.append(payload.custom_response.strip())
+        prompt_text = " - ".join(parts) if parts else "Response submitted"
+
+        is_testing = os.environ.get("ENVIRONMENT") == "testing"
+        cdp_status = antigravity_adapter.get_status().get("cdp", {})
+        if cdp_status.get("connected") and not is_testing:
+            try:
+                await antigravity_adapter.send_prompt(prompt_text)
+            except Exception as e:
+                logger.warning("Failed to dispatch interaction prompt to IDE: %s", str(e))
+
         res = {
             "success": True,
             "interaction_id": interaction_id,
@@ -227,6 +249,16 @@ class InteractionService:
 
         if payload.idempotency_key:
             self.idempotency_repo.complete(scope, payload.idempotency_key, res)
+
+        try:
+            from services.websocket_manager import websocket_manager
+            await websocket_manager.broadcast({
+                "type": "interaction_resolved",
+                "interaction_id": interaction_id,
+                "data": res
+            })
+        except Exception:
+            pass
 
         try:
             from repositories.event_repository import EventRepository
@@ -247,6 +279,52 @@ class InteractionService:
             pass
 
         return res
+
+    def sync_question_from_transcript(
+        self,
+        session_id: str,
+        question_data: Optional[Dict[str, Any]],
+        is_active: bool
+    ) -> Optional[str]:
+        """
+        Synchronize active agent questions from transcript into interaction repository.
+        Supersedes older or concluded questions so they never remain pending.
+        """
+        if not is_active or not question_data:
+            self.repo.supersede_pending_interactions(session_id=session_id)
+            return None
+
+        q_text = question_data.get("question") or "Agent Question"
+        q_hash = hashlib.md5(f"{session_id}:{q_text}".encode()).hexdigest()[:12]
+        interaction_id = f"q-{q_hash}"
+
+        self.repo.supersede_pending_interactions(session_id=session_id, exclude_id=interaction_id)
+
+        existing = self.repo.get_interaction(interaction_id)
+        if existing:
+            return interaction_id
+
+        options_list = [
+            InteractionOption(
+                id=f"opt_{i+1}",
+                label=opt,
+                is_recommended=(i == 0 and "(Recommended)" in opt)
+            )
+            for i, opt in enumerate(question_data.get("options", []))
+        ]
+
+        doc = InteractionDocument(
+            interaction_id=interaction_id,
+            session_id=session_id,
+            kind=InteractionKind.MULTIPLE_CHOICE if question_data.get("is_multi_select") else InteractionKind.SINGLE_CHOICE,
+            title=q_text,
+            description="The agent is awaiting your decision to proceed.",
+            options=options_list,
+            allow_custom_response=True,
+            status=InteractionStatus.PENDING
+        )
+        self.repo.create_interaction(doc)
+        return interaction_id
 
 
 interaction_service = InteractionService()

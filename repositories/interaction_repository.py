@@ -113,3 +113,35 @@ class InteractionRepository:
         except (PyMongoError, Exception) as exc:
             logger.warning("MongoDB unavailable during resolve_interaction (%s). Updated fallback.", str(exc))
             return self._fallback_store.get(interaction_id)
+
+    def supersede_pending_interactions(
+        self,
+        session_id: Optional[str] = None,
+        exclude_id: Optional[str] = None
+    ) -> int:
+        """Mark old pending interactions as superseded to prevent stale questions appearing in UI."""
+        query = {"status": InteractionStatus.PENDING.value}
+        if session_id:
+            query["session_id"] = session_id
+        if exclude_id:
+            query["interaction_id"] = {"$ne": exclude_id}
+
+        now = datetime.now(timezone.utc)
+        count = 0
+        # Update in-memory fallback
+        for k, v in self._fallback_store.items():
+            if v.get("status") == InteractionStatus.PENDING.value:
+                if (not session_id or v.get("session_id") == session_id) and (not exclude_id or k != exclude_id):
+                    v["status"] = InteractionStatus.SUPERSEDED.value
+                    v["resolved_at"] = now
+                    count += 1
+
+        try:
+            res = self.collection.update_many(
+                query,
+                {"$set": {"status": InteractionStatus.SUPERSEDED.value, "resolved_at": now}}
+            )
+            return res.modified_count
+        except (PyMongoError, Exception) as exc:
+            logger.warning("MongoDB unavailable during supersede_pending_interactions: %s", str(exc))
+            return count

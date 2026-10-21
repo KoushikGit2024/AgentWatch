@@ -29,6 +29,7 @@ def list_pending_interactions(session_id: Optional[str] = Query(None, descriptio
     return {
         "count": len(pending),
         "interactions": pending,
+        "interaction": pending[0] if pending else None,
     }
 
 
@@ -54,12 +55,32 @@ def create_interaction(doc: InteractionDocument):
     }
 
 
+@router.post("/respond")
+async def respond_to_interaction_body(payload: Dict[str, Any]):
+    """
+    Submit answer to a pending interaction with interaction_id provided in body.
+    Supports mobile clients and web hooks.
+    """
+    interaction_id = payload.get("interaction_id")
+    if not interaction_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing interaction_id in request body")
+
+    selected_opts = payload.get("selected_options") or payload.get("selected_option_ids") or []
+    req = SubmitInteractionRequest(
+        selected_option_ids=selected_opts,
+        custom_response=payload.get("custom_response"),
+        form_values=payload.get("form_values"),
+        idempotency_key=payload.get("idempotency_key")
+    )
+    return await respond_to_interaction(interaction_id, req)
+
+
 @router.post("/{interaction_id}/respond")
-def respond_to_interaction(interaction_id: str, payload: SubmitInteractionRequest):
+async def respond_to_interaction(interaction_id: str, payload: SubmitInteractionRequest):
     """
     Submit answer to a pending interaction (selected option, custom text, or form values).
     """
-    res = interaction_service.submit_response(interaction_id, payload)
+    res = await interaction_service.submit_response(interaction_id, payload)
     if not res.get("success"):
         error_code = status.HTTP_400_BAD_REQUEST
         if res.get("status") == "not_found":

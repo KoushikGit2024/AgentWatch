@@ -73,96 +73,39 @@ def check_mongo_connection() -> dict:
 def init_db_indexes(db=None):
     """Ensure all required indexes exist with explicit rationale and constraints."""
     database = db if db is not None else get_database()
-    
+
+    def _safe_create(col, keys, **kwargs):
+        try:
+            col.create_index(keys, **kwargs)
+        except Exception as e:
+            logger.warning("Failed to create index %s on %s: %s", kwargs.get("name"), col.name, str(e))
+
     # Events collection
-    # 1. Deterministic deduplication index
-    database.events.create_index(
-        [("source_event_id", ASCENDING)],
-        unique=True,
-        name="uniq_source_event_id",
-        sparse=True,
-    )
-    # 2. Chronological timeline ordering
-    database.events.create_index(
-        [("timestamp", DESCENDING), ("_id", DESCENDING)],
-        name="idx_events_timeline",
-    )
-    # 3. Session-filtered timeline
-    database.events.create_index(
-        [("session_id", ASCENDING), ("timestamp", DESCENDING)],
-        name="idx_events_session_timeline",
-    )
-    # 4. Event type filtering
-    database.events.create_index(
-        [("event_type", ASCENDING), ("timestamp", DESCENDING)],
-        name="idx_events_type_timeline",
-    )
-    # 5. Category filtering
-    database.events.create_index(
-        [("category", ASCENDING), ("timestamp", DESCENDING)],
-        name="idx_events_category_timeline",
-    )
-    # 6. Action correlation index
-    database.events.create_index(
-        [("correlation_id", ASCENDING)],
-        sparse=True,
-        name="idx_events_correlation",
-    )
+    _safe_create(database.events, [("source_event_id", ASCENDING)], unique=True, name="uniq_source_event_id", sparse=True)
+    _safe_create(database.events, [("timestamp", DESCENDING), ("_id", DESCENDING)], name="idx_events_timeline")
+    _safe_create(database.events, [("session_id", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_session_timeline")
+    _safe_create(database.events, [("event_type", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_type_timeline")
+    _safe_create(database.events, [("category", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_category_timeline")
+    _safe_create(database.events, [("correlation_id", ASCENDING)], sparse=True, name="idx_events_correlation")
 
     # Sessions collection
-    database.sessions.create_index(
-        [("session_id", ASCENDING)],
-        unique=True,
-        name="uniq_session_id",
-    )
-    database.sessions.create_index(
-        [("updated_at", DESCENDING)],
-        name="idx_sessions_updated_at",
-    )
+    _safe_create(database.sessions, [("session_id", ASCENDING)], unique=True, name="uniq_session_id")
+    _safe_create(database.sessions, [("updated_at", DESCENDING)], name="idx_sessions_updated_at")
 
     # Agents collection
-    database.agents.create_index(
-        [("agent_id", ASCENDING)],
-        unique=True,
-        name="uniq_agent_id",
-    )
+    _safe_create(database.agents, [("agent_id", ASCENDING)], unique=True, name="uniq_agent_id")
 
     # Tasks collection
-    database.tasks.create_index(
-        [("task_id", ASCENDING)],
-        unique=True,
-        name="uniq_task_id",
-    )
-    database.tasks.create_index(
-        [("session_id", ASCENDING), ("updated_at", DESCENDING)],
-        name="idx_tasks_session",
-    )
+    _safe_create(database.tasks, [("task_id", ASCENDING)], unique=True, name="uniq_task_id")
+    _safe_create(database.tasks, [("session_id", ASCENDING), ("updated_at", DESCENDING)], name="idx_tasks_session")
 
     # Interactions collection
-    database.interactions.create_index(
-        [("interaction_id", ASCENDING)],
-        unique=True,
-        name="uniq_interaction_id",
-    )
-    database.interactions.create_index(
-        [("status", ASCENDING), ("created_at", DESCENDING)],
-        name="idx_interactions_status_time",
-    )
-    database.interactions.create_index(
-        [("session_id", ASCENDING), ("status", ASCENDING)],
-        name="idx_interactions_session_status",
-    )
+    _safe_create(database.interactions, [("interaction_id", ASCENDING)], unique=True, name="uniq_interaction_id")
+    _safe_create(database.interactions, [("status", ASCENDING), ("created_at", DESCENDING)], name="idx_interactions_status_time")
+    _safe_create(database.interactions, [("session_id", ASCENDING), ("status", ASCENDING)], name="idx_interactions_session_status")
 
     # Idempotency collection
-    database.idempotency_keys.create_index(
-        [("scope", ASCENDING), ("idempotency_key", ASCENDING)],
-        unique=True,
-        name="uniq_scope_idempotency_key",
-    )
-    database.idempotency_keys.create_index(
-        [("expires_at", ASCENDING)],
-        expireAfterSeconds=0,
-        name="ttl_idempotency_expires",
-    )
+    _safe_create(database.idempotency_keys, [("scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uniq_scope_idempotency_key")
+    _safe_create(database.idempotency_keys, [("expires_at", ASCENDING)], expireAfterSeconds=0, name="ttl_idempotency_expires")
 
     logger.info("MongoDB indexes verified on database '%s'", database.name)

@@ -1,6 +1,6 @@
 """Domain models and Pydantic schemas for AgentWatch."""
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 from enum import Enum
@@ -188,17 +188,25 @@ class LoginRequest(BaseModel):
 
 
 class PromptSubmissionRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=10000, description="Prompt text to dispatch")
+    message: Optional[str] = Field(default=None, max_length=10000, description="Prompt text to dispatch")
+    prompt: Optional[str] = Field(default=None, max_length=10000, exclude=True, description="Prompt text alias")
     session_id: Optional[str] = Field(default=None, max_length=128, description="Target session UUID if explicitly specified")
     idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128, description="Client idempotency token to prevent duplicate dispatch")
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_prompt_message(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("message") and data.get("prompt"):
+                data["message"] = data["prompt"]
+        return data
+
     @field_validator("message")
     @classmethod
-    def validate_message_not_blank(cls, v: str) -> str:
-        trimmed = v.strip()
-        if not trimmed:
+    def validate_message_not_blank(cls, v: Optional[str]) -> str:
+        if not v or not v.strip():
             raise ValueError("Prompt message cannot be empty or whitespace only")
-        return trimmed
+        return v.strip()
 
     @field_validator("idempotency_key")
     @classmethod
@@ -231,6 +239,8 @@ class InteractionStatus(str, Enum):
     SUBMITTED = "submitted"
     CANCELLED = "cancelled"
     EXPIRED = "expired"
+    SUPERSEDED = "superseded"
+    RESOLVED = "resolved"
 
 
 class InteractionOption(BaseModel):

@@ -10,7 +10,7 @@ import os
 
 from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
-from api.routes import health, events, sessions, controls, auth, interactions
+from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics
 from security.authentication import check_auth_required
 from services.log_buffer import attach_to_all_loggers
 import logging
@@ -110,6 +110,8 @@ app.include_router(sessions.router)
 app.include_router(controls.router)
 app.include_router(auth.router)
 app.include_router(interactions.router)
+app.include_router(git_review.router)
+app.include_router(diagnostics.router)
 
 # Static files path
 BASE_DIR = Path(__file__).resolve().parent
