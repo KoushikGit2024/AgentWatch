@@ -10,6 +10,7 @@ import { HistoryDrawer } from './components/HistoryDrawer';
 import { ReviewChangesModal } from './components/ReviewChangesModal';
 import ModelModal from './components/modals/ModelModal';
 import LightboxModal from './components/modals/LightboxModal';
+import ToastContainer from './components/ToastContainer';
 import { useAgentWatch } from './hooks/useAgentWatch';
 import { Icon } from './constants/icons';
 
@@ -24,6 +25,7 @@ export default function App() {
         customResponse,
         isSubmitting,
         submitSuccess,
+        isSendingPrompt,
         timelineEvents,
         isTimelineLoading,
         systemLogs,
@@ -109,6 +111,9 @@ export default function App() {
 
     return (
         <div className="flex flex-col h-[100dvh] w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+            {/* ─── Global Toast Notifications Container ──────────────────────── */}
+            <ToastContainer />
+
             {/* ─── Top Navigation Bar ────────────────────────────────────────── */}
             <Navbar
                 targetTitle={snapshotData?.target ? snapshotData.target.split(' - ')[0] : 'AgentWatch'}
@@ -159,7 +164,8 @@ export default function App() {
                             promptText={promptText}
                             onChangePrompt={setPromptText}
                             onSend={handleSend}
-                            isSending={false}
+                            isSending={isSendingPrompt}
+                            isWorking={chatMessages.length > 0 && chatMessages[chatMessages.length - 1]?.role === 'agent' && Boolean(chatMessages[chatMessages.length - 1]?.is_working)}
                             appState={appState}
                             onOpenModelModal={() => setActiveModal('model')}
                             onOpenReviewChanges={() => setReviewChangesOpen(true)}

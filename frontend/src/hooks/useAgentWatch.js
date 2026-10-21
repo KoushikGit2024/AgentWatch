@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
 import { WebSocketClient } from '../services/websocket';
+import { toast } from '../services/toastService';
 
 export function useAgentWatch() {
     // Core Server & Stream State
@@ -19,6 +20,7 @@ export function useAgentWatch() {
     const [customResponse, setCustomResponse] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
+    const [isSendingPrompt, setIsSendingPrompt] = useState(false);
 
     // Timeline, Logs, Recovery, History
     const [timelineEvents, setTimelineEvents] = useState([]);
@@ -63,7 +65,8 @@ export function useAgentWatch() {
         try {
             const data = await api.getPendingInteractions();
             if (isMountedRef.current) {
-                setPendingInteraction(data.interaction || null);
+                const item = data.interaction || (data.interactions && data.interactions[0]) || null;
+                setPendingInteraction(item);
             }
         } catch {}
     }, []);
@@ -136,8 +139,10 @@ export function useAgentWatch() {
         setApprovals(prev => ({ ...prev, [stepId]: decision }));
         try {
             await api.submitApproval(requestType, target, decision, stepId);
+            toast.info(`Forwarded '${decision}' decision to IDE.`, 'Approval Acknowledged');
         } catch (err) {
             console.error('Failed to submit approval:', err);
+            toast.error(err.message || 'Failed to submit approval decision', 'Approval Error');
         }
     }, []);
 
@@ -162,14 +167,46 @@ export function useAgentWatch() {
         };
 
         setChatMessages(prev => [...prev, userTurn, agentTurn]);
+        setIsSendingPrompt(true);
 
         try {
-            await api.sendPrompt(msg);
-            setTimeout(fetchSnapshot, 400);
-            setTimeout(fetchChatMessages, 500);
-            setTimeout(fetchTimelineEvents, 600);
+            const res = await api.sendPrompt(msg);
+            if (res && res.status !== 'submitted') {
+                const failReason = res.reason || (res.dispatch_details && res.dispatch_details.error) || 'CDP offline';
+                console.warn('Antigravity prompt dispatch unacknowledged:', failReason);
+                toast.warning(`Prompt not dispatched: ${failReason}`, 'Prompt Dispatch Notice');
+                setChatMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last?.role === 'agent') {
+                        last.is_working = false;
+                        last.text = `Notice: Prompt could not be dispatched to Antigravity IDE (${failReason}). Verify that Antigravity is running with remote debugging port 9000.`;
+                    }
+                    return updated;
+                });
+            } else {
+                toast.success('Prompt dispatched to Antigravity IDE workbench', 'Prompt Sent');
+                setTimeout(fetchSnapshot, 400);
+                setTimeout(fetchChatMessages, 500);
+                setTimeout(fetchTimelineEvents, 600);
+            }
         } catch (err) {
             console.error('Failed to send prompt:', err);
+            toast.error(err.message || 'Failed to dispatch prompt', 'Prompt Submission Failed');
+            // Revert is_working on error
+            setChatMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last?.role === 'agent') {
+                    last.is_working = false;
+                    last.text = `Notice: Prompt could not be dispatched (${err.message}). Verify network connection and remote debugging port 9000.`;
+                }
+                return updated;
+            });
+        } finally {
+            if (isMountedRef.current) {
+                setIsSendingPrompt(false);
+            }
         }
     }, [fetchSnapshot, fetchChatMessages, fetchTimelineEvents]);
 
@@ -177,7 +214,7 @@ export function useAgentWatch() {
         if (!pendingInteraction || isSubmitting) return;
         const customOk = Boolean(customResponse.trim());
         if (selectedOptions.size === 0 && !customOk) {
-            alert('Please select an option or provide custom instructions.');
+            toast.warning('Please select an option or provide custom instructions.', 'Selection Required');
             return;
         }
         setIsSubmitting(true);
@@ -188,6 +225,7 @@ export function useAgentWatch() {
                 customOk ? customResponse.trim() : ''
             );
             setSubmitSuccess(true);
+            toast.success('Response submitted to Antigravity session.', 'Decision Accepted');
             setTimeout(() => {
                 setPendingInteraction(null);
                 setSubmitSuccess(false);
@@ -195,7 +233,7 @@ export function useAgentWatch() {
                 fetchTimelineEvents();
             }, 1000);
         } catch (e) {
-            alert(`Error: ${e.message}`);
+            toast.error(e.message || 'Failed to submit response', 'Interaction Error');
         } finally {
             setIsSubmitting(false);
         }
@@ -220,16 +258,35 @@ export function useAgentWatch() {
         try {
             await api.setModel(model);
             setAppState(prev => ({ ...prev, model }));
+            toast.success(`Switched active plan model to ${model}`, 'Model Updated');
             await fetchAppState();
-        } catch {}
+        } catch (err) {
+            toast.error(err.message || 'Failed to switch model', 'Model Switch Failed');
+        }
     }, [fetchAppState]);
 
     const handleStopAgent = useCallback(async () => {
+        // Optimistic UI update: immediately mark last agent turn as not working
+        setChatMessages(prev => {
+            if (!prev.length) return prev;
+            const updated = [...prev];
+            const last = { ...updated[updated.length - 1] };
+            if (last.role === 'agent') {
+                last.is_working = false;
+                updated[updated.length - 1] = last;
+            }
+            return updated;
+        });
         try {
             await api.stopAgent();
+            toast.info('Emergency stop signal sent to Antigravity session.', 'Agent Stopped');
+            setTimeout(fetchChatMessages, 400);
             setTimeout(fetchTimelineEvents, 500);
-        } catch {}
-    }, [fetchTimelineEvents]);
+        } catch (err) {
+            console.error('Failed to stop agent:', err);
+            toast.error(err.message || 'Failed to stop agent', 'Stop Request Failed');
+        }
+    }, [fetchChatMessages, fetchTimelineEvents]);
 
     // ─── Lifecycle & Streaming ────────────────────────────────────────────────
     useEffect(() => {
@@ -254,6 +311,12 @@ export function useAgentWatch() {
                 }
                 if (data.type === 'interaction_prompt') {
                     setPendingInteraction(data.interaction || null);
+                }
+                if (data.type === 'interaction_resolved') {
+                    setPendingInteraction(prev => (prev?.interaction_id === data.interaction_id ? null : prev));
+                }
+                if (data.type === 'approval_resolved' && data.data?.step_id) {
+                    setApprovals(prev => ({ ...prev, [data.data.step_id]: data.data.decision }));
                 }
             }
         });
@@ -283,6 +346,7 @@ export function useAgentWatch() {
         customResponse,
         isSubmitting,
         submitSuccess,
+        isSendingPrompt,
         timelineEvents,
         isTimelineLoading,
         systemLogs,

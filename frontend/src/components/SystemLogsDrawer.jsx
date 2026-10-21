@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Check, Copy } from 'lucide-react';
 
+import { toast } from '../services/toastService';
+
 export function SystemLogsDrawer({ isOpen, onClose, logs = [], isLoading = false, onRefresh }) {
     const [levelFilter, setLevelFilter] = useState('ALL');
     const [autoScroll, setAutoScroll] = useState(true);
@@ -20,11 +22,16 @@ export function SystemLogsDrawer({ isOpen, onClose, logs = [], isLoading = false
         return l.level === levelFilter;
     });
 
-    const handleCopy = () => {
-        const text = logs.map(l => `${l.time_str} [${l.level}] [${l.logger}] ${l.message}`).join('\n');
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleCopy = async () => {
+        try {
+            const text = logs.map(l => `${l.time_str} [${l.level}] [${l.logger}] ${l.message}`).join('\n');
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            toast.success('System logs copied to clipboard', 'Logs Copied');
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            toast.error(err.message || 'Clipboard access denied', 'Copy Failed');
+        }
     };
 
     return (

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, AlertTriangle } from 'lucide-react';
+import { toast } from '../services/toastService';
 
 export function RecoveryCenterModal({
     isOpen,
@@ -27,11 +28,12 @@ export function RecoveryCenterModal({
                 idempotency_key: selectedItem.context.idempotency_key,
                 resolution_notes: reconcileNotes || 'Manually verified by user from Recovery Center'
             });
+            toast.success('State reconciled successfully.', 'Recovery Action Completed');
             setSelectedItem(null);
             setReconcileNotes('');
             onRefresh();
         } catch (e) {
-            alert('Reconciliation failed: ' + e.message);
+            toast.error(e.message || 'Reconciliation failed', 'Reconciliation Failed');
         } finally {
             setIsSubmitting(false);
         }

@@ -27,11 +27,34 @@ const request = async (url, options = {}) => {
         ...getAuthHeaders(),
         ...(options.headers || {})
     };
-    const res = await fetch(url, { ...options, headers });
+    let res;
+    try {
+        res = await fetch(url, { ...options, headers });
+    } catch (networkErr) {
+        throw new Error(`Network connection error: ${networkErr.message || 'Server unreachable'}`);
+    }
+
     if (res.status === 401) {
         handleAuthFailure(res.status);
-        throw new Error('Unauthorized');
+        throw new Error('Authentication required. Session expired or missing credentials.');
     }
+
+    if (!res.ok) {
+        let errorDetail = `HTTP ${res.status} ${res.statusText}`;
+        try {
+            const data = await res.json();
+            errorDetail = data.detail || data.reason || data.error || errorDetail;
+        } catch {
+            try {
+                const text = await res.text();
+                if (text && text.length < 200) errorDetail = text;
+            } catch {}
+        }
+        const err = new Error(errorDetail);
+        err.status = res.status;
+        throw err;
+    }
+
     return res;
 };
 
@@ -73,7 +96,7 @@ export const api = {
         const res = await request('/api/v1/prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
+            body: JSON.stringify({ message: prompt, prompt })
         });
         return res.json();
     },

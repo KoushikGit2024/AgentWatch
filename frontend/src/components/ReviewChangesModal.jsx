@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from '../services/toastService';
 
 export function ReviewChangesModal({ isOpen, onClose }) {
     const [reviewData, setReviewData] = useState(null);
@@ -13,8 +14,12 @@ export function ReviewChangesModal({ isOpen, onClose }) {
             if (res.ok) {
                 const data = await res.json();
                 setReviewData(data);
+            } else {
+                toast.error(`Unable to inspect changes (HTTP ${res.status})`, 'Git Review Error');
             }
-        } catch {} finally {
+        } catch (err) {
+            toast.error(err.message || 'Failed to connect to git review endpoint', 'Network Error');
+        } finally {
             setIsLoading(false);
         }
     };

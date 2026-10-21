@@ -6,6 +6,7 @@ export function PromptComposer({
     onChangePrompt,
     onSend,
     isSending,
+    isWorking = false,
     appState,
     onOpenModelModal,
     onOpenReviewChanges,
@@ -122,25 +123,29 @@ export function PromptComposer({
                             </button>
                         </div>
 
-                        {/* Send / Stop Controls */}
+                        {/* Dynamic Send / Stop Controls */}
                         <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                onClick={onStop}
-                                title="Stop agent run"
-                                className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-900/40 transition active:scale-95 cursor-pointer"
-                            >
-                                <div className="w-4 h-4">{Icon.stop}</div>
-                            </button>
-
-                            <button
-                                type="button"
-                                disabled={!promptText.trim() || isSending}
-                                onClick={onSend}
-                                className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition active:scale-95 shadow-md shadow-blue-900/40 cursor-pointer"
-                            >
-                                <div className="w-4 h-4">{Icon.send}</div>
-                            </button>
+                            {isWorking ? (
+                                <button
+                                    type="button"
+                                    onClick={onStop}
+                                    title="Stop agent run (Ctrl+D)"
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-md shadow-rose-900/40 active:scale-95 transition cursor-pointer"
+                                >
+                                    <div className="w-3.5 h-3.5">{Icon.stop}</div>
+                                    <span>Stop</span>
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    disabled={!promptText.trim() || isSending}
+                                    onClick={onSend}
+                                    title="Send prompt (Enter)"
+                                    className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition active:scale-95 shadow-md shadow-blue-900/40 cursor-pointer"
+                                >
+                                    <div className="w-4 h-4">{Icon.send}</div>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
