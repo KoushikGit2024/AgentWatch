@@ -3,6 +3,7 @@ import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
 import { RecoveryCenterModal } from './components/RecoveryCenterModal';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { SystemLogsDrawer } from './components/SystemLogsDrawer';
+import MarkdownView from './components/MarkdownView';
 
 // ─── Inline SVG Icons ──────────────────────────────────────────────────────────
 const Icon = {
@@ -649,11 +650,9 @@ export default function App() {
                                                     </details>
                                                 )}
 
-                                                {/* Agent Response Text */}
+                                                {/* Agent Response Text (Rich Markdown with Code Highlighting) */}
                                                 {turn.text && (
-                                                    <div className="whitespace-pre-wrap leading-relaxed text-xs md:text-sm font-sans text-zinc-200 break-words">
-                                                        {turn.text}
-                                                    </div>
+                                                    <MarkdownView content={turn.text} />
                                                 )}
                                             </div>
                                         </div>
