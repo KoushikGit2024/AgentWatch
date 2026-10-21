@@ -32,6 +32,9 @@ const Icon = {
     globe: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
     search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
     zap: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+    terminal: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>,
+    react: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>,
+    code: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
 };
 
 // ─── Main Application ─────────────────────────────────────────────────────────
@@ -85,6 +88,16 @@ export default function App() {
     const [approvals, setApprovals] = useState({});
     const [openStepIds, setOpenStepIds] = useState(new Set());
     const [openThinkingIds, setOpenThinkingIds] = useState(new Set());
+    const [openItemIds, setOpenItemIds] = useState(new Set());
+
+    const toggleItem = (itemId) => {
+        setOpenItemIds(prev => {
+            const next = new Set(prev);
+            if (next.has(itemId)) next.delete(itemId);
+            else next.add(itemId);
+            return next;
+        });
+    };
 
     const toggleStep = (stepId) => {
         setOpenStepIds(prev => {
@@ -737,212 +750,175 @@ export default function App() {
                                                     )}
                                                 </div>
 
-                                                {/* ─── Antigravity Thinking Process ─────────────────── */}
-                                                {(turn.thinking || turn.is_working) && (
-                                                    <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 overflow-hidden text-xs">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleThinking(turn.id || idx)}
-                                                            className="w-full flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-400 hover:text-zinc-200 select-none transition"
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <div className={`w-3.5 h-3.5 ${turn.is_working ? 'text-blue-400 animate-pulse' : 'text-zinc-400'}`}>{Icon.brain}</div>
-                                                                <span className={`font-medium ${turn.is_working ? 'text-blue-300' : 'text-zinc-300'}`}>
-                                                                    {turn.is_working ? 'Thinking...' : 'Thinking Process'}
-                                                                </span>
-                                                                {turn.is_working && (
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping ml-1" />
-                                                                )}
-                                                            </div>
-                                                            <div className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${(openThinkingIds.has(turn.id || idx) || (turn.is_working && !turn.text)) ? 'rotate-90' : ''}`}>
-                                                                {Icon.chevronRight}
-                                                            </div>
-                                                        </button>
-                                                        {(openThinkingIds.has(turn.id || idx) || (turn.is_working && !turn.text)) && (
-                                                            <div className="px-3.5 py-2.5 bg-zinc-950/80 border-t border-zinc-800/80 font-mono text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto select-text">
-                                                                {turn.thinking || (
-                                                                    <span className="inline-flex items-center gap-2 text-zinc-500 italic">
-                                                                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                                                                        Analyzing context and planning next steps...
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                {/* ─── Antigravity Stream (Thoughts + Actions in Chronological Order) ─── */}
+                                                {(() => {
+                                                    let streamItems = turn.items;
+                                                    if (!streamItems || streamItems.length === 0) {
+                                                        streamItems = [];
+                                                        if (turn.thinking) {
+                                                            streamItems.push({
+                                                                id: 'th-synth',
+                                                                type: 'thought',
+                                                                title: 'Thought for 1s',
+                                                                text: turn.thinking
+                                                            });
+                                                        }
+                                                        if (turn.steps) {
+                                                            turn.steps.forEach((s, sidx) => {
+                                                                streamItems.push({
+                                                                    id: s.id || `act-${sidx}`,
+                                                                    type: 'action',
+                                                                    kind: s.kind || 'generic',
+                                                                    verb: s.verb || (s.kind === 'analyze' ? 'Analyzed' : s.kind === 'search' ? 'Searched' : s.kind === 'command' ? 'Ran' : s.kind === 'edit' ? 'Edited' : 'Used'),
+                                                                    target: s.target || s.file_short || s.command || s.summary || s.name,
+                                                                    command: s.command,
+                                                                    cwd_short: s.cwd_short,
+                                                                    file: s.file,
+                                                                    extra: s.extra,
+                                                                    requires_permission: s.requires_permission,
+                                                                    permission_type: s.permission_type,
+                                                                    permission_title: s.permission_title,
+                                                                    permission_desc: s.permission_desc
+                                                                });
+                                                            });
+                                                        }
+                                                    }
 
-                                                {/* ─── Antigravity Tool Steps & Permissions ──────────── */}
-                                                {turn.steps && turn.steps.length > 0 && (() => {
-                                                    const isWorkedOpen = openWorkedIds.has(turn.id || idx);
-                                                    const shouldCollapse = turn.steps.length > 3 && !isWorkedOpen;
-                                                    const stepsToRender = shouldCollapse
-                                                        ? turn.steps.map((s, i) => ({ step: s, sidx: i })).filter(({ step, sidx }) => sidx >= turn.steps.length - 2)
-                                                        : turn.steps.map((step, sidx) => ({ step, sidx }));
-                                                    const hiddenCount = turn.steps.length - stepsToRender.length;
+                                                    if (streamItems.length === 0 && !turn.is_working) return null;
 
                                                     return (
-                                                        <div className="space-y-2">
-                                                            {shouldCollapse && hiddenCount > 0 && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleWorked(turn.id || idx)}
-                                                                    className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-850/80 text-zinc-400 hover:text-zinc-200 transition text-xs font-mono select-none cursor-pointer"
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="w-3.5 h-3.5 text-zinc-400">{Icon.check}</div>
-                                                                        <span>Worked on {hiddenCount} earlier steps</span>
-                                                                    </div>
-                                                                    <span className="text-[10px] text-blue-400 hover:underline font-sans">Show all</span>
-                                                                </button>
-                                                            )}
+                                                        <div className="space-y-1.5 py-1 select-text">
+                                                            {streamItems.map((item, itemIdx) => {
+                                                                const itemKey = `${turn.id || idx}-${item.id || itemIdx}`;
+                                                                const isOpen = openItemIds.has(itemKey);
+                                                                const approvalState = approvals[itemKey];
 
-                                                            {isWorkedOpen && turn.steps.length > 4 && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleWorked(turn.id || idx)}
-                                                                    className="w-full flex items-center justify-between px-3 py-1 rounded-lg border border-zinc-800/60 bg-zinc-950/40 text-zinc-500 hover:text-zinc-300 transition text-[10px] font-mono select-none cursor-pointer"
-                                                                >
-                                                                    <span>Collapse earlier steps</span>
-                                                                    <span className="text-zinc-400">Hide</span>
-                                                                </button>
-                                                            )}
-
-                                                            {stepsToRender.map(({ step, sidx }) => {
-                                                                const stepKey = `${turn.id || idx}-${step.id || sidx}`;
-                                                                const isOpen = openStepIds.has(stepKey) || (turn.is_working && sidx === turn.steps.length - 1);
-                                                                const approvalState = approvals[stepKey];
-
-                                                            return (
-                                                                <div key={sidx} className="rounded-xl border border-zinc-800/90 bg-zinc-900/80 overflow-hidden text-xs">
-                                                                    {/* Step Header Accordion Toggle */}
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => toggleStep(stepKey)}
-                                                                        className="w-full flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/40 select-none transition text-left"
-                                                                    >
-                                                                        <div className="flex items-center gap-2 min-w-0 pr-2">
-                                                                            {step.kind === 'browser' && <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>}
-                                                                            {step.kind === 'command' && <div className="w-3.5 h-3.5 text-amber-400 shrink-0">{Icon.terminal}</div>}
-                                                                            {step.kind === 'file_edit' && <div className="w-3.5 h-3.5 text-emerald-400 shrink-0">{Icon.fileEdit}</div>}
-                                                                            {step.kind === 'file_view' && <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.file}</div>}
-                                                                            {step.kind === 'search' && <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>}
-                                                                            {step.kind === 'generic' && <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.zap}</div>}
-                                                                            <span className="font-medium text-zinc-200 truncate font-mono text-[11px]">
-                                                                                {step.summary || step.name}
-                                                                            </span>
+                                                                if (item.type === 'thought') {
+                                                                    return (
+                                                                        <div key={itemKey} className="group">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => toggleItem(itemKey)}
+                                                                                className="inline-flex items-center gap-1.5 py-0.5 text-zinc-400 hover:text-zinc-200 transition cursor-pointer select-none font-sans text-xs"
+                                                                            >
+                                                                                <span>{item.title || 'Thought for 1s'}</span>
+                                                                                <div className={`w-3 h-3 text-zinc-500 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
+                                                                                    {Icon.chevronRight}
+                                                                                </div>
+                                                                            </button>
+                                                                            {isOpen && (
+                                                                                <div className="mt-1 mb-2 ml-1 pl-3 border-l-2 border-zinc-700/80 bg-zinc-950/60 py-2 pr-3 rounded-r font-mono text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
+                                                                                    {item.text}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
-                                                                        <div className={`w-3.5 h-3.5 text-zinc-500 shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
-                                                                            {Icon.chevronRight}
-                                                                        </div>
-                                                                    </button>
+                                                                    );
+                                                                }
 
-                                                                    {/* Step Content */}
-                                                                    {isOpen && (
-                                                                        <div className="p-3 bg-zinc-950/90 border-t border-zinc-800/80 space-y-2.5">
-                                                                            {/* Command Box (Exact Antigravity Terminal Styling) */}
-                                                                            {step.kind === 'command' && (
-                                                                                <div className="relative rounded-xl bg-zinc-900/90 border border-zinc-800 p-3 font-mono text-[12px] text-amber-200/95 overflow-x-auto select-text">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() => navigator.clipboard.writeText(step.command || '')}
-                                                                                        title="Copy command"
-                                                                                        className="absolute top-2.5 right-2.5 p-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
-                                                                                    >
-                                                                                        <div className="w-3.5 h-3.5">{Icon.copy}</div>
-                                                                                    </button>
-                                                                                    <span className="text-zinc-500 select-none">{step.cwd_short || '.../workspace'} &gt; </span>
-                                                                                    <span>{step.command}</span>
-                                                                                </div>
-                                                                            )}
+                                                                const isReactFile = item.target?.includes('.jsx') || item.target?.includes('.tsx');
 
-                                                                            {/* File Edit Details */}
-                                                                            {step.kind === 'file_edit' && (
-                                                                                <div className="rounded-xl bg-zinc-900/90 border border-zinc-800 p-2.5 text-[11px] font-mono text-zinc-300 space-y-1">
-                                                                                    <div className="text-zinc-400"><span className="text-zinc-500">File:</span> {step.file}</div>
-                                                                                    {step.instruction && (
-                                                                                        <div className="text-zinc-300 font-sans text-xs">{step.instruction}</div>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
+                                                                return (
+                                                                    <div key={itemKey} className="space-y-1.5">
+                                                                        <div className="flex items-center gap-2 flex-wrap font-sans text-xs leading-snug py-0.5">
+                                                                            <span className="text-zinc-400">{item.verb || 'Analyzed'}</span>
 
-                                                                            {/* Browser Exploration Details */}
-                                                                            {step.kind === 'browser' && (
-                                                                                <div className="rounded-xl bg-zinc-900/90 border border-zinc-800 p-2.5 text-xs text-zinc-300">
-                                                                                    <span className="text-zinc-400 font-medium">Task: </span>
-                                                                                    <span>{step.task_name || 'Automated browser verification'}</span>
-                                                                                </div>
-                                                                            )}
-
-                                                                            {/* ─── Permission / Approval Request Card ─── */}
-                                                                            {step.requires_permission && (turn.is_working || approvalState) && (
-                                                                                <div className="p-2.5 rounded-xl bg-gradient-to-r from-zinc-900 to-zinc-850 border border-zinc-750 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm">
-                                                                                    <div>
-                                                                                        <div className="font-semibold text-zinc-200 text-xs flex items-center gap-1.5">
-                                                                                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                                                                                            <span>{step.permission_title || 'Authorization Required'}</span>
-                                                                                        </div>
-                                                                                        <p className="text-[11px] text-zinc-400 mt-0.5">
-                                                                                            {step.permission_desc || 'Allow the agent to proceed with this action.'}
-                                                                                        </p>
-                                                                                    </div>
-
-                                                                                    {/* Actions */}
-                                                                                    {!approvalState ? (
-                                                                                        <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0">
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={() => handleApproval(step.permission_type || 'command', step.command || step.file || step.task_name, 'allow', stepKey)}
-                                                                                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition active:scale-95 shadow-sm"
-                                                                                            >
-                                                                                                Allow
-                                                                                            </button>
-                                                                                            {step.kind === 'command' && (
-                                                                                                <button
-                                                                                                    type="button"
-                                                                                                    onClick={() => handleApproval('command', step.command, 'always_allow', stepKey)}
-                                                                                                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium text-[11px] transition active:scale-95"
-                                                                                                >
-                                                                                                    Always Allow
-                                                                                                </button>
-                                                                                            )}
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={() => handleApproval(step.permission_type || 'command', step.command || step.file || step.task_name, 'deny', stepKey)}
-                                                                                                className="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 font-medium text-[11px] transition active:scale-95"
-                                                                                            >
-                                                                                                Deny
-                                                                                            </button>
-                                                                                        </div>
+                                                                            <div className="inline-flex items-center gap-1 text-zinc-200">
+                                                                                {item.kind === 'analyze' && (
+                                                                                    isReactFile ? (
+                                                                                        <div className="w-3.5 h-3.5 text-cyan-400 shrink-0">{Icon.react}</div>
                                                                                     ) : (
-                                                                                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0 ${
-                                                                                            approvalState === 'deny'
-                                                                                                ? 'text-rose-400 bg-rose-950/60 border border-rose-800/60'
-                                                                                                : 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/60'
-                                                                                        }`}>
-                                                                                            <div className="w-3 h-3">
-                                                                                                {approvalState === 'deny' ? Icon.x : Icon.check}
-                                                                                            </div>
-                                                                                            <span>{approvalState === 'always_allow' ? 'Always Allowed' : approvalState === 'allow' ? 'Allowed' : 'Denied'}</span>
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                );
-                                            })()}
+                                                                                        <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.file}</div>
+                                                                                    )
+                                                                                )}
+                                                                                {item.kind === 'search' && (
+                                                                                    <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>
+                                                                                )}
+                                                                                {item.kind === 'edit' && (
+                                                                                    <div className="w-3.5 h-3.5 text-emerald-400 shrink-0">{Icon.fileEdit}</div>
+                                                                                )}
+                                                                                {item.kind === 'command' && (
+                                                                                    <div className="w-3.5 h-3.5 text-amber-400 shrink-0">{Icon.terminal}</div>
+                                                                                )}
+                                                                                {item.kind === 'browser' && (
+                                                                                    <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>
+                                                                                )}
+                                                                                <span className="text-zinc-200 font-mono text-[11px] font-medium break-all">{item.target}</span>
 
-                                                {/* ─── Active Working Status Indicator ─────────────────── */}
-                                                {turn.is_working && (
-                                                    <div className="flex items-center gap-2 text-xs text-zinc-400 pt-1 font-mono">
-                                                        <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-                                                        <span className="text-zinc-300 font-medium animate-pulse">Working..</span>
-                                                    </div>
-                                                )}
+                                                                                {item.extra && (
+                                                                                    <span className="px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[10px] ml-1 font-sans">
+                                                                                        {item.extra}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Inline Permission Request Card if Action Requires User Decision */}
+                                                                        {item.requires_permission && (turn.is_working || approvalState) && (
+                                                                            <div className="my-1.5 p-2.5 rounded-xl bg-gradient-to-r from-zinc-900 to-zinc-850 border border-zinc-750 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm font-sans">
+                                                                                <div>
+                                                                                    <div className="font-semibold text-zinc-200 text-xs flex items-center gap-1.5">
+                                                                                        <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                                                                        <span>{item.permission_title || 'Authorization Required'}</span>
+                                                                                    </div>
+                                                                                    <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
+                                                                                        {item.command ? `${item.cwd_short || '.../workspace'} > ${item.command}` : (item.permission_desc || 'Allow the agent to proceed.')}
+                                                                                    </p>
+                                                                                </div>
+
+                                                                                {!approvalState ? (
+                                                                                    <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => handleApproval(item.permission_type || 'command', item.command || item.file || item.target, 'allow', itemKey)}
+                                                                                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition active:scale-95 shadow-sm"
+                                                                                        >
+                                                                                            Allow
+                                                                                        </button>
+                                                                                        {item.kind === 'command' && (
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => handleApproval('command', item.command, 'always_allow', itemKey)}
+                                                                                                className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium text-[11px] transition active:scale-95"
+                                                                                            >
+                                                                                                Always Allow
+                                                                                            </button>
+                                                                                        )}
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => handleApproval(item.permission_type || 'command', item.command || item.file || item.target, 'deny', itemKey)}
+                                                                                            className="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 font-medium text-[11px] transition active:scale-95"
+                                                                                        >
+                                                                                            Deny
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0 ${
+                                                                                        approvalState === 'deny'
+                                                                                            ? 'text-rose-400 bg-rose-950/60 border border-rose-800/60'
+                                                                                            : 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/60'
+                                                                                    }`}>
+                                                                                        <div className="w-3 h-3">
+                                                                                            {approvalState === 'deny' ? Icon.x : Icon.check}
+                                                                                        </div>
+                                                                                        <span>{approvalState === 'always_allow' ? 'Always Allowed' : approvalState === 'allow' ? 'Allowed' : 'Denied'}</span>
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+
+                                                            {/* Working Indicator matching Antigravity native style */}
+                                                            {turn.is_working && (
+                                                                <div className="flex items-center gap-2 text-zinc-400 text-xs pt-1 font-sans">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                                                                    <span className="text-zinc-300 font-medium">Working</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
 
                                                 {/* Agent Response Text (Rich Markdown with Code Highlighting) */}
                                                 {turn.text && (

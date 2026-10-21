@@ -89,12 +89,22 @@ class ConversationService:
                                     "role": "agent",
                                     "text": "",
                                     "thinking": "",
+                                    "items": [],
                                     "steps": [],
                                     "timestamp": created_at,
                                     "is_working": True
                                 }
 
                             if thinking:
+                                word_count = len(thinking.split())
+                                est_sec = max(1, min(15, max(1, word_count // 45)))
+                                current_agent_turn["items"].append({
+                                    "id": f"item-{len(current_agent_turn['items'])}",
+                                    "type": "thought",
+                                    "title": f"Thought for {est_sec}s",
+                                    "text": thinking,
+                                    "timestamp": created_at
+                                })
                                 if current_agent_turn["thinking"]:
                                     current_agent_turn["thinking"] += "\n\n" + thinking
                                 else:
@@ -106,8 +116,9 @@ class ConversationService:
                                     raw_args = t.get("args") or {}
                                     args = {k: self._clean_arg(v) for k, v in raw_args.items()}
 
-                                    # Determine step kind and permission metadata
                                     kind = "generic"
+                                    verb = "Used"
+                                    target = args.get("toolSummary") or args.get("toolAction") or name
                                     requires_perm = False
                                     perm_type = None
                                     perm_title = None
@@ -120,8 +131,44 @@ class ConversationService:
                                     file_short = None
                                     instruction = None
                                     task_name = None
+                                    extra = None
 
-                                    if name == "run_command":
+                                    if name == "view_file":
+                                        verb = "Analyzed"
+                                        kind = "analyze"
+                                        file_target = args.get("AbsolutePath") or ""
+                                        file_parts = re.split(r"[\\/]", file_target)
+                                        file_short = file_parts[-1] if file_parts else file_target
+                                        start_l = args.get("StartLine")
+                                        end_l = args.get("EndLine")
+                                        if start_l and end_l:
+                                            target = f"{file_short} #L{start_l}-{end_l}"
+                                        elif start_l:
+                                            target = f"{file_short} #L{start_l}"
+                                        else:
+                                            target = file_short
+
+                                    elif name in ("grep_search", "search_web"):
+                                        verb = "Searched"
+                                        kind = "search"
+                                        query = args.get("Query") or args.get("query") or ""
+                                        target = query
+
+                                    elif name in ("write_to_file", "replace_file_content", "multi_replace_file_content"):
+                                        kind = "edit"
+                                        verb = "Created" if name == "write_to_file" else "Edited"
+                                        requires_perm = True
+                                        perm_type = "file"
+                                        perm_title = "File Change Request"
+                                        perm_desc = "Allow agent to modify or write workspace files."
+                                        file_target = args.get("TargetFile") or ""
+                                        file_parts = re.split(r"[\\/]", file_target)
+                                        file_short = file_parts[-1] if file_parts else file_target
+                                        target = file_short
+                                        instruction = args.get("Description") or args.get("Instruction") or ""
+
+                                    elif name == "run_command":
+                                        verb = "Ran"
                                         kind = "command"
                                         requires_perm = True
                                         perm_type = "command"
@@ -131,53 +178,34 @@ class ConversationService:
                                         cwd = args.get("Cwd") or ""
                                         cwd_parts = re.split(r"[\\/]", cwd)
                                         cwd_short = f".../{cwd_parts[-1]}" if cwd_parts else ".../workspace"
-                                        if not summary or summary == name:
-                                            summary = f"Run {command[:40]}..." if len(command) > 40 else f"Run {command}"
-
-                                    elif name in ("write_to_file", "replace_file_content", "multi_replace_file_content"):
-                                        kind = "file_edit"
-                                        requires_perm = True
-                                        perm_type = "file"
-                                        perm_title = "File Change Request"
-                                        perm_desc = "Allow agent to modify or write workspace files."
-                                        file_target = args.get("TargetFile") or ""
-                                        file_parts = re.split(r"[\\/]", file_target)
-                                        file_short = file_parts[-1] if file_parts else file_target
-                                        instruction = args.get("Description") or args.get("Instruction") or ""
-                                        if not summary or summary == name:
-                                            action_word = "Wrote" if name == "write_to_file" else "Edited"
-                                            summary = f"{action_word} {file_short}"
+                                        target = command[:60] + "..." if len(command) > 60 else command
 
                                     elif name == "browser_subagent":
+                                        verb = "Explored"
                                         kind = "browser"
                                         requires_perm = True
                                         perm_type = "browser"
                                         perm_title = "Browser & Web Access Request"
                                         perm_desc = "Allow agent to explore and interact with web pages."
                                         task_name = args.get("TaskName") or args.get("TaskSummary") or "Web exploration"
-                                        if not summary or summary == name:
-                                            summary = f"Explored 1 browser: {task_name}"
-
-                                    elif name in ("view_file", "list_dir"):
-                                        kind = "file_view"
-                                        file_target = args.get("AbsolutePath") or args.get("DirectoryPath") or ""
-                                        file_parts = re.split(r"[\\/]", file_target)
-                                        file_short = file_parts[-1] if file_parts else file_target
-
-                                    elif name in ("grep_search", "search_web"):
-                                        kind = "search"
+                                        target = f"1 browser: {task_name}"
 
                                     elif name == "ask_question":
+                                        verb = "Asked"
                                         kind = "question"
                                         requires_perm = True
                                         perm_type = "question"
                                         perm_title = "Agent Decision Required"
                                         perm_desc = "The agent is waiting for your choice."
+                                        target = "Decision Required"
 
-                                    current_agent_turn["steps"].append({
-                                        "id": f"step-{len(current_agent_turn['steps'])}",
+                                    item = {
+                                        "id": f"item-{len(current_agent_turn['items'])}",
+                                        "type": "action",
                                         "name": name,
                                         "kind": kind,
+                                        "verb": verb,
+                                        "target": target,
                                         "summary": summary,
                                         "command": command,
                                         "cwd": cwd,
@@ -186,16 +214,31 @@ class ConversationService:
                                         "file_short": file_short,
                                         "instruction": instruction,
                                         "task_name": task_name,
+                                        "extra": extra,
                                         "requires_permission": requires_perm,
                                         "permission_type": perm_type,
                                         "permission_title": perm_title,
                                         "permission_desc": perm_desc,
                                         "status": "done"
-                                    })
+                                    }
+                                    current_agent_turn["items"].append(item)
+                                    current_agent_turn["steps"].append(item)
 
                             if content:
                                 current_agent_turn["text"] = content
                                 current_agent_turn["is_working"] = False
+
+                        elif stype == "CODE_ACTION" and current_agent_turn and current_agent_turn.get("items"):
+                            last_item = current_agent_turn["items"][-1]
+                            if last_item.get("type") == "action":
+                                if last_item.get("kind") == "search":
+                                    matches = re.findall(r'"LineNumber":', content)
+                                    if matches:
+                                        last_item["extra"] = f"{len(matches)} results"
+                                    elif "No results found" in content:
+                                        last_item["extra"] = "0 results"
+                                elif last_item.get("kind") == "command":
+                                    last_item["output"] = content[:500]
 
                     except Exception:
                         continue
