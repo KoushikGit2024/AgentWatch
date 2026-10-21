@@ -3,6 +3,7 @@ import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
 import { RecoveryCenterModal } from './components/RecoveryCenterModal';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { SystemLogsDrawer } from './components/SystemLogsDrawer';
+import { ReviewChangesModal } from './components/ReviewChangesModal';
 import MarkdownView from './components/MarkdownView';
 
 // ─── Inline SVG Icons ──────────────────────────────────────────────────────────
@@ -22,6 +23,10 @@ const Icon = {
     sparkles: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6l2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6l2.1-2.1"/></svg>,
     maximize: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1={21} y1={3} x2={14} y2={10}/><line x1={3} y1={21} x2={10} y2={14}/></svg>,
     x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1={18} y1={6} x2={6} y2={18}/><line x1={6} y1={6} x2={18} y2={18}/></svg>,
+    file: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+    copy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+    thumbsUp: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>,
+    thumbsDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>,
 };
 
 // ─── Main Application ─────────────────────────────────────────────────────────
@@ -36,7 +41,10 @@ export default function App() {
     const [logsOpen, setLogsOpen] = useState(false);
     const [recoveryOpen, setRecoveryOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
+    const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
     const [activeModal, setActiveModal] = useState(null); // 'mode' | 'model'
+    const [copiedId, setCopiedId] = useState(null);
+    const [reactions, setReactions] = useState({});
 
     // Server State
     const [appState, setAppState] = useState({ status: 'Connecting…', connected: false, mode: 'Fast', model: 'Gemini 3.8 Flash (Medium)' });
@@ -654,6 +662,42 @@ export default function App() {
                                                 {turn.text && (
                                                     <MarkdownView content={turn.text} />
                                                 )}
+
+                                                {/* Antigravity Response Actions: Copy, Thumbs Up, Thumbs Down */}
+                                                <div className="flex items-center justify-end gap-1 pt-1 text-zinc-500">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(turn.text || '');
+                                                            setCopiedId(turn.id || idx);
+                                                            setTimeout(() => setCopiedId(null), 1800);
+                                                        }}
+                                                        title="Copy text"
+                                                        className="p-1 rounded-md hover:text-zinc-200 hover:bg-zinc-800 transition"
+                                                    >
+                                                        {copiedId === (turn.id || idx) ? (
+                                                            <div className="w-3.5 h-3.5 text-emerald-400">{Icon.check}</div>
+                                                        ) : (
+                                                            <div className="w-3.5 h-3.5">{Icon.copy}</div>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReactions(prev => ({ ...prev, [turn.id || idx]: prev[turn.id || idx] === 'up' ? null : 'up' }))}
+                                                        title="Good response"
+                                                        className={`p-1 rounded-md transition ${reactions[turn.id || idx] === 'up' ? 'text-blue-400 bg-blue-950/40' : 'hover:text-zinc-200 hover:bg-zinc-800'}`}
+                                                    >
+                                                        <div className="w-3.5 h-3.5">{Icon.thumbsUp}</div>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReactions(prev => ({ ...prev, [turn.id || idx]: prev[turn.id || idx] === 'down' ? null : 'down' }))}
+                                                        title="Poor response"
+                                                        className={`p-1 rounded-md transition ${reactions[turn.id || idx] === 'down' ? 'text-rose-400 bg-rose-950/40' : 'hover:text-zinc-200 hover:bg-zinc-800'}`}
+                                                    >
+                                                        <div className="w-3.5 h-3.5">{Icon.thumbsDown}</div>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -772,6 +816,59 @@ export default function App() {
                                             {action}
                                         </button>
                                     ))}
+                                </div>
+
+                                {/* Antigravity Control Row (Files, Terminal, Screen, Recovery & Review Changes) */}
+                                <div className="flex items-center justify-between px-1 text-xs pt-0.5">
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setReviewChangesOpen(true)}
+                                            title="Inspect modified workspace files"
+                                            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95"
+                                        >
+                                            <div className="w-4 h-4">{Icon.file}</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setLogsOpen(true)}
+                                            title="Terminal & System Logs"
+                                            className="relative p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95"
+                                        >
+                                            <div className="w-4 h-4">{Icon.terminal}</div>
+                                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setViewMode(viewMode === 'chat' ? 'screen' : 'chat')}
+                                            title="Toggle Workspace Viewport"
+                                            className="relative p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95"
+                                        >
+                                            <div className="w-4 h-4">{Icon.screen}</div>
+                                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRecoveryOpen(true)}
+                                            title="Recovery Center & Safeguards"
+                                            className="relative p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95"
+                                        >
+                                            <div className="w-4 h-4">{Icon.shield}</div>
+                                            {recoveryItems.length > 0 && (
+                                                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Review Changes Pill Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setReviewChangesOpen(true)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-750/90 text-xs font-medium transition active:scale-95 shadow-sm"
+                                    >
+                                        <div className="w-3.5 h-3.5 text-zinc-400">{Icon.file}</div>
+                                        <span>Review Changes</span>
+                                    </button>
                                 </div>
 
                                 {/* Rounded Composer Card */}
@@ -937,6 +1034,11 @@ export default function App() {
                     setTimeout(fetchSnapshot, 500);
                     setHistoryOpen(false);
                 }}
+            />
+
+            <ReviewChangesModal
+                isOpen={reviewChangesOpen}
+                onClose={() => setReviewChangesOpen(false)}
             />
 
             {/* Mode Selection Modal */}
