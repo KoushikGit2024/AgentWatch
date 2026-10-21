@@ -5,6 +5,7 @@ import re
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from services.diff_helper import parse_edit_tool_diff
 
 class ConversationService:
     """Extracts genuine Antigravity chat turns directly from local IDE transcripts."""
@@ -167,40 +168,19 @@ class ConversationService:
 
                                     elif name in ("write_to_file", "replace_file_content", "multi_replace_file_content"):
                                         kind = "edit"
-                                        verb = "Created" if name == "write_to_file" else "Edited"
-                                        requires_perm = False
                                         file_target = args.get("TargetFile") or ""
                                         file_parts = re.split(r"[\\/]", file_target)
                                         file_short = file_parts[-1] if file_parts else file_target
-                                        start_l = args.get("StartLine")
-                                        end_l = args.get("EndLine")
-                                        if start_l and end_l:
-                                            target = f"{file_short} #L{start_l}-{end_l}"
-                                        elif start_l:
-                                            target = f"{file_short} #L{start_l}"
-                                        else:
-                                            target = file_short
                                         instruction = args.get("Description") or args.get("Instruction") or ""
+                                        requires_perm = False
 
-                                        target_content = args.get("TargetContent")
-                                        replacement_content = args.get("ReplacementContent") or args.get("CodeContent")
-                                        if name == "write_to_file" and replacement_content:
-                                            line_cnt = len(str(replacement_content).splitlines())
-                                            extra = f"+{line_cnt} lines"
-                                        elif target_content or replacement_content:
-                                            old_cnt = len(str(target_content).splitlines()) if target_content else 0
-                                            new_cnt = len(str(replacement_content).splitlines()) if replacement_content else 0
-                                            extra = f"-{old_cnt} +{new_cnt} lines"
+                                        # High-precision line delta and unified diff calculation
+                                        workspace_root = str(Path(__file__).resolve().parent.parent)
+                                        target, extra, diff_info = parse_edit_tool_diff(name, args, workspace_root=workspace_root)
+                                        if name == "write_to_file":
+                                            verb = "Created" if (diff_info and diff_info.get("is_new_file", True)) else "Edited"
                                         else:
-                                            extra = None
-
-                                        if target_content or replacement_content:
-                                            diff_info = {
-                                                "target_content": str(target_content)[:2000] if target_content else None,
-                                                "replacement_content": str(replacement_content)[:2000] if replacement_content else None,
-                                                "start_line": start_l,
-                                                "end_line": end_l
-                                            }
+                                            verb = "Edited"
 
                                     elif name == "run_command":
                                         verb = "Ran"
