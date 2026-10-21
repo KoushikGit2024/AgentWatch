@@ -47,6 +47,8 @@ export default function App() {
     const [submitSuccess, setSubmitSuccess] = useState(false);
 
     // Timeline, Logs & Recovery
+    // Real conversation stream
+    const [chatMessages, setChatMessages] = useState([]);
     const [timelineEvents, setTimelineEvents] = useState([]);
     const [isTimelineLoading, setIsTimelineLoading] = useState(false);
     const [timelineCategory, setTimelineCategory] = useState(null);
@@ -67,6 +69,7 @@ export default function App() {
     const [isSendingPrompt, setIsSendingPrompt] = useState(false);
 
     const chatScrollRef = useRef(null);
+    const messagesEndRef = useRef(null);
     const isMountedRef = useRef(true);
     const snapshotSeqRef = useRef(0);
 
@@ -128,6 +131,18 @@ export default function App() {
         } catch {}
     };
 
+    const fetchChatMessages = async () => {
+        try {
+            const res = await fetch('/api/v1/chat/messages?limit=50', { headers: h });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.messages && isMountedRef.current) {
+                    setChatMessages(data.messages);
+                }
+            }
+        } catch {}
+    };
+
     const fetchTimelineEvents = async () => {
         setIsTimelineLoading(true);
         try {
@@ -180,12 +195,74 @@ export default function App() {
         } catch {}
     };
 
+    // ─── WebSocket Connection for Real-Time Streaming ────────────────────────
+    useEffect(() => {
+        let ws = null;
+        let pingTimer = null;
+        let reconnectTimer = null;
+        let isClosedIntentionally = false;
+
+        const connect = () => {
+            if (isClosedIntentionally) return;
+            try {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    // Send periodic ping to keep socket connection alive
+                    pingTimer = setInterval(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send('ping');
+                        }
+                    }, 25000);
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const payload = JSON.parse(event.data);
+                        if (payload.messages && Array.isArray(payload.messages)) {
+                            setChatMessages(payload.messages);
+                        }
+                    } catch {}
+                };
+
+                ws.onclose = () => {
+                    clearInterval(pingTimer);
+                    if (!isClosedIntentionally) {
+                        reconnectTimer = setTimeout(connect, 3000);
+                    }
+                };
+
+                ws.onerror = () => {
+                    try { ws.close(); } catch {}
+                };
+            } catch {
+                if (!isClosedIntentionally) {
+                    reconnectTimer = setTimeout(connect, 4000);
+                }
+            }
+        };
+
+        connect();
+
+        return () => {
+            isClosedIntentionally = true;
+            clearInterval(pingTimer);
+            clearTimeout(reconnectTimer);
+            if (ws) {
+                try { ws.close(); } catch {}
+            }
+        };
+    }, []);
+
     // ─── Lifecycle & Intervals ────────────────────────────────────────────────
     useEffect(() => {
         isMountedRef.current = true;
         fetchAppState();
         fetchSnapshot();
         fetchPendingInteractions();
+        fetchChatMessages();
         fetchRecoveryItems();
         fetchDiagnostics();
         fetchTimelineEvents();
@@ -195,6 +272,7 @@ export default function App() {
             if (!isMountedRef.current) return;
             fetchAppState();
             fetchPendingInteractions();
+            fetchChatMessages();
             fetchSnapshot();
             fetchSystemLogs();
         }, 2500);
@@ -213,12 +291,13 @@ export default function App() {
         };
     }, []);
 
-    // Auto-scroll chat to bottom when new messages arrive
+    // Auto-scroll chat to bottom directly above input whenever new messages arrive
     useEffect(() => {
         if (chatScrollRef.current) {
             chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
         }
-    }, [timelineEvents, pendingInteraction, viewMode]);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages, pendingInteraction, viewMode]);
 
     // ─── Handlers ─────────────────────────────────────────────────────────────
     const handleSendPrompt = async () => {
@@ -227,6 +306,18 @@ export default function App() {
         setIsSendingPrompt(true);
         const saved = promptText;
         setPromptText('');
+
+        // Optimistically add to chat stream right away
+        setChatMessages(prev => [
+            ...prev,
+            {
+                id: 'local-' + Date.now(),
+                role: 'user',
+                text: msg,
+                timestamp: new Date().toISOString()
+            }
+        ]);
+
         const key = 'prompt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
         try {
             const res = await fetch('/send', {
@@ -238,6 +329,7 @@ export default function App() {
                 setPromptText(saved);
             } else {
                 setTimeout(fetchSnapshot, 400);
+                setTimeout(fetchChatMessages, 500);
                 setTimeout(fetchTimelineEvents, 600);
             }
         } catch {
@@ -459,7 +551,7 @@ export default function App() {
                     <button
                         onClick={handleNewChat}
                         title="Start New Conversation"
-                        className="p-2 rounded-lg text-zinc-300 bg-zinc-800 hover:bg-zinc-700 transition active:scale-95 border border-zinc-700/80 ml-1"
+                        className="p-2 rounded-lg text-zinc-300 bg-zinc-800 hover:bg-zinc-750 transition active:scale-95 border border-zinc-700/80 ml-1"
                     >
                         <div className="w-4 h-4">{Icon.plus}</div>
                     </button>
@@ -471,77 +563,102 @@ export default function App() {
                 {/* VIEW 1: Antigravity Agent Chat Flow */}
                 {viewMode === 'chat' ? (
                     <div className="flex-1 flex flex-col min-h-0">
-                        {/* Conversation Message Stream */}
+                        {/* Conversation Message Stream (Bottom-anchored directly above composer) */}
                         <div
                             ref={chatScrollRef}
-                            className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 max-w-3xl mx-auto w-full select-text"
+                            className="flex-1 overflow-y-auto p-4 md:p-6 max-w-3xl mx-auto w-full select-text flex flex-col"
                         >
-                            {/* Antigravity Welcome / Context header */}
-                            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-850 flex items-start gap-3 text-xs leading-relaxed">
-                                <div className="w-8 h-8 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                                    <div className="w-4 h-4">{Icon.sparkles}</div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-zinc-100">Antigravity Coding Assistant</h3>
-                                    <p className="text-zinc-400 mt-0.5">
-                                        Observing local workspace via Chrome DevTools Protocol. Send instructions, review decisions, and track real-time executions below.
-                                    </p>
-                                </div>
-                            </div>
+                            {/* Bottom-anchoring spacer pushes conversation directly above composer */}
+                            <div className="flex-1 min-h-[16px]" />
 
-                            {/* Render Snapshot HTML if Antigravity provided chat DOM */}
-                            {snapshotData?.html && snapshotData.html.includes('chat-content') ? (
-                                <div
-                                    className="chat-content space-y-3"
-                                    dangerouslySetInnerHTML={{ __html: snapshotData.html }}
-                                />
-                            ) : null}
+                            <div className="space-y-4 w-full">
+                                {/* Antigravity Context Header if chat is starting */}
+                                {chatMessages.length === 0 && (
+                                    <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-850 flex items-start gap-3 text-xs leading-relaxed animate-in fade-in duration-300">
+                                        <div className="w-8 h-8 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                                            <div className="w-4 h-4">{Icon.sparkles}</div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-semibold text-zinc-100">Antigravity Coding Assistant</h3>
+                                            <p className="text-zinc-400 mt-0.5">
+                                                Connected to your live Antigravity IDE workspace. Real-time updates, interactive decision prompts, and conversation turns appear directly here.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
-                            {/* Render Chronological Agent Events & Tool Steps */}
-                            {timelineEvents.map((e, idx) => {
-                                const isUserPrompt = e.category === 'prompt' || e.event_type === 'PromptSubmitted';
-                                const isToolExecution = e.category === 'execution' || e.category === 'tool';
-                                const timeStr = new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                {/* Render Snapshot HTML if Antigravity provided chat DOM */}
+                                {snapshotData?.html && snapshotData.html.includes('chat-content') ? (
+                                    <div
+                                        className="chat-content space-y-3"
+                                        dangerouslySetInnerHTML={{ __html: snapshotData.html }}
+                                    />
+                                ) : null}
 
-                                if (isUserPrompt) {
+                                {/* Render Genuine Antigravity Conversation Turns */}
+                                {chatMessages.map((turn, idx) => {
+                                    const isUser = turn.role === 'user';
+                                    const timeStr = turn.timestamp
+                                        ? new Date(turn.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        : null;
+
+                                    if (isUser) {
+                                        return (
+                                            <div key={turn.id || idx} className="flex justify-end animate-in fade-in duration-150">
+                                                <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white shadow-md">
+                                                    <p className="whitespace-pre-wrap leading-relaxed">{turn.text}</p>
+                                                    {timeStr && (
+                                                        <span className="block text-right text-[10px] text-blue-200 mt-1">{timeStr}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
                                     return (
-                                        <div key={e._id || idx} className="flex justify-end">
-                                            <div className="max-w-[85%] rounded-2xl bg-zinc-850 border border-zinc-750 px-4 py-3 text-sm text-zinc-100 shadow-md">
-                                                <p className="whitespace-pre-wrap">{e.summary || (e.sanitized_payload && e.sanitized_payload.message_preview)}</p>
-                                                <span className="block text-right text-[10px] text-zinc-500 mt-1">{timeStr}</span>
+                                        <div key={turn.id || idx} className="flex justify-start animate-in fade-in duration-150">
+                                            <div className="max-w-[92%] md:max-w-[85%] rounded-2xl rounded-bl-sm bg-zinc-850 border border-zinc-750/70 p-4 text-sm text-zinc-100 shadow-md space-y-2.5">
+                                                <div className="flex items-center gap-2 pb-1 border-b border-zinc-750/40 text-xs text-zinc-400">
+                                                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                                                    <span className="font-semibold text-zinc-300">Antigravity Agent</span>
+                                                    {timeStr && (
+                                                        <span className="text-[10px] text-zinc-500 font-mono ml-auto">{timeStr}</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Tool Execution Steps if present */}
+                                                {turn.tools && turn.tools.length > 0 && (
+                                                    <details className="group rounded-xl border border-zinc-800 bg-zinc-900/90 overflow-hidden text-xs">
+                                                        <summary className="flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-400 hover:text-zinc-200 list-none select-none">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-emerald-400">⚡</span>
+                                                                <span className="font-medium text-zinc-300">
+                                                                    Used {turn.tools.length} tool {turn.tools.length === 1 ? 'action' : 'actions'}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[10px] text-zinc-500 font-mono">▶</span>
+                                                        </summary>
+                                                        <div className="px-3.5 py-2.5 bg-zinc-950 border-t border-zinc-800/80 font-mono text-[11px] text-zinc-300 space-y-1.5">
+                                                            {turn.tools.map((t, ti) => (
+                                                                <div key={ti} className="flex items-center gap-2">
+                                                                    <span className="text-emerald-400">✓</span>
+                                                                    <span className="text-zinc-300">{t.summary || t.name}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </details>
+                                                )}
+
+                                                {/* Agent Response Text */}
+                                                {turn.text && (
+                                                    <div className="whitespace-pre-wrap leading-relaxed text-xs md:text-sm font-sans text-zinc-200 break-words">
+                                                        {turn.text}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
-                                }
-
-                                if (isToolExecution) {
-                                    return (
-                                        <details key={e._id || idx} className="group rounded-xl border border-zinc-800 bg-zinc-900/80 overflow-hidden text-xs">
-                                            <summary className="flex items-center justify-between px-3.5 py-2 cursor-pointer text-zinc-400 hover:text-zinc-200 list-none select-none">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-blue-400">⚡</span>
-                                                    <span className="font-medium text-zinc-300">{e.summary || e.event_type}</span>
-                                                </div>
-                                                <span className="text-[10px] text-zinc-500 font-mono">{timeStr}</span>
-                                            </summary>
-                                            {e.sanitized_payload && (
-                                                <div className="px-3.5 py-2.5 bg-zinc-950 border-t border-zinc-800/80 font-mono text-[10px] text-zinc-400 overflow-x-auto whitespace-pre-wrap break-all">
-                                                    {JSON.stringify(e.sanitized_payload, null, 2)}
-                                                </div>
-                                            )}
-                                        </details>
-                                    );
-                                }
-
-                                return (
-                                    <div key={e._id || idx} className="p-3 bg-zinc-900/60 border border-zinc-850 rounded-xl text-xs space-y-1">
-                                        <div className="flex items-center justify-between text-zinc-400">
-                                            <span className="font-medium text-zinc-300">{e.summary}</span>
-                                            <span className="text-[10px] text-zinc-500">{timeStr}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                })}
 
                             {/* ─── INLINE DECISION CARD (Right in the chat stream!) ─────────── */}
                             {pendingInteraction && (
@@ -636,7 +753,11 @@ export default function App() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Anchor element to smoothly scroll to latest message above input */}
+                            <div ref={messagesEndRef} />
                         </div>
+                    </div>
 
                         {/* ─── Bottom Composer (Antigravity IDE Style) ────────────── */}
                         <div className="p-3 md:p-4 bg-zinc-900/90 border-t border-zinc-800 shrink-0 pb-safe">

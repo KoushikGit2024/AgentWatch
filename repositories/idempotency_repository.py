@@ -43,6 +43,7 @@ class IdempotencyRepository:
     def __init__(self, db=None):
         self._db = db if db is not None else get_database()
         self.collection: Collection = self._db.idempotency_keys
+        self._fallback_store: Dict[str, Dict[str, Any]] = {}
 
     def reserve_or_get(
         self,
@@ -53,11 +54,7 @@ class IdempotencyRepository:
     ) -> Tuple[str, Optional[Dict[str, Any]]]:
         """
         Attempt to atomically reserve an idempotency key or retrieve existing outcome.
-        Returns (state, stored_response):
-          - ("reserved", None): caller won the reservation and should proceed with dispatch.
-          - ("completed", response): key was previously resolved; return stored response.
-          - ("in_progress", None): another request is currently processing this key.
-          - ("conflict_mismatch", None): same key was reused with a different payload.
+        Falls back to in-memory idempotency tracking if MongoDB is disconnected/unreachable.
         """
         fingerprint = compute_payload_fingerprint(payload)
         now = datetime.now(timezone.utc)
@@ -79,9 +76,12 @@ class IdempotencyRepository:
             return "reserved", None
         except DuplicateKeyError:
             # Key already exists; inspect existing record
-            existing = self.collection.find_one({"scope": scope, "idempotency_key": idempotency_key})
+            try:
+                existing = self.collection.find_one({"scope": scope, "idempotency_key": idempotency_key})
+            except Exception:
+                existing = self._fallback_store.get(f"{scope}:{idempotency_key}")
+
             if not existing:
-                # Edge case where key expired exactly between insert and find
                 return "reserved", None
 
             if existing.get("fingerprint") != fingerprint:
@@ -96,55 +96,99 @@ class IdempotencyRepository:
                 return "completed", existing.get("response")
 
             return "in_progress", None
+        except (PyMongoError, Exception) as exc:
+            logger.warning("MongoDB unavailable during idempotency reservation (%s). Using in-memory fallback.", str(exc))
+            composite_key = f"{scope}:{idempotency_key}"
+            existing = self._fallback_store.get(composite_key)
+            if existing:
+                if existing.get("fingerprint") != fingerprint:
+                    return "conflict_mismatch", None
+                if existing.get("status") == "completed":
+                    return "completed", existing.get("response")
+                return "in_progress", None
+
+            self._fallback_store[composite_key] = record
+            return "reserved", None
 
     def complete(self, scope: str, idempotency_key: str, response: Dict[str, Any]) -> bool:
         """Atomically transition state from in_progress to completed with stored response."""
         now = datetime.now(timezone.utc)
-        res = self.collection.update_one(
-            {"scope": scope, "idempotency_key": idempotency_key},
-            {
-                "$set": {
-                    "status": "completed",
-                    "response": response,
-                    "updated_at": now,
+        composite_key = f"{scope}:{idempotency_key}"
+        if composite_key in self._fallback_store:
+            self._fallback_store[composite_key]["status"] = "completed"
+            self._fallback_store[composite_key]["response"] = response
+            self._fallback_store[composite_key]["updated_at"] = now
+
+        try:
+            res = self.collection.update_one(
+                {"scope": scope, "idempotency_key": idempotency_key},
+                {
+                    "$set": {
+                        "status": "completed",
+                        "response": response,
+                        "updated_at": now,
+                    }
                 }
-            }
-        )
-        return res.modified_count > 0
+            )
+            return res.modified_count > 0 or composite_key in self._fallback_store
+        except (PyMongoError, Exception) as exc:
+            logger.warning("MongoDB unavailable during idempotency completion (%s). Updated in-memory fallback.", str(exc))
+            if composite_key in self._fallback_store:
+                self._fallback_store[composite_key]["status"] = "completed"
+                self._fallback_store[composite_key]["response"] = response
+                return True
+            return False
 
     def fail(self, scope: str, idempotency_key: str, error_detail: Optional[str] = None) -> bool:
         """Release or mark failed reservation so future retries can succeed if appropriate."""
         now = datetime.now(timezone.utc)
-        res = self.collection.update_one(
-            {"scope": scope, "idempotency_key": idempotency_key},
-            {
-                "$set": {
-                    "status": "failed",
-                    "error": error_detail,
-                    "updated_at": now,
+        composite_key = f"{scope}:{idempotency_key}"
+        if composite_key in self._fallback_store:
+            self._fallback_store[composite_key]["status"] = "failed"
+            self._fallback_store[composite_key]["error"] = error_detail
+
+        try:
+            res = self.collection.update_one(
+                {"scope": scope, "idempotency_key": idempotency_key},
+                {
+                    "$set": {
+                        "status": "failed",
+                        "error": error_detail,
+                        "updated_at": now,
+                    }
                 }
-            }
-        )
-        return res.modified_count > 0
+            )
+            return res.modified_count > 0 or composite_key in self._fallback_store
+        except (PyMongoError, Exception) as exc:
+            logger.warning("MongoDB unavailable during idempotency failure update (%s).", str(exc))
+            return composite_key in self._fallback_store
 
     def mark_outcome_unknown(self, scope: str, idempotency_key: str, reason: str) -> bool:
         """
         Transition an operation to outcome_unknown when external dispatch was attempted
-        but completion could not be verified (e.g. timeout, process crash, network drop).
-        Pushes out expiration so evidence is not deleted before manual or machine reconciliation.
+        but completion could not be verified.
         """
         now = datetime.now(timezone.utc)
-        safe_extended_expiry = now + timedelta(days=7)  # Retain for at least 7 days for audit/reconciliation
-        res = self.collection.update_one(
-            {"scope": scope, "idempotency_key": idempotency_key},
-            {
-                "$set": {
-                    "status": "outcome_unknown",
-                    "reason": reason,
-                    "metadata.outcome_reason": reason,
-                    "updated_at": now,
-                    "expires_at": safe_extended_expiry,
+        safe_extended_expiry = now + timedelta(days=7)
+        composite_key = f"{scope}:{idempotency_key}"
+        if composite_key in self._fallback_store:
+            self._fallback_store[composite_key]["status"] = "outcome_unknown"
+            self._fallback_store[composite_key]["reason"] = reason
+
+        try:
+            res = self.collection.update_one(
+                {"scope": scope, "idempotency_key": idempotency_key},
+                {
+                    "$set": {
+                        "status": "outcome_unknown",
+                        "reason": reason,
+                        "metadata.outcome_reason": reason,
+                        "updated_at": now,
+                        "expires_at": safe_extended_expiry,
+                    }
                 }
-            }
-        )
-        return res.modified_count > 0
+            )
+            return res.modified_count > 0 or composite_key in self._fallback_store
+        except (PyMongoError, Exception) as exc:
+            logger.warning("MongoDB unavailable during outcome_unknown transition (%s).", str(exc))
+            return composite_key in self._fallback_store

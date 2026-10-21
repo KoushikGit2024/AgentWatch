@@ -16,12 +16,24 @@ from repositories.idempotency_repository import IdempotencyRepository
 from services.remote_access import remote_access_service
 
 from services.log_buffer import log_buffer_handler
+from services.conversation_service import ConversationService
+from services.websocket_manager import websocket_manager
+import asyncio
 from typing import Dict, Any, Optional
 
 router = APIRouter(tags=["Status and Controls"])
 
 # Persistent idempotency repository backed by MongoDB
 _idempotency_repo = IdempotencyRepository()
+_conversation_service = ConversationService()
+
+
+@router.get("/api/v1/chat/messages")
+def get_chat_messages(limit: int = 50):
+    """Return genuine Antigravity conversation stream extracted from IDE transcripts."""
+    return {
+        "messages": _conversation_service.get_recent_conversation(limit=limit)
+    }
 
 
 @router.get("/snapshot")
@@ -145,6 +157,19 @@ def send_message(payload: PromptSubmissionRequest):
             source_confidence="observed",
             sanitized_payload={"message_preview": payload.message[:150], "cdp_connected": cdp_connected}
         ))
+    except Exception:
+        pass
+
+    try:
+        updated_turns = _conversation_service.get_recent_conversation(limit=50)
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(websocket_manager.broadcast({
+                "type": "chat_update",
+                "messages": updated_turns
+            }))
+        except RuntimeError:
+            pass
     except Exception:
         pass
 

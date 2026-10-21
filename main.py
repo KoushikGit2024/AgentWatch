@@ -126,3 +126,39 @@ async def serve_index(request: Request):
     return {"message": "AgentWatch Backend API Running. Static frontend not found."}
 
 
+from fastapi import WebSocket, WebSocketDisconnect
+from services.websocket_manager import websocket_manager
+from services.conversation_service import ConversationService
+
+_conversation_service = ConversationService()
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """Real-time streaming WebSocket endpoint for conversation, status, and alerts."""
+    await websocket_manager.connect(websocket)
+    try:
+        initial_turns = _conversation_service.get_recent_conversation(limit=50)
+        await websocket.send_json({
+            "type": "init",
+            "status": "connected",
+            "messages": initial_turns
+        })
+        while True:
+            text = await websocket.receive_text()
+            if text == "ping":
+                await websocket.send_json({"type": "pong"})
+            elif text == "refresh_chat":
+                turns = _conversation_service.get_recent_conversation(limit=50)
+                await websocket.send_json({
+                    "type": "chat_update",
+                    "messages": turns
+                })
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(websocket)
+    except Exception as exc:
+        logger.debug("WebSocket connection error: %s", str(exc))
+        websocket_manager.disconnect(websocket)
+
+
+
