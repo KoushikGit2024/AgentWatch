@@ -58,4 +58,9 @@ def check_auth_required(request: Request) -> bool:
         if verify_session_token(token):
             return False
 
+    # Check Query Parameter (useful for WebSockets and mobile redirects)
+    query_token = request.query_params.get("token")
+    if query_token and verify_session_token(query_token):
+        return False
+
     return True

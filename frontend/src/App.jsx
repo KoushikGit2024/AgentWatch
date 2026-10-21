@@ -159,14 +159,26 @@ export default function App() {
         }
     };
 
-    const h = { 'ngrok-skip-browser-warning': 'true' };
+    const getAuthHeaders = () => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('agentwatch_token') : null;
+        return {
+            'ngrok-skip-browser-warning': 'true',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+    };
+
+    const h = getAuthHeaders();
 
     // ─── Fetchers ─────────────────────────────────────────────────────────────
     const fetchAppState = async () => {
         try {
-            const res = await fetch('/app-state', { headers: h });
+            const res = await fetch('/app-state', { headers: getAuthHeaders() });
             if (!isMountedRef.current) return;
-            if (res.status === 401) { window.location.href = '/login.html'; return; }
+            if (res.status === 401) {
+                localStorage.removeItem('agentwatch_token');
+                window.location.replace('/login.html');
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 if (!isMountedRef.current) return;
@@ -292,7 +304,8 @@ export default function App() {
             if (isClosedIntentionally) return;
             try {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                const token = typeof window !== 'undefined' ? localStorage.getItem('agentwatch_token') : null;
+                const wsUrl = `${protocol}//${window.location.host}/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`;
                 ws = new WebSocket(wsUrl);
 
                 ws.onopen = () => {

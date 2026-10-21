@@ -19,6 +19,9 @@ def login(payload: LoginRequest, response: Response):
     response.set_cookie(
         key=AUTH_COOKIE_NAME,
         value=token,
+        max_age=30 * 24 * 3600,  # Persistent 30 days
+        expires=30 * 24 * 3600,
+        path="/",  # Crucial: valid across entire app and API
         httponly=True,
         samesite="lax",
         secure=False,  # Can be true behind HTTPS Tailscale Serve
@@ -30,5 +33,5 @@ def login(payload: LoginRequest, response: Response):
 @router.post("/api/v1/logout")
 def logout(response: Response):
     """Clear session cookie."""
-    response.delete_cookie(key=AUTH_COOKIE_NAME)
+    response.delete_cookie(key=AUTH_COOKIE_NAME, path="/")
     return {"status": "logged_out"}

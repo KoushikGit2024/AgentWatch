@@ -144,6 +144,30 @@
         const input = document.getElementById('password');
         const error = document.getElementById('error');
 
+        // Check if token is already cached in localStorage
+        const savedToken = localStorage.getItem('agentwatch_token');
+        if (savedToken) {
+            btn.disabled = true;
+            btn.textContent = 'Auto-connecting...';
+            fetch('/app-state', {
+                headers: {
+                    'Authorization': 'Bearer ' + savedToken,
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            }).then(r => {
+                if (r.ok) {
+                    window.location.replace('/');
+                } else {
+                    localStorage.removeItem('agentwatch_token');
+                    btn.disabled = false;
+                    btn.textContent = 'Connect Securely';
+                }
+            }).catch(() => {
+                btn.disabled = false;
+                btn.textContent = 'Connect Securely';
+            });
+        }
+
         async function doLogin() {
             const password = input.value;
             if (!password) return;
@@ -160,7 +184,11 @@
                 });
 
                 if (res.ok) {
-                    window.location.href = '/';
+                    const data = await res.json();
+                    if (data.token) {
+                        localStorage.setItem('agentwatch_token', data.token);
+                    }
+                    window.location.replace('/');
                 } else {
                     error.style.display = 'block';
                     btn.disabled = false;

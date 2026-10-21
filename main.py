@@ -124,6 +124,7 @@ async def auth_middleware(request: Request, call_next):
         "/health",
         "/ready",
         "/login",
+        "/login.html",
         "/api/v1/login",
         "/static",
         "/favicon.ico",
