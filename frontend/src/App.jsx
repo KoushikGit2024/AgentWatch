@@ -136,6 +136,28 @@ export default function App() {
     const messagesEndRef = useRef(null);
     const isMountedRef = useRef(true);
     const snapshotSeqRef = useRef(0);
+    const shouldAutoScrollRef = useRef(true);
+    const [isScrolledUp, setIsScrolledUp] = useState(false);
+
+    const handleChatScroll = (e) => {
+        const el = e.currentTarget;
+        if (!el) return;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        const isNearBottom = distanceFromBottom < 90;
+        shouldAutoScrollRef.current = isNearBottom;
+        setIsScrolledUp(!isNearBottom);
+    };
+
+    const scrollToBottom = () => {
+        shouldAutoScrollRef.current = true;
+        setIsScrolledUp(false);
+        if (chatScrollRef.current) {
+            chatScrollRef.current.scrollTo({
+                top: chatScrollRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    };
 
     const h = { 'ngrok-skip-browser-warning': 'true' };
 
@@ -355,12 +377,11 @@ export default function App() {
         };
     }, []);
 
-    // Auto-scroll chat to bottom directly above input whenever new messages arrive
+    // Smart auto-scroll: only scrolls to bottom if the user has NOT scrolled up
     useEffect(() => {
-        if (chatScrollRef.current) {
+        if (shouldAutoScrollRef.current && chatScrollRef.current) {
             chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
         }
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatMessages, pendingInteraction, viewMode]);
 
     // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -368,6 +389,8 @@ export default function App() {
         const msg = promptText.trim();
         if (!msg || isSendingPrompt) return;
         setIsSendingPrompt(true);
+        shouldAutoScrollRef.current = true;
+        setIsScrolledUp(false);
         const saved = promptText;
         setPromptText('');
 
@@ -639,7 +662,9 @@ export default function App() {
                         {/* Conversation Message Stream (Bottom-anchored directly above composer) */}
                         <div
                             ref={chatScrollRef}
-                            className="flex-1 overflow-y-auto p-4 md:p-6 max-w-3xl mx-auto w-full select-text flex flex-col"
+                            onScroll={handleChatScroll}
+                            id="chat-scroll-container"
+                            className="flex-1 overflow-y-auto p-4 md:p-6 max-w-3xl mx-auto w-full select-text flex flex-col relative"
                         >
                             {/* Bottom-anchoring spacer pushes conversation directly above composer */}
                             <div className="flex-1 min-h-[16px]" />
@@ -1048,6 +1073,20 @@ export default function App() {
                             {/* Anchor element to smoothly scroll to latest message above input */}
                             <div ref={messagesEndRef} />
                         </div>
+
+                        {/* Smart Floating "Jump to latest" Button */}
+                        {isScrolledUp && (
+                            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+                                <button
+                                    type="button"
+                                    onClick={scrollToBottom}
+                                    className="px-3.5 py-1.5 rounded-full bg-zinc-800/95 hover:bg-zinc-700/95 border border-zinc-700/90 text-zinc-200 shadow-2xl backdrop-blur flex items-center gap-2 text-xs font-medium cursor-pointer transition active:scale-95 animate-in fade-in slide-in-from-bottom-2 select-none"
+                                >
+                                    <div className="w-3.5 h-3.5 text-blue-400">{Icon.chevronDown}</div>
+                                    <span>Jump to latest</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                         {/* ─── Bottom Composer (Antigravity IDE Style) ────────────── */}
