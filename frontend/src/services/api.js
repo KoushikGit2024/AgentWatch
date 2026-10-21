@@ -92,11 +92,37 @@ export const api = {
         return res.json();
     },
 
-    async sendPrompt(prompt) {
+    async uploadAttachments(files) {
+        const formData = new FormData();
+        Array.from(files).forEach(f => {
+            formData.append('files', f);
+        });
+        const token = getAuthToken();
+        const headers = {
+            'ngrok-skip-browser-warning': 'true',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        const res = await fetch('/api/v1/attachments/upload', {
+            method: 'POST',
+            headers,
+            body: formData
+        });
+        if (!res.ok) {
+            let detail = 'Failed to upload attachments';
+            try {
+                const data = await res.json();
+                detail = data.detail || detail;
+            } catch {}
+            throw new Error(detail);
+        }
+        return res.json();
+    },
+
+    async sendPrompt(prompt, attachments = []) {
         const res = await request('/api/v1/prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: prompt, prompt })
+            body: JSON.stringify({ message: prompt, prompt, attachments })
         });
         return res.json();
     },

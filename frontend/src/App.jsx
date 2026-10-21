@@ -103,9 +103,10 @@ export default function App() {
         }
     }, [chatMessages]);
 
-    const handleSend = () => {
-        if (!promptText.trim()) return;
-        handleSendPrompt(promptText);
+    const handleSend = (text, attachments = []) => {
+        const msg = text !== undefined ? text : promptText;
+        if (!msg?.trim() && (!attachments || attachments.length === 0)) return;
+        handleSendPrompt(msg, attachments);
         setPromptText('');
     };
 

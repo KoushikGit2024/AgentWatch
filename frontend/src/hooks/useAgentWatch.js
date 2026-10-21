@@ -146,13 +146,14 @@ export function useAgentWatch() {
         }
     }, []);
 
-    const handleSendPrompt = useCallback(async (prompt) => {
-        if (!prompt?.trim()) return;
-        const msg = prompt.trim();
+    const handleSendPrompt = useCallback(async (prompt, attachments = []) => {
+        if (!prompt?.trim() && (!attachments || attachments.length === 0)) return;
+        const msg = prompt ? prompt.trim() : '';
         const userTurn = {
             id: 'client-user-' + Date.now(),
             role: 'user',
             text: msg,
+            attachments: attachments || [],
             timestamp: new Date().toISOString()
         };
         const agentTurn = {
@@ -170,7 +171,7 @@ export function useAgentWatch() {
         setIsSendingPrompt(true);
 
         try {
-            const res = await api.sendPrompt(msg);
+            const res = await api.sendPrompt(msg, attachments);
             if (res && res.status !== 'submitted') {
                 const failReason = res.reason || (res.dispatch_details && res.dispatch_details.error) || 'CDP offline';
                 console.warn('Antigravity prompt dispatch unacknowledged:', failReason);

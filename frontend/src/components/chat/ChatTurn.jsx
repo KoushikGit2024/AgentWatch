@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../../constants/icons';
+import { FileIcon } from '../../constants/fileIcons';
+import { formatFileSize } from './AttachmentPreview';
 import StreamItem from './StreamItem';
 import MarkdownView from '../MarkdownView';
 
@@ -28,8 +30,54 @@ export default function ChatTurn({
     if (isUser) {
         return (
             <div className="flex justify-end w-full min-w-0 max-w-full animate-in fade-in duration-150">
-                <div className="max-w-[88%] md:max-w-[85%] min-w-0 rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white shadow-md break-words [overflow-wrap:anywhere] [word-break:break-word] overflow-hidden">
-                    <p className="whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere]">{turn.text}</p>
+                <div className="max-w-[88%] md:max-w-[85%] min-w-0 rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white shadow-md break-words [overflow-wrap:anywhere] [word-break:break-word] overflow-hidden space-y-2">
+                    {/* Attached Images */}
+                    {turn.attachments && turn.attachments.some(a => a.is_image) && (
+                        <div className="flex flex-wrap gap-2 pt-0.5">
+                            {turn.attachments.filter(a => a.is_image).map((att, idx) => (
+                                <a
+                                    key={att.id || idx}
+                                    href={att.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block rounded-xl overflow-hidden border border-blue-400/40 max-w-[200px] max-h-48 shadow"
+                                >
+                                    <img
+                                        src={att.url}
+                                        alt={att.original_name || att.filename}
+                                        className="w-full h-full object-cover hover:scale-105 transition"
+                                    />
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Attached Non-Image Files */}
+                    {turn.attachments && turn.attachments.some(a => !a.is_image) && (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {turn.attachments.filter(a => !a.is_image).map((att, idx) => (
+                                <a
+                                    key={att.id || idx}
+                                    href={att.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-700/80 hover:bg-blue-750 border border-blue-400/30 text-xs text-white transition max-w-full truncate"
+                                >
+                                    <FileIcon path={att.original_name || att.filename} className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate font-mono text-[11px]">{att.original_name || att.filename}</span>
+                                    {att.size && (
+                                        <span className="text-[9px] text-blue-200 shrink-0 font-sans">
+                                            ({formatFileSize(att.size)})
+                                        </span>
+                                    )}
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {turn.text && (
+                        <p className="whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere]">{turn.text}</p>
+                    )}
                     {timeStr && (
                         <span className="block text-right text-[10px] text-blue-200 mt-1">{timeStr}</span>
                     )}
