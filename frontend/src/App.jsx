@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import ChatStream from './components/chat/ChatStream';
-import PendingInteractionBanner from './components/chat/PendingInteractionBanner';
 import { PromptComposer } from './components/PromptComposer';
 import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
 import { SystemLogsDrawer } from './components/SystemLogsDrawer';
@@ -10,6 +9,8 @@ import { HistoryDrawer } from './components/HistoryDrawer';
 import { ReviewChangesModal } from './components/ReviewChangesModal';
 import ModelModal from './components/modals/ModelModal';
 import LightboxModal from './components/modals/LightboxModal';
+import InteractionModal from './components/modals/InteractionModal';
+import ApprovalModal from './components/modals/ApprovalModal';
 import ToastContainer from './components/ToastContainer';
 import { useAgentWatch } from './hooks/useAgentWatch';
 import { Icon } from './constants/icons';
@@ -36,8 +37,11 @@ export default function App() {
         historyChats,
         isHistoryLoading,
         approvals,
+        pendingApproval,
+        isApprovaling,
         setCustomResponse,
         handleApproval,
+        handleDismissApproval,
         handleSendPrompt,
         handleInteractionSubmit,
         handleToggleOption,
@@ -148,17 +152,6 @@ export default function App() {
                             messagesEndRef={messagesEndRef}
                         />
 
-                        {/* Interactive Agent Decision Banner */}
-                        <PendingInteractionBanner
-                            pendingInteraction={pendingInteraction}
-                            selectedOptions={selectedOptions}
-                            customResponse={customResponse}
-                            isSubmitting={isSubmitting}
-                            submitSuccess={submitSuccess}
-                            onToggleOption={handleToggleOption}
-                            onChangeCustomResponse={setCustomResponse}
-                            onSubmit={handleInteractionSubmit}
-                        />
 
                         {/* Bottom Prompt Composer */}
                         <PromptComposer
@@ -282,6 +275,27 @@ export default function App() {
                 isOpen={lightboxOpen}
                 onClose={() => setLightboxOpen(false)}
                 screenshotUrl={snapshotData?.screenshot}
+            />
+
+            {/* ─── Interaction Modal (Agent decision requests) ─────────────── */}
+            <InteractionModal
+                interaction={pendingInteraction}
+                selectedOptions={selectedOptions}
+                customResponse={customResponse}
+                isSubmitting={isSubmitting}
+                submitSuccess={submitSuccess}
+                onToggleOption={handleToggleOption}
+                onChangeCustomResponse={setCustomResponse}
+                onSubmit={handleInteractionSubmit}
+                onDismiss={() => {}}
+            />
+
+            {/* ─── Approval Modal (CDP / IDE permission requests) ─────────────── */}
+            <ApprovalModal
+                approval={pendingApproval}
+                isSubmitting={isApprovaling}
+                onDecide={handleApproval}
+                onDismiss={handleDismissApproval}
             />
         </div>
     );

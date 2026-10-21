@@ -35,6 +35,8 @@ export function useAgentWatch() {
 
     // Approvals State
     const [approvals, setApprovals] = useState({});
+    const [pendingApproval, setPendingApproval] = useState(null);
+    const [isApprovaling, setIsApprovaling] = useState(false);
 
     // References
     const isMountedRef = useRef(true);
@@ -137,13 +139,32 @@ export function useAgentWatch() {
     // ─── Actions ──────────────────────────────────────────────────────────────
     const handleApproval = useCallback(async (requestType, target, decision, stepId) => {
         setApprovals(prev => ({ ...prev, [stepId]: decision }));
+        setIsApprovaling(true);
         try {
-            await api.submitApproval(requestType, target, decision, stepId);
-            toast.info(`Forwarded '${decision}' decision to IDE.`, 'Approval Acknowledged');
+            const res = await api.submitApproval(requestType, target, decision, stepId);
+            const forwarded = res?.forwarded_to_ide;
+            const requiresNative = res?.requires_native_ide;
+            if (forwarded) {
+                toast.success(`'${decision}' forwarded to Antigravity IDE.`, 'Decision Sent');
+            } else if (requiresNative) {
+                toast.warning('Please confirm this action in the Antigravity desktop app.', 'Native IDE Required');
+            } else {
+                toast.info(`Decision '${decision}' recorded.`, 'Approval Acknowledged');
+            }
+            // Auto-dismiss approval modal after a short delay so user sees the result
+            setTimeout(() => {
+                if (isMountedRef.current) setPendingApproval(null);
+            }, 1400);
         } catch (err) {
             console.error('Failed to submit approval:', err);
             toast.error(err.message || 'Failed to submit approval decision', 'Approval Error');
+        } finally {
+            if (isMountedRef.current) setIsApprovaling(false);
         }
+    }, []);
+
+    const handleDismissApproval = useCallback(() => {
+        setPendingApproval(null);
     }, []);
 
     const handleSendPrompt = useCallback(async (prompt, attachments = []) => {
@@ -312,12 +333,22 @@ export function useAgentWatch() {
                 }
                 if (data.type === 'interaction_prompt') {
                     setPendingInteraction(data.interaction || null);
+                    // Reset selected options when a new interaction arrives
+                    setSelectedOptions(new Set());
+                    setCustomResponse('');
                 }
                 if (data.type === 'interaction_resolved') {
                     setPendingInteraction(prev => (prev?.interaction_id === data.interaction_id ? null : prev));
                 }
                 if (data.type === 'approval_resolved' && data.data?.step_id) {
                     setApprovals(prev => ({ ...prev, [data.data.step_id]: data.data.decision }));
+                }
+                // New: push-based approval modal trigger
+                if (data.type === 'pending_approval' && data.approval) {
+                    setPendingApproval(data.approval);
+                }
+                if (data.type === 'approval_dismissed') {
+                    setPendingApproval(null);
                 }
             }
         });
@@ -358,8 +389,11 @@ export function useAgentWatch() {
         historyChats,
         isHistoryLoading,
         approvals,
+        pendingApproval,
+        isApprovaling,
         setCustomResponse,
         handleApproval,
+        handleDismissApproval,
         handleSendPrompt,
         handleInteractionSubmit,
         handleToggleOption,

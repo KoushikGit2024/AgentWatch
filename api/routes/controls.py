@@ -46,6 +46,18 @@ class ApprovalDecisionRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+class ApprovalPushRequest(BaseModel):
+    """Payload to push a pending approval notification to the frontend."""
+    request_type: str = Field(default="command", description="command, file, browser, or decision")
+    target: str = Field(..., description="The command, file path, or resource needing approval")
+    title: Optional[str] = None
+    description: Optional[str] = None
+    command: Optional[str] = None
+    cwd: Optional[str] = None
+    step_id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
 @router.post("/api/v1/approvals/respond")
 async def respond_to_approval(payload: ApprovalDecisionRequest):
     """
@@ -97,6 +109,56 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
         "request_type": payload.request_type,
         "target": payload.target
     }
+
+
+@router.post("/api/v1/approvals/push")
+async def push_approval_request(payload: ApprovalPushRequest):
+    """
+    Push a pending approval notification to all connected frontend clients via WebSocket.
+    Called by internal hooks, event parsers, or external integrations when the IDE triggers
+    a permission dialog that the mobile user should resolve.
+    """
+    import uuid
+    step_id = payload.step_id or str(uuid.uuid4())[:8]
+    approval_data = {
+        "request_type": payload.request_type,
+        "target": payload.target,
+        "title": payload.title or f"{payload.request_type.replace('_', ' ').title()} Permission Request",
+        "description": payload.description,
+        "command": payload.command or (payload.target if payload.request_type == "command" else None),
+        "cwd": payload.cwd,
+        "step_id": step_id,
+        "metadata": payload.metadata or {}
+    }
+    await websocket_manager.broadcast({
+        "type": "pending_approval",
+        "approval": approval_data
+    })
+    return {"success": True, "pushed": True, "step_id": step_id, "approval": approval_data}
+
+
+@router.post("/api/v1/approvals/test-popup")
+async def test_approval_popup(request_type: str = "command", target: str = "git commit -am 'test'"):
+    """
+    Trigger a test approval pop-up on the frontend. Useful for testing the approval modal UI
+    without needing a live agent running. Call from curl or the browser.
+    """
+    import uuid
+    step_id = str(uuid.uuid4())[:8]
+    approval_data = {
+        "request_type": request_type,
+        "target": target,
+        "title": f"Test: {request_type.replace('_', ' ').title()} Permission Request",
+        "description": "This is a test approval request to verify the approval modal is working correctly.",
+        "command": target if request_type == "command" else None,
+        "cwd": "D:/All Codes/AllProjects/AgentWatchV2",
+        "step_id": step_id,
+    }
+    await websocket_manager.broadcast({
+        "type": "pending_approval",
+        "approval": approval_data
+    })
+    return {"success": True, "test_popup_triggered": True, "step_id": step_id}
 
 
 @router.get("/snapshot")

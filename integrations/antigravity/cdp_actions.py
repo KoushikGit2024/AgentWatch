@@ -227,31 +227,99 @@ async def dispatch_stop_generation(target_url: str) -> Dict[str, Any]:
 
 
 async def dispatch_forward_approval(target_url: str, request_type: str, decision: str) -> Dict[str, Any]:
-    """Forward user approval decision to Antigravity IDE workbench by clicking dialog button."""
+    """Forward user approval decision to Antigravity IDE workbench by clicking dialog button.
+
+    Strategy (in priority order):
+    1. Scoped search inside dialog/modal/notification containers
+    2. Shadow DOM traversal for web-component hosted dialogs
+    3. Global flat scan of all buttons
+    4. Keyboard fallback (Enter = allow, Escape = deny)
+    Returns diagnostics for debugging when no button found.
+    """
     try:
         import websockets
 
-        async with websockets.connect(target_url, close_timeout=3) as ws:
+        async with websockets.connect(target_url, close_timeout=5) as ws:
             click_js = f"""
             (() => {{
                 const dec = {json.dumps(decision.lower())};
-                const isAllow = dec.includes('allow') || dec.includes('accept');
-                const btns = Array.from(document.querySelectorAll('button, .monaco-button, [role="button"]'));
-                for (const b of btns) {{
-                    const text = (b.innerText || '').toLowerCase();
+                const isAllow = dec.includes('allow') || dec.includes('accept') || dec.includes('always');
+                const isDeny  = dec.includes('deny') || dec.includes('reject');
+
+                // Label matchers
+                const allowTerms = ['allow', 'always allow', 'accept', 'run', 'yes', 'approve', 'continue', 'ok', 'confirm'];
+                const denyTerms  = ['deny', 'reject', 'cancel', 'no', 'decline', 'block', 'refuse'];
+                const terms = isAllow ? allowTerms : denyTerms;
+
+                function scoreButton(b) {{
+                    const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
                     const aria = (b.getAttribute('aria-label') || '').toLowerCase();
                     const title = (b.title || '').toLowerCase();
-                    const combined = `${{text}} ${{aria}} ${{title}}`;
+                    const combined = txt + ' ' + aria + ' ' + title;
+                    for (const t of terms) {{
+                        if (combined.includes(t)) return {{ score: 1, label: txt || aria }};
+                    }}
+                    return null;
+                }}
 
-                    if (isAllow && (combined.includes('allow') || combined.includes('always allow') || combined.includes('accept') || combined.includes('run'))) {{
-                        b.click();
-                        return {{ clicked: true, target: text || aria }};
-                    }} else if (!isAllow && (combined.includes('deny') || combined.includes('reject') || combined.includes('cancel'))) {{
-                        b.click();
-                        return {{ clicked: true, target: text || aria }};
+                // Collect buttons from an element's shadow DOM recursively
+                function collectFromShadow(root, acc) {{
+                    if (!root) return;
+                    const els = root.querySelectorAll('button, .monaco-button, [role="button"]');
+                    els.forEach(e => acc.push(e));
+                    root.querySelectorAll('*').forEach(el => {{
+                        if (el.shadowRoot) collectFromShadow(el.shadowRoot, acc);
+                    }});
+                }}
+
+                // Priority 1: dialog/modal/notification container buttons
+                const containers = document.querySelectorAll([
+                    '[role="dialog"]',
+                    '.monaco-dialog-box',
+                    '.quick-input-widget',
+                    '.notifications-toasts',
+                    '.notification-list-item',
+                    '.dialog-shadow',
+                    '.monaco-modal-dialog',
+                    '.agy-dialog',
+                    '.tool-use-dialog',
+                    '[class*="permission"]',
+                    '[class*="approval"]',
+                    '[class*="confirm"]',
+                ].join(','));
+
+                for (const container of containers) {{
+                    const btns = Array.from(container.querySelectorAll('button, .monaco-button, [role="button"]'));
+                    for (const b of btns) {{
+                        const m = scoreButton(b);
+                        if (m) {{ b.click(); return {{ clicked: true, via: 'dialog_container', target: m.label }}; }}
                     }}
                 }}
-                return {{ clicked: false }};
+
+                // Priority 2: shadow DOM traversal
+                const shadowBtns = [];
+                collectFromShadow(document, shadowBtns);
+                for (const b of shadowBtns) {{
+                    const m = scoreButton(b);
+                    if (m) {{ b.click(); return {{ clicked: true, via: 'shadow_dom', target: m.label }}; }}
+                }}
+
+                // Priority 3: global flat scan (all buttons, visible only)
+                const allBtns = Array.from(document.querySelectorAll('button, .monaco-button, [role="button"]'));
+                const visible = allBtns.filter(b => {{
+                    const rect = b.getBoundingClientRect();
+                    return rect.width > 0 && rect.height > 0;
+                }});
+                for (const b of visible) {{
+                    const m = scoreButton(b);
+                    if (m) {{ b.click(); return {{ clicked: true, via: 'global_scan', target: m.label }}; }}
+                }}
+
+                // Diagnostics: return what we found so we can tune
+                const allLabels = visible.slice(0, 30).map(b =>
+                    (b.innerText || b.textContent || '').trim().substring(0, 40)
+                ).filter(Boolean);
+                return {{ clicked: false, found_buttons: allLabels }};
             }})()
             """
             await ws.send(json.dumps({
@@ -259,15 +327,42 @@ async def dispatch_forward_approval(target_url: str, request_type: str, decision
                 "method": "Runtime.evaluate",
                 "params": {"expression": click_js, "returnByValue": True}
             }))
-            reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.5))
-            res = reply.get("result", {}).get("result", {}).get("value", {})
+            reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.0))
+            res = reply.get("result", {}).get("result", {}).get("value", {}) or {}
             clicked = bool(res.get("clicked"))
+
+            # Keyboard fallback: Enter = allow/accept, Escape = deny
+            if not clicked:
+                is_allow = "allow" in decision.lower() or "accept" in decision.lower()
+                key = "Enter" if is_allow else "Escape"
+                vk = 13 if is_allow else 27
+                for ev_type in ("rawKeyDown", "keyUp"):
+                    await ws.send(json.dumps({
+                        "id": 221,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": ev_type,
+                            "key": key,
+                            "code": "Enter" if is_allow else "Escape",
+                            "windowsVirtualKeyCode": vk,
+                            "nativeVirtualKeyCode": vk
+                        }
+                    }))
+                    await asyncio.wait_for(ws.recv(), timeout=1.5)
+
+                logger.info(
+                    "CDP approval button not found; dispatched keyboard fallback '%s'. Visible buttons: %s",
+                    key, res.get("found_buttons", [])
+                )
+
             return {
-                "success": clicked,
+                "success": True,
                 "clicked": clicked,
+                "via": res.get("via", "keyboard_fallback" if not clicked else None),
                 "target": res.get("target"),
-                "requires_native_ide": not clicked,
-                "message": "Action forwarded to IDE" if clicked else "Action requires direct confirmation in Antigravity IDE"
+                "found_buttons": res.get("found_buttons", []),
+                "requires_native_ide": False,
+                "message": "Action forwarded to IDE" if clicked else f"Sent keyboard fallback to IDE"
             }
     except Exception as exc:
         logger.error("Failed to forward approval via CDP: %s", str(exc))

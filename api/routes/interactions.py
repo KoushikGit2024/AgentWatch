@@ -43,11 +43,23 @@ def get_interaction_details(interaction_id: str):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_interaction(doc: InteractionDocument):
+async def create_interaction(doc: InteractionDocument):
     """
     Create a new dynamic interaction request (e.g., from agent hook, tool call, or question).
+    Broadcasts interaction_prompt WebSocket event immediately on creation.
     """
+    from services.websocket_manager import websocket_manager
     doc_id, is_dup = interaction_service.create_interaction(doc)
+    if not is_dup:
+        # Push to all connected frontend clients immediately (no polling delay)
+        try:
+            interaction_dict = doc.dict()
+            await websocket_manager.broadcast({
+                "type": "interaction_prompt",
+                "interaction": interaction_dict
+            })
+        except Exception:
+            pass
     return {
         "status": "duplicate" if is_dup else "created",
         "id": doc_id,
