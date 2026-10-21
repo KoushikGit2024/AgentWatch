@@ -171,7 +171,7 @@ export default function StreamItem({
 
                     {/* File Analysis Details */}
                     {item.kind === 'analyze' && item.file && (
-                        <div className="text-[10px] font-mono text-zinc-400 break-all bg-zinc-950 p-2 rounded border border-zinc-850">
+                        <div className="text-[10px] font-mono text-zinc-400 break-all [word-break:break-all] [overflow-wrap:anywhere] bg-zinc-950 p-2 rounded border border-zinc-850 w-full max-w-full">
                             {item.file}
                         </div>
                     )}

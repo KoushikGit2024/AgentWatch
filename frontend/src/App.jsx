@@ -130,9 +130,9 @@ export default function App() {
             />
 
             {/* ─── Main Content Viewport ─────────────────────────────────────── */}
-            <main className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
+            <main className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full relative overflow-hidden">
                 {viewMode === 'chat' ? (
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden overflow-x-hidden">
                         {/* Conversation Stream */}
                         <ChatStream
                             ref={chatScrollRef}
