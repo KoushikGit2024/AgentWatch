@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../services/toastService';
+import { FileIcon } from '../constants/fileIcons';
 
 export function ReviewChangesModal({ isOpen, onClose }) {
     const [reviewData, setReviewData] = useState(null);
@@ -82,13 +83,14 @@ export function ReviewChangesModal({ isOpen, onClose }) {
                             <div className="space-y-1">
                                 {reviewData.files.map((f, idx) => (
                                     <div key={idx} className="flex items-center gap-2 text-xs py-1.5 px-3 bg-zinc-950 border border-zinc-800 rounded-lg font-mono">
-                                        <span className={`px-1.5 py-0.2 rounded font-bold text-[10px] ${
+                                        <span className={`px-1.5 py-0.2 rounded font-bold text-[10px] shrink-0 ${
                                             f.status === 'M' ? 'bg-amber-500/20 text-amber-300' :
                                             f.status === 'A' || f.status === '??' ? 'bg-emerald-500/20 text-emerald-300' :
                                             'bg-rose-500/20 text-rose-300'
                                         }`}>
                                             {f.status}
                                         </span>
+                                        <FileIcon path={f.file} className="w-3.5 h-3.5" />
                                         <span className="text-zinc-200 truncate">{f.file}</span>
                                     </div>
                                 ))}

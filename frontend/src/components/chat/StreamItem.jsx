@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from '../../constants/icons';
+import { FileIcon, getFileInfo } from '../../constants/fileIcons';
 import ApprovalCard from './ApprovalCard';
 
 export default function StreamItem({
@@ -33,10 +34,11 @@ export default function StreamItem({
         );
     }
 
-    const isReactFile = item.target?.includes('.jsx') || item.target?.includes('.tsx');
     const isCommand = item.kind === 'command';
     const isEdit = item.kind === 'edit';
+    const isAnalyze = item.kind === 'analyze';
     const hasDetails = Boolean(item.command || item.output || item.diff || item.instruction || item.file);
+    const fileInfo = (isAnalyze || isEdit) ? getFileInfo(item.target || item.file) : null;
 
     return (
         <div className="space-y-1.5 w-full min-w-0 max-w-full overflow-hidden">
@@ -51,18 +53,17 @@ export default function StreamItem({
                     <span className="text-zinc-400 font-medium">{item.verb || 'Used'}</span>
 
                     <div className="inline-flex items-center gap-1.5 text-zinc-200">
-                        {item.kind === 'analyze' && (
-                            isReactFile ? (
-                                <div className="w-3.5 h-3.5 text-cyan-400 shrink-0">{Icon.react}</div>
-                            ) : (
-                                <div className="w-3.5 h-3.5 text-zinc-400 shrink-0">{Icon.file}</div>
-                            )
+                        {isAnalyze && (
+                            <FileIcon path={item.target || item.file} className="w-3.5 h-3.5" />
                         )}
                         {item.kind === 'search' && (
                             <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>
                         )}
                         {isEdit && (
-                            <div className="w-3.5 h-3.5 text-emerald-400 shrink-0">{Icon.fileEdit}</div>
+                            <div className="inline-flex items-center gap-1">
+                                <FileIcon path={item.target || item.file} className="w-3.5 h-3.5" />
+                                <div className="w-3 h-3 text-emerald-400 shrink-0">{Icon.fileEdit}</div>
+                            </div>
                         )}
                         {isCommand && (
                             <div className="w-3.5 h-3.5 text-amber-400 shrink-0">{Icon.terminal}</div>
@@ -71,7 +72,15 @@ export default function StreamItem({
                             <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>
                         )}
 
-                        <span className="text-zinc-200 font-mono text-[11px] font-medium break-all">{item.target}</span>
+                        <span className={`font-mono text-[11px] font-medium break-all ${fileInfo ? fileInfo.color : 'text-zinc-200'}`}>
+                            {item.target}
+                        </span>
+
+                        {fileInfo && fileInfo.label && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium uppercase tracking-wider bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                {fileInfo.label}
+                            </span>
+                        )}
 
                         {item.extra && (
                             <span className="px-1.5 py-0.5 rounded-md bg-zinc-800/90 text-zinc-300 text-[10px] font-mono border border-zinc-700/50">
@@ -141,8 +150,10 @@ export default function StreamItem({
                     {isEdit && (
                         <div className="space-y-1.5">
                             {item.file && (
-                                <div className="text-[10px] text-zinc-500 font-mono truncate">
-                                    file: <span className="text-zinc-400">{item.file}</span>
+                                <div className="text-[10px] text-zinc-500 font-mono truncate flex items-center gap-1.5">
+                                    <span>file:</span>
+                                    <FileIcon path={item.file} className="w-3 h-3" />
+                                    <span className="text-zinc-300 truncate">{item.file}</span>
                                 </div>
                             )}
                             {item.instruction && (
@@ -171,8 +182,9 @@ export default function StreamItem({
 
                     {/* File Analysis Details */}
                     {item.kind === 'analyze' && item.file && (
-                        <div className="text-[10px] font-mono text-zinc-400 break-all [word-break:break-all] [overflow-wrap:anywhere] bg-zinc-950 p-2 rounded border border-zinc-850 w-full max-w-full">
-                            {item.file}
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-300 break-all [word-break:break-all] [overflow-wrap:anywhere] bg-zinc-950 p-2 rounded border border-zinc-850 w-full max-w-full">
+                            <FileIcon path={item.file} className="w-3.5 h-3.5" />
+                            <span>{item.file}</span>
                         </div>
                     )}
                 </div>

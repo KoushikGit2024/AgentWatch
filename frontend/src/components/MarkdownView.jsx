@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { marked } from 'marked';
 import { toast } from '../services/toastService';
+import { getFileInfo, getFileSvgHtml } from '../constants/fileIcons';
 
 // Escape HTML utility for code blocks
 function escapeHtml(str) {
@@ -48,6 +49,7 @@ marked.use({
             if (isFile) {
                 // Decode URI components and clean up file path
                 const decodedPath = decodeURIComponent(href.replace(/^file:\/\/\/?/, ''));
+                const fileInfo = getFileInfo(decodedPath);
                 // Format clean label: if raw text was a long file:/// URL, use basename or relative path
                 let label = rawText;
                 if (label.startsWith('file://') || label.startsWith('file:/')) {
@@ -55,8 +57,10 @@ marked.use({
                     label = parts[parts.length - 1] || decodedPath;
                 }
 
-                return `<button type="button" class="file-link-pill inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-zinc-800/90 text-blue-300 border border-zinc-700/60 max-w-full break-all cursor-pointer hover:bg-zinc-700 hover:text-blue-200 transition active:scale-95 shadow-xs align-baseline my-0.5" data-file-path="${escapeHtml(decodedPath)}" title="Click to copy file path: ${escapeHtml(decodedPath)}">
-                    <svg class="w-3.5 h-3.5 text-blue-400 shrink-0 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                const svgHtml = getFileSvgHtml(decodedPath, 'w-3.5 h-3.5 inline-block shrink-0 align-text-bottom mr-1');
+
+                return `<button type="button" class="file-link-pill inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-lg border max-w-full break-all cursor-pointer transition active:scale-95 shadow-xs align-baseline my-0.5 ${fileInfo.bg} ${fileInfo.color} hover:opacity-80" data-file-path="${escapeHtml(decodedPath)}" title="${escapeHtml(fileInfo.label)}: ${escapeHtml(decodedPath)}">
+                    ${svgHtml}
                     <span class="truncate max-w-xs md:max-w-md">${escapeHtml(label)}</span>
                 </button>`;
             }
