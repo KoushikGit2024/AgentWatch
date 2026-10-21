@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Icon } from '../constants/icons';
 import { api } from '../services/api';
 import { toast } from '../services/toastService';
-import AttachmentPreview from './chat/AttachmentPreview';
+import AttachmentPreview, { formatFileSize } from './chat/AttachmentPreview';
 
 export function PromptComposer({
     promptText,
@@ -23,10 +23,21 @@ export function PromptComposer({
     const [attachments, setAttachments] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const [previewImage, setPreviewImage] = useState(null);
+    const [previewItem, setPreviewItem] = useState(null);
 
     const imageInputRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    // Keyboard listener for Escape to close maximized lightbox
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && previewItem) {
+                setPreviewItem(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [previewItem]);
 
     const handleUploadFiles = async (fileList) => {
         if (!fileList || fileList.length === 0) return;
@@ -37,15 +48,38 @@ export function PromptComposer({
             return;
         }
 
+        // Instant optimistic preview generation
+        const optimisticItems = filesArray.map((f, i) => {
+            const isImg = f.type.startsWith('image/') || f.name.match(/\.(png|jpe?g|webp|gif|svg)$/i);
+            return {
+                id: `opt_${Date.now()}_${i}`,
+                original_name: f.name,
+                filename: f.name,
+                size: f.size,
+                is_image: isImg,
+                previewUrl: isImg ? URL.createObjectURL(f) : null,
+                isPending: true
+            };
+        });
+
+        setAttachments(prev => [...prev, ...optimisticItems]);
         setIsUploading(true);
+
         try {
             const res = await api.uploadAttachments(filesArray);
             if (res && res.attachments) {
-                setAttachments(prev => [...prev, ...res.attachments]);
-                toast.success(`Attached ${res.attachments.length} file${res.attachments.length > 1 ? 's' : ''}`, 'Attachment Added');
+                // Replace pending items with confirmed server attachments
+                const uploaded = res.attachments;
+                setAttachments(prev => {
+                    const nonPending = prev.filter(p => !optimisticItems.some(o => o.id === p.id));
+                    return [...nonPending, ...uploaded];
+                });
+                toast.success(`Attached ${uploaded.length} file${uploaded.length > 1 ? 's' : ''}`, 'Attachment Uploaded');
             }
         } catch (err) {
             console.error('Failed to upload attachments:', err);
+            // Revert optimistic items on failure
+            setAttachments(prev => prev.filter(p => !optimisticItems.some(o => o.id === p.id)));
             toast.error(err.message || 'Failed to upload attachments', 'Upload Error');
         } finally {
             setIsUploading(false);
@@ -66,7 +100,16 @@ export function PromptComposer({
         for (let i = 0; i < items.length; i++) {
             if (items[i].kind === 'file') {
                 const file = items[i].getAsFile();
-                if (file) filesToUpload.push(file);
+                if (file) {
+                    let fileName = file.name;
+                    if (!fileName || fileName === 'image.png' || fileName === 'blob') {
+                        const now = new Date();
+                        const timeStr = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+                        fileName = `Pasted_Image_${timeStr}.png`;
+                    }
+                    const renamed = new File([file], fileName, { type: file.type || 'image/png' });
+                    filesToUpload.push(renamed);
+                }
             }
         }
 
@@ -99,15 +142,16 @@ export function PromptComposer({
 
     const handleTriggerSend = () => {
         const hasText = Boolean(promptText && promptText.trim());
-        const hasAttachments = attachments.length > 0;
-        if (!hasText && !hasAttachments) return;
+        const readyAttachments = attachments.filter(a => !a.isPending);
+        if (!hasText && readyAttachments.length === 0) return;
         if (isSending || isUploading) return;
 
-        onSend(promptText, attachments);
+        onSend(promptText, readyAttachments);
         setAttachments([]);
     };
 
-    const canSend = (Boolean(promptText && promptText.trim()) || attachments.length > 0) && !isSending && !isUploading;
+    const readyAttachments = attachments.filter(a => !a.isPending);
+    const canSend = (Boolean(promptText && promptText.trim()) || readyAttachments.length > 0) && !isSending && !isUploading;
 
     return (
         <div className="p-3 md:p-4 bg-zinc-900/90 border-t border-zinc-800 shrink-0 pb-safe select-none">
@@ -179,7 +223,7 @@ export function PromptComposer({
                 >
                     {/* Drag & drop overlay indicator */}
                     {isDragging && (
-                        <div className="absolute inset-0 z-10 rounded-2xl bg-blue-950/80 backdrop-blur-xs flex items-center justify-center text-blue-300 font-medium text-xs pointer-events-none gap-2">
+                        <div className="absolute inset-0 z-10 rounded-2xl bg-blue-950/85 backdrop-blur-xs flex items-center justify-center text-blue-300 font-medium text-xs pointer-events-none gap-2">
                             <div className="w-4 h-4">{Icon.paperclip}</div>
                             <span>Drop images or files here to attach</span>
                         </div>
@@ -189,7 +233,7 @@ export function PromptComposer({
                     <AttachmentPreview
                         attachments={attachments}
                         onRemove={handleRemoveAttachment}
-                        onPreviewImage={setPreviewImage}
+                        onPreviewImage={(att) => setPreviewItem(att)}
                     />
 
                     {/* Hidden Native File Inputs */}
@@ -220,7 +264,7 @@ export function PromptComposer({
                                 handleTriggerSend();
                             }
                         }}
-                        placeholder="Ask anything, attach images or files, @ mention, / actions…"
+                        placeholder="Ask anything, paste/attach images or files, @ mention, / actions…"
                         rows={2}
                         className="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-500 resize-none outline-none max-h-36 leading-relaxed select-text"
                     />
@@ -266,10 +310,12 @@ export function PromptComposer({
                                 <div className="w-4 h-4 text-blue-400">{Icon.paperclip}</div>
                             </button>
 
-                            {/* Uploading Spinner */}
+                            {/* Uploading Status Indicator */}
                             {isUploading && (
-                                <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 font-mono">
-                                    <svg className="w-3 h-3 animate-spin text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                                <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 font-mono animate-in fade-in duration-150">
+                                    <svg className="w-3 h-3 animate-spin text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                                    </svg>
                                     <span>Uploading…</span>
                                 </span>
                             )}
@@ -303,25 +349,59 @@ export function PromptComposer({
                 </div>
             </div>
 
-            {/* Lightbox Image Preview Modal */}
-            {previewImage && (
+            {/* Maximized Lightbox Image Modal */}
+            {previewItem && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-150"
-                    onClick={() => setPreviewImage(null)}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
+                    onClick={() => setPreviewItem(null)}
                 >
-                    <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <button
-                            type="button"
-                            onClick={() => setPreviewImage(null)}
-                            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/80 hover:bg-zinc-800 text-white transition"
-                        >
-                            <div className="w-4 h-4">{Icon.x}</div>
-                        </button>
-                        <img
-                            src={previewImage}
-                            alt="Preview Attachment"
-                            className="max-h-[85vh] max-w-full rounded-xl object-contain mx-auto"
-                        />
+                    <div
+                        className="relative max-w-4xl max-h-[92vh] w-full overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl flex flex-col"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Lightbox Header with details and controls */}
+                        <div className="flex items-center justify-between pb-2 border-b border-zinc-850 px-1 text-xs">
+                            <div className="flex items-center gap-2 truncate">
+                                <span className="font-mono text-zinc-200 font-medium truncate">
+                                    {previewItem.original_name || previewItem.filename || 'Attached Image'}
+                                </span>
+                                {previewItem.size && (
+                                    <span className="text-[10px] text-zinc-400 font-sans px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800">
+                                        {formatFileSize(previewItem.size)}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                {(previewItem.url || previewItem.previewUrl) && (
+                                    <a
+                                        href={previewItem.url || previewItem.previewUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Open original in new tab"
+                                        className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                                    >
+                                        <div className="w-4 h-4">{Icon.maximize}</div>
+                                    </a>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewItem(null)}
+                                    title="Close preview (Esc)"
+                                    className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                                >
+                                    <div className="w-4 h-4">{Icon.x}</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Image Maximized Display */}
+                        <div className="flex-1 flex items-center justify-center overflow-hidden p-2 min-h-0">
+                            <img
+                                src={previewItem.url || previewItem.previewUrl}
+                                alt={previewItem.original_name || previewItem.filename || 'Preview'}
+                                className="max-h-[78vh] max-w-full rounded-lg object-contain shadow-md"
+                            />
+                        </div>
                     </div>
                 </div>
             )}

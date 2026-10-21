@@ -27,6 +27,8 @@ export default function ChatTurn({
         setTimeout(() => setCopied(false), 1800);
     };
 
+    const [previewItem, setPreviewItem] = useState(null);
+
     if (isUser) {
         return (
             <div className="flex justify-end w-full min-w-0 max-w-full animate-in fade-in duration-150">
@@ -35,19 +37,19 @@ export default function ChatTurn({
                     {turn.attachments && turn.attachments.some(a => a.is_image) && (
                         <div className="flex flex-wrap gap-2 pt-0.5">
                             {turn.attachments.filter(a => a.is_image).map((att, idx) => (
-                                <a
+                                <button
                                     key={att.id || idx}
-                                    href={att.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block rounded-xl overflow-hidden border border-blue-400/40 max-w-[200px] max-h-48 shadow"
+                                    type="button"
+                                    onClick={() => setPreviewItem(att)}
+                                    title="Click to maximize image"
+                                    className="block rounded-xl overflow-hidden border border-blue-400/40 max-w-[200px] max-h-48 shadow cursor-zoom-in text-left group"
                                 >
                                     <img
                                         src={att.url}
                                         alt={att.original_name || att.filename}
-                                        className="w-full h-full object-cover hover:scale-105 transition"
+                                        className="w-full h-full object-cover group-hover:scale-105 transition"
                                     />
-                                </a>
+                                </button>
                             ))}
                         </div>
                     )}
@@ -82,6 +84,53 @@ export default function ChatTurn({
                         <span className="block text-right text-[10px] text-blue-200 mt-1">{timeStr}</span>
                     )}
                 </div>
+
+                {/* Maximized Lightbox Modal for ChatTurn */}
+                {previewItem && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
+                        onClick={() => setPreviewItem(null)}
+                    >
+                        <div
+                            className="relative max-w-4xl max-h-[92vh] w-full overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl flex flex-col"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between pb-2 border-b border-zinc-850 px-1 text-xs">
+                                <span className="font-mono text-zinc-200 font-medium truncate">
+                                    {previewItem.original_name || previewItem.filename || 'Attached Image'}
+                                </span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {previewItem.url && (
+                                        <a
+                                            href={previewItem.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            title="Open full size in new tab"
+                                            className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                                        >
+                                            <div className="w-4 h-4">{Icon.maximize}</div>
+                                        </a>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewItem(null)}
+                                        title="Close preview (Esc)"
+                                        className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                                    >
+                                        <div className="w-4 h-4">{Icon.x}</div>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center overflow-hidden p-2 min-h-0">
+                                <img
+                                    src={previewItem.url}
+                                    alt={previewItem.original_name || previewItem.filename}
+                                    className="max-h-[78vh] max-w-full rounded-lg object-contain shadow-md"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
