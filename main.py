@@ -22,6 +22,38 @@ logging.basicConfig(
 logger = logging.getLogger("main")
 
 
+import asyncio
+from services.conversation_service import conversation_service
+from services.websocket_manager import websocket_manager
+
+
+async def watch_transcript_loop():
+    """Continuously watches transcript.jsonl for updates and broadcasts them live to connected clients."""
+    last_mtime = 0.0
+    last_size = 0
+    while True:
+        try:
+            p = conversation_service.get_latest_transcript_path()
+            if p and p.exists():
+                stat = p.stat()
+                mtime = stat.st_mtime
+                size = stat.st_size
+                if mtime != last_mtime or size != last_size:
+                    last_mtime = mtime
+                    last_size = size
+                    if websocket_manager.active_connections:
+                        turns = conversation_service.get_recent_conversation(limit=50)
+                        await websocket_manager.broadcast({
+                            "type": "chat_update",
+                            "messages": turns
+                        })
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug("Transcript watcher loop notice: %s", str(e))
+        await asyncio.sleep(0.35)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown lifecycle management."""
@@ -38,10 +70,18 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("MongoDB not immediately reachable at startup: %s", mongo_status["error"])
 
+    # 2. Start real-time transcript streaming background watcher
+    watcher_task = asyncio.create_task(watch_transcript_loop())
+
     yield
 
     # Application shutdown
     logger.info("Shutting down AgentWatch server...")
+    watcher_task.cancel()
+    try:
+        await watcher_task
+    except asyncio.CancelledError:
+        pass
     close_mongo_client()
     logger.info("Shutdown complete.")
 
@@ -127,10 +167,6 @@ async def serve_index(request: Request):
 
 
 from fastapi import WebSocket, WebSocketDisconnect
-from services.websocket_manager import websocket_manager
-from services.conversation_service import ConversationService
-
-_conversation_service = ConversationService()
 
 
 @app.websocket("/ws")
@@ -138,7 +174,7 @@ async def websocket_endpoint(websocket: WebSocket):
     """Real-time streaming WebSocket endpoint for conversation, status, and alerts."""
     await websocket_manager.connect(websocket)
     try:
-        initial_turns = _conversation_service.get_recent_conversation(limit=50)
+        initial_turns = conversation_service.get_recent_conversation(limit=50)
         await websocket.send_json({
             "type": "init",
             "status": "connected",
@@ -149,7 +185,7 @@ async def websocket_endpoint(websocket: WebSocket):
             if text == "ping":
                 await websocket.send_json({"type": "pong"})
             elif text == "refresh_chat":
-                turns = _conversation_service.get_recent_conversation(limit=50)
+                turns = conversation_service.get_recent_conversation(limit=50)
                 await websocket.send_json({
                     "type": "chat_update",
                     "messages": turns

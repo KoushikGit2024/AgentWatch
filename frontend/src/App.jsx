@@ -104,6 +104,16 @@ export default function App() {
         });
     };
 
+    const [openWorkedIds, setOpenWorkedIds] = useState(new Set());
+    const toggleWorked = (turnId) => {
+        setOpenWorkedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(turnId)) next.delete(turnId);
+            else next.add(turnId);
+            return next;
+        });
+    };
+
     const handleApproval = async (requestType, target, decision, stepId) => {
         setApprovals(prev => ({ ...prev, [stepId]: decision }));
         try {
@@ -361,14 +371,23 @@ export default function App() {
         const saved = promptText;
         setPromptText('');
 
-        // Optimistically add to chat stream right away
+        // Optimistically add user prompt and active agent thinking turn right away
         setChatMessages(prev => [
             ...prev,
             {
-                id: 'local-' + Date.now(),
+                id: 'local-user-' + Date.now(),
                 role: 'user',
                 text: msg,
                 timestamp: new Date().toISOString()
+            },
+            {
+                id: 'local-agent-' + Date.now(),
+                role: 'agent',
+                text: '',
+                thinking: '',
+                steps: [],
+                timestamp: new Date().toISOString(),
+                is_working: true
             }
         ]);
 
@@ -681,7 +700,7 @@ export default function App() {
                                                 </div>
 
                                                 {/* ─── Antigravity Thinking Process ─────────────────── */}
-                                                {turn.thinking && (
+                                                {(turn.thinking || turn.is_working) && (
                                                     <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 overflow-hidden text-xs">
                                                         <button
                                                             type="button"
@@ -689,28 +708,71 @@ export default function App() {
                                                             className="w-full flex items-center justify-between px-3 py-2 cursor-pointer text-zinc-400 hover:text-zinc-200 select-none transition"
                                                         >
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-3.5 h-3.5 text-zinc-400">{Icon.brain}</div>
-                                                                <span className="font-medium text-zinc-300">Thinking Process</span>
+                                                                <div className={`w-3.5 h-3.5 ${turn.is_working ? 'text-blue-400 animate-pulse' : 'text-zinc-400'}`}>{Icon.brain}</div>
+                                                                <span className={`font-medium ${turn.is_working ? 'text-blue-300' : 'text-zinc-300'}`}>
+                                                                    {turn.is_working ? 'Thinking...' : 'Thinking Process'}
+                                                                </span>
+                                                                {turn.is_working && (
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping ml-1" />
+                                                                )}
                                                             </div>
-                                                            <div className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${openThinkingIds.has(turn.id || idx) ? 'rotate-90' : ''}`}>
+                                                            <div className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${(openThinkingIds.has(turn.id || idx) || (turn.is_working && !turn.text)) ? 'rotate-90' : ''}`}>
                                                                 {Icon.chevronRight}
                                                             </div>
                                                         </button>
-                                                        {openThinkingIds.has(turn.id || idx) && (
-                                                            <div className="px-3.5 py-2.5 bg-zinc-950/80 border-t border-zinc-800/80 font-mono text-[11px] text-zinc-400 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
-                                                                {turn.thinking}
+                                                        {(openThinkingIds.has(turn.id || idx) || (turn.is_working && !turn.text)) && (
+                                                            <div className="px-3.5 py-2.5 bg-zinc-950/80 border-t border-zinc-800/80 font-mono text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto select-text">
+                                                                {turn.thinking || (
+                                                                    <span className="inline-flex items-center gap-2 text-zinc-500 italic">
+                                                                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                                                                        Analyzing context and planning next steps...
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
                                                 )}
 
                                                 {/* ─── Antigravity Tool Steps & Permissions ──────────── */}
-                                                {turn.steps && turn.steps.length > 0 && (
-                                                    <div className="space-y-2">
-                                                        {turn.steps.map((step, sidx) => {
-                                                            const stepKey = `${turn.id || idx}-${step.id || sidx}`;
-                                                            const isOpen = openStepIds.has(stepKey) || (turn.is_working && sidx === turn.steps.length - 1);
-                                                            const approvalState = approvals[stepKey];
+                                                {turn.steps && turn.steps.length > 0 && (() => {
+                                                    const isWorkedOpen = openWorkedIds.has(turn.id || idx);
+                                                    const shouldCollapse = turn.steps.length > 3 && !isWorkedOpen;
+                                                    const stepsToRender = shouldCollapse
+                                                        ? turn.steps.map((s, i) => ({ step: s, sidx: i })).filter(({ step, sidx }) => sidx >= turn.steps.length - 2)
+                                                        : turn.steps.map((step, sidx) => ({ step, sidx }));
+                                                    const hiddenCount = turn.steps.length - stepsToRender.length;
+
+                                                    return (
+                                                        <div className="space-y-2">
+                                                            {shouldCollapse && hiddenCount > 0 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleWorked(turn.id || idx)}
+                                                                    className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-850/80 text-zinc-400 hover:text-zinc-200 transition text-xs font-mono select-none cursor-pointer"
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-3.5 h-3.5 text-zinc-400">{Icon.check}</div>
+                                                                        <span>Worked on {hiddenCount} earlier steps</span>
+                                                                    </div>
+                                                                    <span className="text-[10px] text-blue-400 hover:underline font-sans">Show all</span>
+                                                                </button>
+                                                            )}
+
+                                                            {isWorkedOpen && turn.steps.length > 4 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleWorked(turn.id || idx)}
+                                                                    className="w-full flex items-center justify-between px-3 py-1 rounded-lg border border-zinc-800/60 bg-zinc-950/40 text-zinc-500 hover:text-zinc-300 transition text-[10px] font-mono select-none cursor-pointer"
+                                                                >
+                                                                    <span>Collapse earlier steps</span>
+                                                                    <span className="text-zinc-400">Hide</span>
+                                                                </button>
+                                                            )}
+
+                                                            {stepsToRender.map(({ step, sidx }) => {
+                                                                const stepKey = `${turn.id || idx}-${step.id || sidx}`;
+                                                                const isOpen = openStepIds.has(stepKey) || (turn.is_working && sidx === turn.steps.length - 1);
+                                                                const approvalState = approvals[stepKey];
 
                                                             return (
                                                                 <div key={sidx} className="rounded-xl border border-zinc-800/90 bg-zinc-900/80 overflow-hidden text-xs">
@@ -774,7 +836,7 @@ export default function App() {
                                                                             )}
 
                                                                             {/* ─── Permission / Approval Request Card ─── */}
-                                                                            {step.requires_permission && (
+                                                                            {step.requires_permission && (turn.is_working || approvalState) && (
                                                                                 <div className="p-2.5 rounded-xl bg-gradient-to-r from-zinc-900 to-zinc-850 border border-zinc-750 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm">
                                                                                     <div>
                                                                                         <div className="font-semibold text-zinc-200 text-xs flex items-center gap-1.5">
@@ -833,7 +895,8 @@ export default function App() {
                                                             );
                                                         })}
                                                     </div>
-                                                )}
+                                                );
+                                            })()}
 
                                                 {/* ─── Active Working Status Indicator ─────────────────── */}
                                                 {turn.is_working && (

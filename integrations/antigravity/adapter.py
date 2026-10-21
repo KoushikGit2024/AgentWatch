@@ -182,6 +182,122 @@ class AntigravityAdapter:
                 return cached
         return None
 
+    async def send_prompt(self, message: str) -> Dict[str, Any]:
+        """Dispatch prompt text directly into Antigravity IDE workbench via CDP."""
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
+
+        try:
+            import websockets
+            import json
+            import asyncio
+            async with websockets.connect(self.active_target_url, close_timeout=3) as ws:
+                # 1. Focus the Message input element and clear existing text
+                focus_js = """
+                (() => {
+                    const el = document.querySelector('[aria-label="Message input"]');
+                    if (!el) return { found: false };
+                    el.focus();
+                    document.execCommand('selectAll', false, null);
+                    document.execCommand('delete', false, null);
+                    return { found: true };
+                })()
+                """
+                await ws.send(json.dumps({
+                    "id": 201,
+                    "method": "Runtime.evaluate",
+                    "params": {"expression": focus_js, "returnByValue": True}
+                }))
+                await asyncio.wait_for(ws.recv(), timeout=2.0)
+
+                # 2. Insert text using CDP native Input.insertText
+                await ws.send(json.dumps({
+                    "id": 202,
+                    "method": "Input.insertText",
+                    "params": {"text": message}
+                }))
+                await asyncio.wait_for(ws.recv(), timeout=2.0)
+
+                # 3. Dispatch Enter key to submit
+                await ws.send(json.dumps({
+                    "id": 203,
+                    "method": "Input.dispatchKeyEvent",
+                    "params": {
+                        "type": "rawKeyDown",
+                        "key": "Enter",
+                        "code": "Enter",
+                        "windowsVirtualKeyCode": 13,
+                        "nativeVirtualKeyCode": 13
+                    }
+                }))
+                await asyncio.wait_for(ws.recv(), timeout=2.0)
+
+                await ws.send(json.dumps({
+                    "id": 204,
+                    "method": "Input.dispatchKeyEvent",
+                    "params": {
+                        "type": "keyUp",
+                        "key": "Enter",
+                        "code": "Enter",
+                        "windowsVirtualKeyCode": 13,
+                        "nativeVirtualKeyCode": 13
+                    }
+                }))
+                await asyncio.wait_for(ws.recv(), timeout=2.0)
+
+                return {"success": True, "message_length": len(message)}
+        except Exception as exc:
+            logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
+            return {"success": False, "error": str(exc)}
+
+    async def forward_approval(self, request_type: str, decision: str) -> Dict[str, Any]:
+        """Forward user approval decision to Antigravity IDE workbench by clicking dialog button."""
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
+
+        try:
+            import websockets
+            import json
+            import asyncio
+            async with websockets.connect(self.active_target_url, close_timeout=3) as ws:
+                click_js = f"""
+                (() => {{
+                    const dec = {json.dumps(decision.lower())};
+                    const isAllow = dec.includes('allow') || dec.includes('accept');
+                    const btns = Array.from(document.querySelectorAll('button, .monaco-button, [role="button"]'));
+                    for (const b of btns) {{
+                        const text = (b.innerText || '').toLowerCase();
+                        const aria = (b.getAttribute('aria-label') || '').toLowerCase();
+                        const title = (b.title || '').toLowerCase();
+                        const combined = `${{text}} ${{aria}} ${{title}}`;
+                        
+                        if (isAllow && (combined.includes('allow') || combined.includes('always allow') || combined.includes('accept') || combined.includes('run'))) {{
+                            b.click();
+                            return {{ clicked: true, target: text || aria }};
+                        }} else if (!isAllow && (combined.includes('deny') || combined.includes('reject') || combined.includes('cancel'))) {{
+                            b.click();
+                            return {{ clicked: true, target: text || aria }};
+                        }}
+                    }}
+                    return {{ clicked: false }};
+                }})()
+                """
+                await ws.send(json.dumps({
+                    "id": 210,
+                    "method": "Runtime.evaluate",
+                    "params": {"expression": click_js, "returnByValue": True}
+                }))
+                reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.5))
+                res = reply.get("result", {}).get("result", {}).get("value", {})
+                return {"success": True, "details": res}
+        except Exception as exc:
+            logger.error("Failed to forward approval via CDP: %s", str(exc))
+            return {"success": False, "error": str(exc)}
+
     def get_status(self) -> Dict[str, Any]:
         """Return cached or refreshed status of Antigravity connection."""
         discovery = self.discover_cdp()

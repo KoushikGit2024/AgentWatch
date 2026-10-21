@@ -142,9 +142,14 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
         }
     })
 
+    # Forward approval action to Antigravity IDE workbench via CDP
+    cdp_forward = await antigravity_adapter.forward_approval(payload.request_type, payload.decision)
+
     return {
         "success": True,
         "status": "recorded",
+        "forwarded_to_ide": cdp_forward.get("success", False),
+        "forward_details": cdp_forward,
         "decision": payload.decision,
         "request_type": payload.request_type,
         "target": payload.target
@@ -211,7 +216,7 @@ def get_app_state():
 
 @router.post("/send")
 @router.post("/api/v1/send")
-def send_message(payload: PromptSubmissionRequest):
+async def send_message(payload: PromptSubmissionRequest):
     """
     Send prompt to Antigravity session with schema validation and truthful lifecycle tracking.
     Uses persistent MongoDB idempotency reservation with payload fingerprinting.
@@ -238,14 +243,20 @@ def send_message(payload: PromptSubmissionRequest):
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)
 
+    dispatch_res = {"success": False}
+    if cdp_connected:
+        dispatch_res = await antigravity_adapter.send_prompt(payload.message)
+
+    dispatched = dispatch_res.get("success", False)
     response = {
-        "status": "submitted" if cdp_connected else "queued_offline",
-        "action_lifecycle": "acknowledged" if cdp_connected else "offline_buffered",
+        "status": "submitted" if dispatched else ("cdp_dispatch_failed" if cdp_connected else "queued_offline"),
+        "action_lifecycle": "acknowledged" if dispatched else "offline_buffered",
         "antigravity_connected": cdp_connected,
         "message_length": len(payload.message),
         "target_session_id": payload.session_id,
-        "confirmed_execution": False,  # Truthful status: dispatching does not prove Antigravity has executed
-        "reason": None if cdp_connected else "Antigravity CDP is not currently connected on remote debugging port",
+        "confirmed_execution": dispatched,
+        "dispatch_details": dispatch_res,
+        "reason": None if dispatched else dispatch_res.get("error", "Antigravity CDP is not currently connected on remote debugging port"),
     }
 
     if payload.idempotency_key:
