@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 import { Icon } from '../../constants/icons';
 import { FileIcon, getFileInfo } from '../../constants/fileIcons';
 import MarkdownView from '../MarkdownView';
@@ -6,9 +7,76 @@ import { api } from '../../services/api';
 import { toast } from '../../services/toastService';
 
 /**
- * FileViewerModal — Interactive full-file inspector with line-range highlighting,
- * automatic centering, line number gutters, quick copy, and formatted Markdown Preview
- * for system-generated plan files (*.md, plan*, instructions).
+ * Maps common file extensions to Monaco supported language identifiers.
+ */
+function getMonacoLanguage(ext = '', filename = '') {
+    const cleanExt = (ext || '').toLowerCase().replace(/^\./, '');
+    const lowerName = (filename || '').toLowerCase();
+
+    if (lowerName === 'dockerfile') return 'dockerfile';
+    if (lowerName === 'makefile') return 'makefile';
+
+    const MAP = {
+        js: 'javascript',
+        mjs: 'javascript',
+        cjs: 'javascript',
+        jsx: 'javascript',
+        ts: 'typescript',
+        mts: 'typescript',
+        cts: 'typescript',
+        tsx: 'typescript',
+        py: 'python',
+        pyw: 'python',
+        ipynb: 'json',
+        json: 'json',
+        jsonc: 'json',
+        json5: 'json',
+        html: 'html',
+        htm: 'html',
+        css: 'css',
+        scss: 'scss',
+        sass: 'scss',
+        less: 'less',
+        md: 'markdown',
+        markdown: 'markdown',
+        sh: 'shell',
+        bash: 'shell',
+        zsh: 'shell',
+        ps1: 'powershell',
+        bat: 'bat',
+        cmd: 'bat',
+        yaml: 'yaml',
+        yml: 'yaml',
+        toml: 'ini',
+        ini: 'ini',
+        cfg: 'ini',
+        conf: 'ini',
+        env: 'shell',
+        sql: 'sql',
+        graphql: 'graphql',
+        gql: 'graphql',
+        rs: 'rust',
+        go: 'go',
+        c: 'c',
+        h: 'c',
+        cpp: 'cpp',
+        hpp: 'cpp',
+        cs: 'csharp',
+        java: 'java',
+        kt: 'kotlin',
+        php: 'php',
+        rb: 'ruby',
+        xml: 'xml',
+        svg: 'xml'
+    };
+
+    return MAP[cleanExt] || 'plaintext';
+}
+
+/**
+ * FileViewerModal — Interactive full-file inspector with Monaco Editor,
+ * language-based syntax highlighting, line-range highlighting, auto-centering,
+ * and formatted Markdown Plan Preview.
  */
 export default function FileViewerModal({ targetFile, onClose }) {
     const [fileData, setFileData] = useState(null);
@@ -17,7 +85,9 @@ export default function FileViewerModal({ targetFile, onClose }) {
     const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'code'
     const [copiedContent, setCopiedContent] = useState(false);
     const [copiedPath, setCopiedPath] = useState(false);
-    const targetLineRef = useRef(null);
+    const editorRef = useRef(null);
+    const monacoRef = useRef(null);
+    const decorationsRef = useRef([]);
 
     const filePath = targetFile?.cleanPath || targetFile?.path || '';
     const startLine = targetFile?.startLine || null;
@@ -72,13 +142,46 @@ export default function FileViewerModal({ targetFile, onClose }) {
         };
     }, [filePath]);
 
-    // Scroll highlighted line into view upon data load in code mode
+    // Handle Monaco Editor Mounting
+    const handleEditorDidMount = (editor, monaco) => {
+        editorRef.current = editor;
+        monacoRef.current = monaco;
+        applyHighlightDecorations(editor, monaco);
+    };
+
+    // Apply Highlight Line Decorations & Auto-Center
+    const applyHighlightDecorations = (editor, monaco) => {
+        if (!editor || !monaco) return;
+
+        if (hasHighlight && startLine > 0) {
+            const targetEnd = endLine && endLine >= startLine ? endLine : startLine;
+            const newDecorations = [
+                {
+                    range: new monaco.Range(startLine, 1, targetEnd, 1),
+                    options: {
+                        isWholeLine: true,
+                        className: 'monaco-highlight-line',
+                        glyphMarginClassName: 'monaco-highlight-glyph',
+                        linesDecorationsClassName: 'monaco-highlight-glyph'
+                    }
+                }
+            ];
+
+            decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
+
+            // Center highlighted range smoothly
+            setTimeout(() => {
+                editor.revealLineInCenter(startLine, 0); // 0 = Smooth scroll
+            }, 50);
+        } else {
+            decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+        }
+    };
+
+    // Re-apply decorations when targetFile range or viewMode changes
     useEffect(() => {
-        if (fileData && viewMode === 'code' && hasHighlight) {
-            const timer = setTimeout(() => {
-                targetLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 60);
-            return () => clearTimeout(timer);
+        if (editorRef.current && monacoRef.current && viewMode === 'code') {
+            applyHighlightDecorations(editorRef.current, monacoRef.current);
         }
     }, [fileData, startLine, endLine, viewMode, hasHighlight]);
 
@@ -240,56 +343,51 @@ export default function FileViewerModal({ targetFile, onClose }) {
                     {filePath}
                 </div>
 
-                {/* ─── Modal Viewport (Rendered Markdown Preview OR Numbered Code Lines) ─── */}
-                <div className="flex-1 overflow-auto bg-zinc-950 p-3 sm:p-5 text-xs min-h-[350px] max-h-[75vh]">
+                {/* ─── Modal Viewport (Rendered Markdown Preview OR Monaco Editor) ─── */}
+                <div className="flex-1 overflow-hidden bg-zinc-950 min-h-[380px] max-h-[75vh] flex flex-col">
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-zinc-500 space-y-2">
+                        <div className="flex flex-col items-center justify-center py-24 text-zinc-500 space-y-2 flex-1">
                             <div className="w-6 h-6 animate-spin text-blue-400">{Icon.activity}</div>
-                            <span className="text-xs">Reading file contents...</span>
+                            <span className="text-xs font-mono">Loading file contents...</span>
                         </div>
                     ) : error ? (
-                        <div className="p-6 text-center space-y-2 text-rose-300">
-                            <div className="w-8 h-8 mx-auto text-rose-400">{Icon.alertCircle}</div>
+                        <div className="p-6 text-center space-y-2 text-rose-300 flex-1 flex flex-col items-center justify-center">
+                            <div className="w-8 h-8 text-rose-400">{Icon.alertCircle}</div>
                             <p className="text-sm font-semibold">{error}</p>
                             <p className="text-xs text-zinc-500 font-mono break-all">{filePath}</p>
                         </div>
                     ) : viewMode === 'preview' && isMarkdown ? (
                         /* Beautiful Rendered Markdown Preview for Plans & Specs */
-                        <div className="max-w-3xl mx-auto py-2">
+                        <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full">
                             <MarkdownView content={fileData?.content} />
                         </div>
                     ) : (
-                        /* Monospace Code Editor View with Line Highlighting & Numbered Gutters */
-                        <div className="min-w-full inline-block font-mono leading-relaxed">
-                            {lines.map((lineText, idx) => {
-                                const lineNum = idx + 1;
-                                const isHighlighted = hasHighlight && lineNum >= startLine && lineNum <= endLine;
-                                const isStartOfHighlight = hasHighlight && lineNum === startLine;
-
-                                return (
-                                    <div
-                                        key={lineNum}
-                                        ref={isStartOfHighlight ? targetLineRef : null}
-                                        className={`flex items-start transition-colors rounded ${
-                                            isHighlighted
-                                                ? 'bg-amber-500/15 border-l-2 border-amber-400 text-amber-100 font-semibold'
-                                                : 'hover:bg-zinc-900/60 text-zinc-300'
-                                        }`}
-                                    >
-                                        {/* Line Number Gutter */}
-                                        <span className={`w-10 sm:w-12 text-right pr-3 select-none text-[11px] shrink-0 ${
-                                            isHighlighted ? 'text-amber-400 font-bold' : 'text-zinc-600'
-                                        }`}>
-                                            {lineNum}
-                                        </span>
-
-                                        {/* Code Line Text */}
-                                        <span className="whitespace-pre flex-1 pl-1 pr-4 select-text">
-                                            {lineText || ' '}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                        /* Monaco Editor View with Language-Based Syntax Highlighting & Line Decorators */
+                        <div className="flex-1 w-full h-full min-h-[380px] relative">
+                            <Editor
+                                height="100%"
+                                width="100%"
+                                theme="vs-dark"
+                                language={getMonacoLanguage(fileData?.extension, fileData?.filename || filePath)}
+                                value={fileData?.content || ''}
+                                onMount={handleEditorDidMount}
+                                options={{
+                                    readOnly: true,
+                                    domReadOnly: true,
+                                    fontSize: 12,
+                                    fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+                                    lineNumbers: 'on',
+                                    glyphMargin: hasHighlight,
+                                    minimap: { enabled: (fileData?.total_lines || 0) > 60 },
+                                    scrollBeyondLastLine: false,
+                                    automaticLayout: true,
+                                    wordWrap: 'off',
+                                    renderLineHighlight: 'all',
+                                    padding: { top: 12, bottom: 12 },
+                                    smoothScrolling: true,
+                                    cursorBlinking: 'solid'
+                                }}
+                            />
                         </div>
                     )}
                 </div>
@@ -304,16 +402,20 @@ export default function FileViewerModal({ targetFile, onClose }) {
                     ) : isMarkdown ? (
                         <span className="flex items-center gap-1.5 text-zinc-400">
                             <span className="w-2 h-2 rounded-full bg-blue-400" />
-                            Mode: <strong className="text-zinc-200">{viewMode === 'preview' ? 'Formatted Plan View' : 'Raw Markdown Source'}</strong>
+                            Mode: <strong className="text-zinc-200">{viewMode === 'preview' ? 'Formatted Plan View' : 'Monaco Source View'}</strong>
                         </span>
                     ) : (
-                        <span>Total: <strong className="text-zinc-200">{lines.length} lines</strong></span>
+                        <span>Language: <strong className="text-zinc-200 uppercase">{getMonacoLanguage(fileData?.extension, fileData?.filename || filePath)}</strong> · {fileData?.total_lines || 0} lines</span>
                     )}
 
                     {hasHighlight && viewMode === 'code' && (
                         <button
                             type="button"
-                            onClick={() => targetLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                            onClick={() => {
+                                if (editorRef.current && startLine) {
+                                    editorRef.current.revealLineInCenter(startLine, 0);
+                                }
+                            }}
                             className="text-xs text-blue-400 hover:text-blue-300 underline cursor-pointer"
                         >
                             Jump to highlight

@@ -86,3 +86,16 @@
 
 /* Safe area for mobile bottom */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Monaco Editor Highlighted Line Range */
+.monaco-highlight-line {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-left: 3px solid #f59e0b !important;
+}
+
+.monaco-highlight-glyph {
+  background: #f59e0b !important;
+  width: 4px !important;
+  margin-left: 3px !important;
+  border-radius: 2px !important;
+}
