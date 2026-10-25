@@ -38,7 +38,11 @@ export default function App() {
         const parsed = parseFileLink(rawPath);
         if (lineRange.startLine !== undefined) parsed.startLine = lineRange.startLine;
         if (lineRange.endLine !== undefined) parsed.endLine = lineRange.endLine;
-        setActiveFileViewer(parsed);
+
+        // Guard: Only open the modal if the target passes genuine file path validation
+        if (parsed.isValid && parsed.cleanPath) {
+            setActiveFileViewer(parsed);
+        }
     }, []);
 
     // Listen for agentwatch:open-file window events

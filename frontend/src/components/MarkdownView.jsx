@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { marked } from 'marked';
 import { toast } from '../services/toastService';
 import { getFileInfo, getFileSvgHtml } from '../constants/fileIcons';
+import { isValidFilePath } from '../utils/fileLinkParser';
 
 // Escape HTML utility for code blocks
 function escapeHtml(str) {
@@ -44,25 +45,26 @@ marked.use({
         link(token) {
             const href = token.href || '#';
             const rawText = token.text || token.href;
-            const isFile = href.startsWith('file://') || href.startsWith('file:/');
+            const isFileUri = href.startsWith('file://') || href.startsWith('file:/');
 
-            if (isFile) {
+            if (isFileUri) {
                 // Decode URI components and clean up file path
                 const decodedPath = decodeURIComponent(href.replace(/^file:\/\/\/?/, ''));
-                const fileInfo = getFileInfo(decodedPath);
-                // Format clean label: if raw text was a long file:/// URL, use basename or relative path
-                let label = rawText;
-                if (label.startsWith('file://') || label.startsWith('file:/')) {
-                    const parts = decodedPath.split(/[\/\\]/);
-                    label = parts[parts.length - 1] || decodedPath;
+                if (isValidFilePath(decodedPath)) {
+                    const fileInfo = getFileInfo(decodedPath);
+                    let label = rawText;
+                    if (label.startsWith('file://') || label.startsWith('file:/')) {
+                        const parts = decodedPath.split(/[\/\\]/);
+                        label = parts[parts.length - 1] || decodedPath;
+                    }
+
+                    const svgHtml = getFileSvgHtml(decodedPath, 'w-3.5 h-3.5 inline-block shrink-0 align-text-bottom mr-1');
+
+                    return `<button type="button" class="file-link-pill inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-lg border max-w-full break-all cursor-pointer transition active:scale-95 shadow-xs align-baseline my-0.5 ${fileInfo.bg} ${fileInfo.color} hover:opacity-80" data-file-path="${escapeHtml(decodedPath)}" title="${escapeHtml(fileInfo.label)}: ${escapeHtml(decodedPath)}">
+                        ${svgHtml}
+                        <span class="truncate max-w-xs md:max-w-md">${escapeHtml(label)}</span>
+                    </button>`;
                 }
-
-                const svgHtml = getFileSvgHtml(decodedPath, 'w-3.5 h-3.5 inline-block shrink-0 align-text-bottom mr-1');
-
-                return `<button type="button" class="file-link-pill inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-lg border max-w-full break-all cursor-pointer transition active:scale-95 shadow-xs align-baseline my-0.5 ${fileInfo.bg} ${fileInfo.color} hover:opacity-80" data-file-path="${escapeHtml(decodedPath)}" title="${escapeHtml(fileInfo.label)}: ${escapeHtml(decodedPath)}">
-                    ${svgHtml}
-                    <span class="truncate max-w-xs md:max-w-md">${escapeHtml(label)}</span>
-                </button>`;
             }
 
             return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline underline-offset-2 break-all [word-break:break-all] hover:text-blue-300 transition">${rawText}</a>`;
