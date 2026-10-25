@@ -1,5 +1,6 @@
-"""Antigravity adapter managing CDP discovery and session state observation."""
+"""Antigravity adapter managing CDP discovery, caching, and session state observation."""
 
+import hashlib
 import httpx
 import logging
 import time
@@ -14,7 +15,7 @@ class AntigravityAdapter:
     """
     Manages robust discovery, health checks, and lifecycle tracking
     for Antigravity desktop IDE via Chrome DevTools Protocol.
-    Includes target validation, reconnection backoff, and diagnostics metrics.
+    Includes target validation, screenshot hash deduplication, and 30s model caching.
     """
 
     def __init__(self):
@@ -28,12 +29,17 @@ class AntigravityAdapter:
         self.reconnect_attempts: int = 0
         self.last_error: Optional[str] = None
         self._last_scan_time: float = 0.0
+        self._current_mode: str = "Fast"
+        self._cached_screenshot: Optional[str] = None
+        self._cached_screenshot_hash: Optional[str] = None
+        self._last_screenshot_time: float = 0.0
+        self._cached_active_model: Optional[str] = None
+        self._last_model_read_time: float = 0.0
 
     def _is_antigravity_target(self, target: Dict[str, Any]) -> bool:
         """Validate that a CDP target belongs to the Antigravity desktop IDE context."""
         url = (target.get("url") or "").lower()
         title = (target.get("title") or "").lower()
-        # Strictly verify vscode/electron workbench or Antigravity window markers
         return (
             "workbench" in url
             or "vscode-app" in url
@@ -61,8 +67,7 @@ class AntigravityAdapter:
         Detects target replacement, validates target identity, and records observation time.
         """
         now_ts = time.time()
-        # Rate-limit scan frequency unless forced
-        if not force and (now_ts - self._last_scan_time < 1.0) and self.last_status == "connected":
+        if not force and (now_ts - self._last_scan_time < 1.5) and self.last_status == "connected":
             return {
                 "connected": True,
                 "port": self.active_cdp_port,
@@ -79,7 +84,6 @@ class AntigravityAdapter:
                 resp = httpx.get(f"http://127.0.0.1:{port}/json/list", timeout=0.8)
                 if resp.status_code == 200:
                     targets = resp.json()
-                    # Priority: Find validated Antigravity Workbench target
                     valid_targets = [
                         t for t in targets
                         if self._is_antigravity_target(t) and t.get("webSocketDebuggerUrl")
@@ -91,7 +95,6 @@ class AntigravityAdapter:
                         target_id = valid_target.get("id")
                         now_dt = datetime.now(timezone.utc)
 
-                        # Detect target replacement/restart
                         if self.active_target_id and self.active_target_id != target_id:
                             logger.info(
                                 "Antigravity CDP target replaced from '%s' to '%s'",
@@ -122,7 +125,6 @@ class AntigravityAdapter:
                 self.last_error = str(e)
                 continue
 
-        # Target not located or lost
         if self.last_status == "connected":
             logger.warning("Antigravity CDP disconnected on port %s", self.active_cdp_port)
 
@@ -143,10 +145,10 @@ class AntigravityAdapter:
             "message": "Antigravity CDP not responding on ports " + settings.cdp_ports,
         }
 
-    async def capture_screenshot(self, quality: int = 65) -> Optional[str]:
+    async def capture_screenshot(self, quality: int = 60) -> Optional[str]:
         """
         Capture viewport screenshot from active Antigravity target via CDP Page.captureScreenshot.
-        Returns base64 JPEG string or cached screenshot.
+        Returns base64 JPEG string or cached screenshot (1.5s TTL).
         """
         if not self.active_target_url:
             self.discover_cdp()
@@ -154,10 +156,8 @@ class AntigravityAdapter:
             return None
 
         now = time.time()
-        cached = getattr(self, "_cached_screenshot", None)
-        last_time = getattr(self, "_last_screenshot_time", 0.0)
-        if cached and (now - last_time < 1.0):
-            return cached
+        if self._cached_screenshot and (now - self._last_screenshot_time < 1.5):
+            return self._cached_screenshot
 
         try:
             import websockets
@@ -174,13 +174,18 @@ class AntigravityAdapter:
                 data = res.get("result", {}).get("data")
                 if data:
                     self._cached_screenshot = data
+                    self._cached_screenshot_hash = hashlib.md5(data.encode("ascii", errors="ignore")).hexdigest()[:16]
                     self._last_screenshot_time = now
                     return data
         except Exception as e:
             logger.debug("CDP screenshot capture notice: %s", str(e))
-            if cached:
-                return cached
+            if self._cached_screenshot:
+                return self._cached_screenshot
         return None
+
+    def get_cached_screenshot_hash(self) -> Optional[str]:
+        """Return MD5 hash of the latest captured screenshot for bandwidth deduplication."""
+        return self._cached_screenshot_hash
 
     async def send_prompt(self, message: str) -> Dict[str, Any]:
         """Dispatch prompt text directly into Antigravity IDE workbench via CDP."""
@@ -192,7 +197,6 @@ class AntigravityAdapter:
         from integrations.antigravity.cdp_actions import dispatch_send_prompt
         res = await dispatch_send_prompt(self.active_target_url, message)
         if not res.get("success"):
-            # Target URL or session might have cycled; attempt single forced rediscovery
             self.discover_cdp(force=True)
             if self.active_target_url:
                 res = await dispatch_send_prompt(self.active_target_url, message)
@@ -208,25 +212,67 @@ class AntigravityAdapter:
         from integrations.antigravity.cdp_actions import dispatch_stop_generation
         return await dispatch_stop_generation(self.active_target_url)
 
-    async def forward_approval(self, request_type: str, decision: str) -> Dict[str, Any]:
-        """Forward user approval decision to Antigravity IDE workbench by clicking dialog button."""
+    async def inspect_active_popup(self) -> Dict[str, Any]:
+        """Inspect live Antigravity DOM for active command approvals or dynamic question popups."""
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"has_popup": False}
+
+        from integrations.antigravity.cdp_actions import dispatch_inspect_active_popup
+        return await dispatch_inspect_active_popup(self.active_target_url)
+
+    async def forward_approval(
+        self,
+        request_type: str,
+        decision: str,
+        custom_response: Optional[str] = None,
+        option_label: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Forward user approval decision (and optional custom instructions) to Antigravity IDE workbench."""
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"success": False, "requires_native_ide": False, "error": "Antigravity CDP not connected on port 9000"}
+
+        from integrations.antigravity.cdp_actions import dispatch_forward_approval
+        return await dispatch_forward_approval(
+            self.active_target_url,
+            request_type=request_type,
+            decision=decision,
+            custom_response=custom_response,
+            option_label=option_label,
+        )
+
+    async def answer_question(
+        self,
+        selected_labels: List[str],
+        custom_response: Optional[str] = None,
+        fallback_prompt: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Answer an active agent question by clicking DOM options or dispatching prompt text."""
         if not self.active_target_url:
             self.discover_cdp()
         if not self.active_target_url:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
 
-        from integrations.antigravity.cdp_actions import dispatch_forward_approval
-        return await dispatch_forward_approval(self.active_target_url, request_type, decision)
+        from integrations.antigravity.cdp_actions import dispatch_answer_question
+        return await dispatch_answer_question(
+            self.active_target_url,
+            selected_labels=selected_labels,
+            custom_response=custom_response,
+            fallback_prompt=fallback_prompt,
+        )
 
     async def get_active_model_and_plan(self, force_refresh_list: bool = False) -> Dict[str, Any]:
         """
-        Extract active model and genuine available models from Antigravity IDE UI via CDP.
-        Never statically guesses or hardcodes third-party models.
+        Extract active model and available models from Antigravity IDE UI via CDP.
+        Caches active model for 30s to avoid opening a CDP WebSocket on every 4s poll.
         """
         if not self.active_target_url:
             self.discover_cdp()
         if not self.active_target_url:
-            return {"model": None, "available_models": [], "mode": "Agent"}
+            return {"model": None, "available_models": [], "mode": self._current_mode}
 
         cached_models = getattr(self, "_cached_available_models", None)
         if cached_models is None:
@@ -238,20 +284,29 @@ class AntigravityAdapter:
             ]
             self._cached_available_models = cached_models
 
-        from integrations.antigravity.cdp_actions import dispatch_read_model
-        read_res = await dispatch_read_model(self.active_target_url, force_full_scan=force_refresh_list)
-        active_model = read_res.get("model") or cached_models[0]
+        now = time.time()
+        if not force_refresh_list and self._cached_active_model and (now - self._last_model_read_time < 30.0):
+            active_model = self._cached_active_model
+        else:
+            from integrations.antigravity.cdp_actions import dispatch_read_model
+            read_res = await dispatch_read_model(self.active_target_url, force_full_scan=force_refresh_list)
+            active_model = read_res.get("model") or self._cached_active_model or cached_models[0]
+            self._cached_active_model = active_model
+            self._last_model_read_time = now
+
         if active_model and active_model not in cached_models:
             cached_models.insert(0, active_model)
 
         return {
             "model": active_model,
             "available_models": cached_models,
-            "mode": "Agent"
+            "mode": self._current_mode
         }
 
     async def set_active_model(self, target_model: str) -> Dict[str, Any]:
         """Switch active model in Antigravity IDE by clicking the matching menu item."""
+        self._cached_active_model = target_model
+        self._last_model_read_time = time.time()
         import os
         if os.environ.get("ENVIRONMENT") == "testing":
             return {"success": True, "selected": target_model, "test_mode": True}
@@ -263,6 +318,21 @@ class AntigravityAdapter:
 
         from integrations.antigravity.cdp_actions import dispatch_switch_model
         return await dispatch_switch_model(self.active_target_url, target_model)
+
+    async def set_active_mode(self, target_mode: str) -> Dict[str, Any]:
+        """Switch active agent mode (Fast vs Planning) in Antigravity IDE."""
+        self._current_mode = target_mode
+        import os
+        if os.environ.get("ENVIRONMENT") == "testing":
+            return {"success": True, "mode": target_mode, "test_mode": True}
+
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"success": True, "mode": target_mode, "cdp_connected": False}
+
+        from integrations.antigravity.cdp_actions import dispatch_switch_mode
+        return await dispatch_switch_mode(self.active_target_url, target_mode)
 
     def get_status(self) -> Dict[str, Any]:
         """Return cached or refreshed status of Antigravity connection."""

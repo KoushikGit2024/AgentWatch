@@ -177,13 +177,13 @@ class InteractionService:
         if kind in (InteractionKind.SINGLE_CHOICE.value, InteractionKind.MULTIPLE_CHOICE.value):
             allowed_ids = {opt["id"] for opt in interaction.get("options", [])}
             selected = set(payload.selected_option_ids)
-            # If custom response permitted and "other" selected, allow
+            # If custom response permitted and custom text provided, allow with or without selected options
             is_custom = bool(payload.custom_response and payload.custom_response.strip())
             if not is_custom and not selected:
                 if payload.idempotency_key:
                     self.idempotency_repo.fail(scope, payload.idempotency_key, "No option selected")
                 return {"success": False, "error": "No option selected", "status": "validation_error"}
-            if not is_custom and not selected.issubset(allowed_ids):
+            if selected and not selected.issubset(allowed_ids):
                 if payload.idempotency_key:
                     self.idempotency_repo.fail(scope, payload.idempotency_key, "Invalid option selection")
                 return {"success": False, "error": "Invalid option selection", "status": "validation_error"}
@@ -211,7 +211,6 @@ class InteractionService:
         )
 
         if not updated:
-            # Atomic compare-and-set lost the race to a concurrent winner
             if payload.idempotency_key:
                 self.idempotency_repo.fail(scope, payload.idempotency_key, "Race condition: already resolved")
             return {
@@ -234,17 +233,39 @@ class InteractionService:
 
         is_testing = os.environ.get("ENVIRONMENT") == "testing"
         cdp_status = antigravity_adapter.get_status().get("cdp", {})
+        cdp_dispatch = None
+        prompt_fallback = None
+
         if cdp_status.get("connected") and not is_testing:
+            # CDP is live: click the option directly in the IDE popup
             try:
-                await antigravity_adapter.send_prompt(prompt_text)
+                cdp_dispatch = await antigravity_adapter.answer_question(
+                    selected_labels=selected_labels,
+                    custom_response=payload.custom_response.strip() if payload.custom_response else None,
+                    fallback_prompt=prompt_text,
+                )
             except Exception as e:
-                logger.warning("Failed to dispatch interaction prompt to IDE: %s", str(e))
+                logger.warning("Failed to dispatch interaction via CDP: %s", str(e))
+
+        if not cdp_dispatch and not is_testing:
+            # Fallback: send the answer as a text prompt so the agent receives it
+            try:
+                q_title = interaction.get("title", "your question")
+                fallback_message = (
+                    f"[Response to: \"{q_title}\"]\n{prompt_text}"
+                )
+                prompt_fallback = await antigravity_adapter.send_prompt(fallback_message)
+                logger.info("Interaction answer dispatched as prompt fallback for '%s'", interaction_id)
+            except Exception as e:
+                logger.warning("Prompt fallback dispatch failed: %s", str(e))
 
         res = {
             "success": True,
             "interaction_id": interaction_id,
             "status": "submitted",
             "resolved_at": updated.get("resolved_at") if updated else None,
+            "cdp_dispatch": cdp_dispatch,
+            "prompt_fallback": prompt_fallback,
         }
 
         if payload.idempotency_key:
@@ -280,6 +301,37 @@ class InteractionService:
 
         return res
 
+    async def dismiss_interaction(self, interaction_id: str) -> Dict[str, Any]:
+        """Dismiss an interaction without answering, removing it from pending state."""
+        interaction = self.repo.get_interaction(interaction_id)
+        if not interaction:
+            return {"success": False, "status": "not_found", "error": f"Interaction '{interaction_id}' not found"}
+
+        updated = self.repo.resolve_interaction(
+            interaction_id,
+            response={"action": "dismissed"},
+            status=InteractionStatus.DISMISSED
+        )
+
+        res = {
+            "success": True,
+            "interaction_id": interaction_id,
+            "status": "dismissed",
+            "resolved_at": updated.get("resolved_at") if updated else None
+        }
+
+        try:
+            from services.websocket_manager import websocket_manager
+            await websocket_manager.broadcast({
+                "type": "interaction_resolved",
+                "interaction_id": interaction_id,
+                "data": res
+            })
+        except Exception:
+            pass
+
+        return res
+
     def sync_question_from_transcript(
         self,
         session_id: str,
@@ -287,14 +339,19 @@ class InteractionService:
         is_active: bool
     ) -> Optional[str]:
         """
-        Synchronize active agent questions from transcript into interaction repository.
-        Supersedes older or concluded questions so they never remain pending.
+        Synchronize active agent questions from transcript or CDP DOM into interaction repository.
+        Supports both string and dict options, preserves active questions across idle periods,
+        and supersedes concluded questions once answered.
         """
         if not is_active or not question_data:
             self.repo.supersede_pending_interactions(session_id=session_id)
             return None
 
-        q_text = question_data.get("question") or "Agent Question"
+        q_text = str(question_data.get("question") or question_data.get("title") or "Agent Question").strip()[:250]
+        q_desc = str(
+            question_data.get("description")
+            or "Select an option below or type your own custom instructions to guide the agent."
+        ).strip()[:1900]
         q_hash = hashlib.md5(f"{session_id}:{q_text}".encode()).hexdigest()[:12]
         interaction_id = f"q-{q_hash}"
 
@@ -304,24 +361,58 @@ class InteractionService:
         if existing:
             return interaction_id
 
-        options_list = [
-            InteractionOption(
-                id=f"opt_{i+1}",
-                label=opt,
-                is_recommended=(i == 0 and "(Recommended)" in opt)
-            )
-            for i, opt in enumerate(question_data.get("options", []))
-        ]
+        raw_options = question_data.get("options") or []
+        options_list: List[InteractionOption] = []
+        for i, opt in enumerate(raw_options):
+            if isinstance(opt, dict):
+                label_str = str(
+                    opt.get("label")
+                    or opt.get("title")
+                    or opt.get("text")
+                    or opt.get("value")
+                    or f"Option {i + 1}"
+                ).strip()[:250]
+                desc_val = opt.get("description") or opt.get("detail")
+                desc_str = str(desc_val).strip()[:950] if desc_val else None
+                is_rec = bool(opt.get("is_recommended") or opt.get("recommended") or "(recommended)" in label_str.lower())
+                opt_id = str(opt.get("id") or f"opt_{i + 1}")[:120]
+                if label_str:
+                    options_list.append(
+                        InteractionOption(
+                            id=opt_id,
+                            label=label_str,
+                            description=desc_str,
+                            is_recommended=is_rec,
+                        )
+                    )
+            elif opt is not None:
+                label_str = str(opt).strip()[:250]
+                if label_str:
+                    options_list.append(
+                        InteractionOption(
+                            id=f"opt_{i + 1}",
+                            label=label_str,
+                            is_recommended=(i == 0 and "(recommended)" in label_str.lower()) or "(recommended)" in label_str.lower(),
+                        )
+                    )
+
+        if not options_list:
+            kind = InteractionKind.FREE_TEXT
+        elif question_data.get("is_multi_select"):
+            kind = InteractionKind.MULTIPLE_CHOICE
+        else:
+            kind = InteractionKind.SINGLE_CHOICE
 
         doc = InteractionDocument(
             interaction_id=interaction_id,
             session_id=session_id,
-            kind=InteractionKind.MULTIPLE_CHOICE if question_data.get("is_multi_select") else InteractionKind.SINGLE_CHOICE,
+            kind=kind,
             title=q_text,
-            description="The agent is awaiting your decision to proceed.",
+            description=q_desc,
             options=options_list,
             allow_custom_response=True,
-            status=InteractionStatus.PENDING
+            custom_response_label="Type something else / Custom instructions",
+            status=InteractionStatus.PENDING,
         )
         self.repo.create_interaction(doc)
         return interaction_id

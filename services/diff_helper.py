@@ -1,25 +1,25 @@
-"""High-precision diff computation utility for file modification tool calls."""
+"""High-precision diff computation utility for file modification tool calls with LRU caching."""
 
 import difflib
+import hashlib
 import json
 import os
 import re
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 
-def compute_unified_diff(
+@lru_cache(maxsize=256)
+def _cached_unified_diff(
     old_text: str,
     new_text: str,
     filename: str = "",
     start_line: int = 1
 ) -> Dict[str, Any]:
-    """
-    Compute precise additions, deletions, and unified patch with line context.
-    """
+    """Cached internal computation of additions, deletions, and unified patch."""
     old_lines = (old_text or "").splitlines(keepends=True)
     new_lines = (new_text or "").splitlines(keepends=True)
 
-    # Clean lines without trailing newlines for comparison
     old_stripped = [line.rstrip("\r\n") for line in old_lines]
     new_stripped = [line.rstrip("\r\n") for line in new_lines]
 
@@ -43,7 +43,6 @@ def compute_unified_diff(
 
     diff_text = "".join(unified)
     if not diff_text and (old_text != new_text):
-        # Fallback if unified_diff didn't emit header
         diff_text = f"--- a/{filename}\n+++ b/{filename}\n"
         for line in old_stripped:
             diff_text += f"-{line}\n"
@@ -54,11 +53,23 @@ def compute_unified_diff(
         "added_count": added_count,
         "removed_count": removed_count,
         "diff_text": diff_text[:6000] if diff_text else None,
-        "target_content": old_text[:2000] if old_text else None,
-        "replacement_content": new_text[:2000] if new_text else None,
         "start_line": start_line,
         "is_net_change": (added_count > 0 or removed_count > 0)
     }
+
+
+def compute_unified_diff(
+    old_text: str,
+    new_text: str,
+    filename: str = "",
+    start_line: int = 1
+) -> Dict[str, Any]:
+    """
+    Compute precise additions, deletions, and unified patch with line context.
+    Uses LRU cache to avoid recomputing SequenceMatcher on identical edits.
+    """
+    res = _cached_unified_diff(old_text or "", new_text or "", filename or "", start_line or 1)
+    return dict(res)
 
 
 def format_lines_badge(added: int, removed: int) -> str:
@@ -72,6 +83,10 @@ def format_lines_badge(added: int, removed: int) -> str:
     return "0 lines"
 
 
+# Cache parsed tool diffs by deterministic signature so historical turns never re-read disk or re-run difflib
+_TOOL_DIFF_CACHE: Dict[str, Tuple[str, Optional[str], Optional[Dict[str, Any]]]] = {}
+
+
 def parse_edit_tool_diff(
     tool_name: str,
     args: Dict[str, Any],
@@ -79,11 +94,22 @@ def parse_edit_tool_diff(
 ) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     """
     Parse write_to_file, replace_file_content, or multi_replace_file_content
-    into target string, delta badge extra (e.g. '-3 +5 lines'), and diff_info payload.
+    into target string, delta badge extra (e.g. '-3 +5 lines'), and compact diff_info payload.
     """
     file_target = args.get("TargetFile") or ""
     file_parts = re.split(r"[\\/]", file_target)
     file_short = file_parts[-1] if file_parts else file_target
+
+    # Build fast cache key from tool_name and args
+    try:
+        sig_raw = f"{tool_name}:{file_target}:{json.dumps(args, sort_keys=True, default=str)}"
+        cache_key = hashlib.md5(sig_raw.encode("utf-8", errors="ignore")).hexdigest()
+        if cache_key in _TOOL_DIFF_CACHE:
+            return _TOOL_DIFF_CACHE[cache_key]
+    except Exception:
+        cache_key = None
+
+    result: Tuple[str, Optional[str], Optional[Dict[str, Any]]] = (file_short, None, None)
 
     if tool_name == "multi_replace_file_content":
         raw_chunks = args.get("ReplacementChunks") or []
@@ -132,14 +158,14 @@ def parse_edit_tool_diff(
         diff_info = {
             "file": file_short,
             "target_file": file_target,
-            "diff_text": combined_diff[:8000] if combined_diff else None,
+            "diff_text": combined_diff[:6000] if combined_diff else None,
             "added_count": total_added,
             "removed_count": total_removed,
             "chunk_count": chunk_count,
             "start_line": min_start,
             "end_line": max_end
         }
-        return target, extra, diff_info
+        result = (target, extra, diff_info)
 
     elif tool_name == "replace_file_content":
         tc = args.get("TargetContent") or ""
@@ -163,58 +189,38 @@ def parse_edit_tool_diff(
             "file": file_short,
             "target_file": file_target,
             "diff_text": res["diff_text"],
-            "target_content": res["target_content"],
-            "replacement_content": res["replacement_content"],
             "added_count": added,
             "removed_count": removed,
             "start_line": start_l,
             "end_line": end_l
         }
-        return target, extra, diff_info
+        result = (target, extra, diff_info)
 
     elif tool_name == "write_to_file":
         code_content = args.get("CodeContent") or ""
-        existing_text = ""
-        full_path = file_target
-
-        if workspace_root and not os.path.isabs(file_target):
-            full_path = os.path.join(workspace_root, file_target)
-
-        is_overwrite = False
-        if os.path.exists(full_path):
-            try:
-                with open(full_path, "r", encoding="utf-8", errors="replace") as f:
-                    existing_text = f.read(200000)
-                is_overwrite = True
-            except Exception:
-                pass
-
-        if is_overwrite and existing_text:
-            res = compute_unified_diff(existing_text, code_content, filename=file_short)
-            added = res["added_count"]
-            removed = res["removed_count"]
-            extra = format_lines_badge(added, removed)
-            diff_text = res["diff_text"]
-        else:
-            line_cnt = len(code_content.splitlines())
-            added = line_cnt
-            removed = 0
-            extra = format_lines_badge(added, 0)
-            # Synthesize creation diff
-            diff_text = f"--- /dev/null\n+++ b/{file_short}\n@@ -0,0 +1,{max(1, line_cnt)} @@\n"
-            for line in code_content.splitlines():
-                diff_text += f"+{line}\n"
+        line_cnt = len(code_content.splitlines())
+        added = line_cnt
+        removed = 0
+        extra = format_lines_badge(added, 0)
+        # Synthesize compact creation/write diff without blocking on 200KB disk reads on every poll
+        preview_lines = code_content.splitlines()[:120]
+        diff_text = f"--- /dev/null\n+++ b/{file_short}\n@@ -0,0 +1,{max(1, line_cnt)} @@\n"
+        diff_text += "\n".join(f"+{line}" for line in preview_lines) + "\n"
 
         target = file_short
         diff_info = {
             "file": file_short,
             "target_file": file_target,
-            "diff_text": diff_text[:8000] if diff_text else None,
-            "replacement_content": code_content[:2000],
+            "diff_text": diff_text[:6000] if diff_text else None,
             "added_count": added,
             "removed_count": removed,
-            "is_new_file": not is_overwrite
+            "is_new_file": not bool(args.get("Overwrite", False))
         }
-        return target, extra, diff_info
+        result = (target, extra, diff_info)
 
-    return file_short, None, None
+    if cache_key:
+        if len(_TOOL_DIFF_CACHE) > 512:
+            _TOOL_DIFF_CACHE.clear()
+        _TOOL_DIFF_CACHE[cache_key] = result
+
+    return result

@@ -1,7 +1,7 @@
 import os
 import asyncio
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, status
+from typing import Dict, Any, Optional, List
+from fastapi import APIRouter, HTTPException, Query, status
 from config.settings import settings
 from integrations.antigravity.adapter import antigravity_adapter
 from integrations.antigravity.capabilities import get_verified_capabilities
@@ -18,31 +18,35 @@ from repositories.idempotency_repository import IdempotencyRepository
 from services.remote_access import remote_access_service
 
 from services.log_buffer import log_buffer_handler
-from services.conversation_service import ConversationService
+from services.conversation_service import conversation_service as _conversation_service
 from services.websocket_manager import websocket_manager
 
 router = APIRouter(tags=["Status and Controls"])
 
 # Persistent idempotency repository backed by MongoDB
 _idempotency_repo = IdempotencyRepository()
-_conversation_service = ConversationService()
+_pushed_pending_approval: Optional[Dict[str, Any]] = None
 
 
 @router.get("/api/v1/chat/messages")
-def get_chat_messages(limit: int = 50):
-    """Return genuine Antigravity conversation stream extracted from IDE transcripts."""
-    return {
-        "messages": _conversation_service.get_recent_conversation(limit=limit)
-    }
-
-
+def get_chat_messages(
+    limit: int = Query(15, ge=1, le=200, description="Number of turns to fetch per block"),
+    before: Optional[int] = Query(None, ge=0, description="Cursor turn_index for upward scroll lazy-loading")
+):
+    """
+    Return paginated Antigravity conversation stream extracted from IDE transcripts.
+    Supports request-based upward scroll lazy-loading via `before=<oldest_turn_index>&limit=15`.
+    """
+    return _conversation_service.get_paginated_conversation(limit=limit, before=before)
 
 
 class ApprovalDecisionRequest(BaseModel):
     request_type: str = Field(..., description="command, file, browser, or decision")
     target: str = Field(..., description="Target command, file path, or task name")
-    decision: str = Field(..., description="allow, always_allow, or deny")
+    decision: str = Field(..., description="allow, always_allow, deny, or custom option id")
     step_id: Optional[str] = None
+    option_label: Optional[str] = None
+    custom_response: Optional[str] = Field(default=None, max_length=5000, description="Optional custom instructions to send to the agent")
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -55,18 +59,43 @@ class ApprovalPushRequest(BaseModel):
     command: Optional[str] = None
     cwd: Optional[str] = None
     step_id: Optional[str] = None
+    options: Optional[List[Dict[str, Any]]] = None
+    allow_custom_response: bool = True
     metadata: Optional[Dict[str, Any]] = None
+
+
+@router.get("/api/v1/approvals/pending")
+def get_pending_approval():
+    """Return any active command or tool approval request awaiting user confirmation."""
+    global _pushed_pending_approval
+    _conversation_service.get_recent_conversation(limit=15)
+    transcript_approval = _conversation_service.get_pending_approval()
+    active = _pushed_pending_approval or transcript_approval
+    return {
+        "has_pending": bool(active),
+        "approval": active,
+    }
 
 
 @router.post("/api/v1/approvals/respond")
 async def respond_to_approval(payload: ApprovalDecisionRequest):
     """
     Record user approval or rejection for command execution, file changes, or browser access.
-    Persists a security audit event and broadcasts the resolution.
+    Supports Allow, Always Allow, Deny, dynamic popup options, and custom instructions ("Type something else").
+    Persists a security audit event, updates transcript state, and forwards via CDP.
     """
+    global _pushed_pending_approval
     from repositories.event_repository import EventRepository
     from models.schemas import EventDocument
     from datetime import datetime, timezone
+
+    custom_text = payload.custom_response.strip() if payload.custom_response else None
+
+    _conversation_service.mark_approval_resolved(payload.step_id, payload.decision, payload.target)
+    if _pushed_pending_approval and (
+        not payload.step_id or _pushed_pending_approval.get("step_id") == payload.step_id
+    ):
+        _pushed_pending_approval = None
 
     event_repo = EventRepository()
     doc = EventDocument(
@@ -80,6 +109,7 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
             "target": payload.target,
             "decision": payload.decision,
             "step_id": payload.step_id,
+            "has_custom_response": bool(custom_text),
             "metadata": payload.metadata or {}
         }
     )
@@ -92,18 +122,36 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
             "request_type": payload.request_type,
             "target": payload.target,
             "decision": payload.decision,
+            "custom_response": custom_text,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
     })
 
-    # Forward approval action to Antigravity IDE workbench via CDP
-    cdp_forward = await antigravity_adapter.forward_approval(payload.request_type, payload.decision)
+    cdp_forward = await antigravity_adapter.forward_approval(
+        request_type=payload.request_type,
+        decision=payload.decision,
+        custom_response=custom_text,
+        option_label=payload.option_label,
+    )
+
+    try:
+        paginated = _conversation_service.get_paginated_conversation(limit=15)
+        await websocket_manager.broadcast({
+            "type": "chat_update",
+            "messages": paginated["messages"],
+            "total": paginated["total"],
+            "oldest_index": paginated["oldest_index"],
+            "has_more": paginated["has_more"],
+        })
+    except Exception:
+        pass
 
     return {
         "success": True,
         "status": "recorded",
         "forwarded_to_ide": cdp_forward.get("success", False),
         "requires_native_ide": cdp_forward.get("requires_native_ide", False),
+        "custom_response_dispatched": cdp_forward.get("custom_response_dispatched", False),
         "forward_details": cdp_forward,
         "decision": payload.decision,
         "request_type": payload.request_type,
@@ -115,11 +163,15 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
 async def push_approval_request(payload: ApprovalPushRequest):
     """
     Push a pending approval notification to all connected frontend clients via WebSocket.
-    Called by internal hooks, event parsers, or external integrations when the IDE triggers
-    a permission dialog that the mobile user should resolve.
     """
+    global _pushed_pending_approval
     import uuid
     step_id = payload.step_id or str(uuid.uuid4())[:8]
+    default_options = [
+        {"id": "allow", "label": "Allow", "description": "Run this action once"},
+        {"id": "always_allow", "label": "Always Allow", "description": "Allow similar actions in this session"},
+        {"id": "deny", "label": "Deny", "description": "Reject action or provide custom instructions"},
+    ]
     approval_data = {
         "request_type": payload.request_type,
         "target": payload.target,
@@ -128,8 +180,11 @@ async def push_approval_request(payload: ApprovalPushRequest):
         "command": payload.command or (payload.target if payload.request_type == "command" else None),
         "cwd": payload.cwd,
         "step_id": step_id,
+        "options": payload.options or default_options,
+        "allow_custom_response": payload.allow_custom_response,
         "metadata": payload.metadata or {}
     }
+    _pushed_pending_approval = approval_data
     await websocket_manager.broadcast({
         "type": "pending_approval",
         "approval": approval_data
@@ -140,33 +195,40 @@ async def push_approval_request(payload: ApprovalPushRequest):
 @router.post("/api/v1/approvals/test-popup")
 async def test_approval_popup(request_type: str = "command", target: str = "git commit -am 'test'"):
     """
-    Trigger a test approval pop-up on the frontend. Useful for testing the approval modal UI
-    without needing a live agent running. Call from curl or the browser.
+    Trigger a test approval pop-up on the frontend.
     """
+    global _pushed_pending_approval
     import uuid
     step_id = str(uuid.uuid4())[:8]
     approval_data = {
         "request_type": request_type,
         "target": target,
         "title": f"Test: {request_type.replace('_', ' ').title()} Permission Request",
-        "description": "This is a test approval request to verify the approval modal is working correctly.",
+        "description": "This is a test approval request to verify command options and custom instructions.",
         "command": target if request_type == "command" else None,
         "cwd": "D:/All Codes/AllProjects/AgentWatchV2",
         "step_id": step_id,
+        "options": [
+            {"id": "allow", "label": "Allow", "description": "Run this command once"},
+            {"id": "always_allow", "label": "Always Allow", "description": "Allow similar commands in this session"},
+            {"id": "deny", "label": "Deny", "description": "Reject command or provide custom instructions"},
+        ],
+        "allow_custom_response": True,
     }
+    _pushed_pending_approval = approval_data
     await websocket_manager.broadcast({
         "type": "pending_approval",
         "approval": approval_data
     })
-    return {"success": True, "test_popup_triggered": True, "step_id": step_id}
+    return {"success": True, "test_popup_triggered": True, "step_id": step_id, "approval": approval_data}
 
 
 @router.get("/snapshot")
 @router.get("/api/v1/snapshot")
-async def get_snapshot():
+async def get_snapshot(last_hash: Optional[str] = Query(None, description="Previous screenshot hash to skip redundant transfer")):
     """
-    Return latest snapshot view. If CDP connection is available, captures
-    a live viewport screenshot from the Antigravity IDE workbench.
+    Return latest snapshot view. Supports `last_hash` deduplication so unchanged screenshots
+    consume ~50 bytes instead of ~250KB, and omits duplicate base64 strings.
     """
     cdp_status = antigravity_adapter.get_status()
     if not cdp_status["cdp"]["connected"]:
@@ -177,12 +239,22 @@ async def get_snapshot():
             "screenshot": None,
             "has_screenshot": False,
             "target": None,
+            "hash": None,
             "html": "<div class='empty-snapshot'><p>Antigravity not connected via CDP (port 9000).</p></div>",
         }
 
     screenshot_b64 = await antigravity_adapter.capture_screenshot()
     has_shot = bool(screenshot_b64)
-    img_tag = f"<img src='data:image/jpeg;base64,{screenshot_b64}' alt='Antigravity IDE Viewport' class='rounded-lg max-w-full shadow-lg'/>" if has_shot else "<p>Connected to Antigravity Workbench via CDP.</p>"
+    cur_hash = antigravity_adapter.get_cached_screenshot_hash()
+
+    if has_shot and last_hash and cur_hash and last_hash == cur_hash:
+        return {
+            "status": "unchanged",
+            "port": cdp_status["cdp"]["port"],
+            "target": cdp_status["cdp"]["title"],
+            "has_screenshot": True,
+            "hash": cur_hash,
+        }
 
     return {
         "status": "active",
@@ -190,7 +262,8 @@ async def get_snapshot():
         "target": cdp_status["cdp"]["title"],
         "screenshot": f"data:image/jpeg;base64,{screenshot_b64}" if has_shot else None,
         "has_screenshot": has_shot,
-        "html": f"<div class='active-snapshot'>{img_tag}</div>",
+        "hash": cur_hash,
+        "html": "<div class='active-snapshot'><p>Connected to Antigravity Workbench via CDP.</p></div>",
     }
 
 
@@ -210,13 +283,15 @@ async def get_app_state():
     ag_status = antigravity_adapter.get_status()
     tailscale_info = remote_access_service.get_tailscale_status()
     model_info = await antigravity_adapter.get_active_model_and_plan()
+    is_conn = bool(ag_status["cdp"]["connected"])
     return {
         "status": "online",
-        "mode": model_info.get("mode", "Agent"),
+        "connected": is_conn,
+        "mode": model_info.get("mode", "Fast"),
         "model": model_info.get("model"),
         "available_models": model_info.get("available_models", []),
-        "available_modes": [model_info.get("mode", "Agent")],
-        "antigravity_connected": ag_status["cdp"]["connected"],
+        "available_modes": ["Fast", "Planning"],
+        "antigravity_connected": is_conn,
         "tailscale_serve": tailscale_info["serve_active"],
         "tailscale_funnel_disabled": tailscale_info["funnel_disabled_verified"],
     }
@@ -229,7 +304,6 @@ async def get_app_state():
 async def send_message(payload: PromptSubmissionRequest):
     """
     Send prompt to Antigravity session with schema validation and truthful lifecycle tracking.
-    Uses persistent MongoDB idempotency reservation with payload fingerprinting.
     """
     if payload.idempotency_key:
         state, cached = _idempotency_repo.reserve_or_get(
@@ -297,7 +371,6 @@ async def send_message(payload: PromptSubmissionRequest):
             response=response
         )
 
-    # Persist activity event in timeline
     try:
         from repositories.event_repository import EventRepository
         from models.schemas import EventDocument
@@ -318,12 +391,15 @@ async def send_message(payload: PromptSubmissionRequest):
         pass
 
     try:
-        updated_turns = _conversation_service.get_recent_conversation(limit=50)
+        paginated = _conversation_service.get_paginated_conversation(limit=15)
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(websocket_manager.broadcast({
                 "type": "chat_update",
-                "messages": updated_turns
+                "messages": paginated["messages"],
+                "total": paginated["total"],
+                "oldest_index": paginated["oldest_index"],
+                "has_more": paginated["has_more"],
             }))
         except RuntimeError:
             pass
@@ -335,10 +411,10 @@ async def send_message(payload: PromptSubmissionRequest):
 
 @router.post("/stop")
 @router.post("/api/v1/stop")
+@router.post("/api/v1/controls/stop")
 async def stop_generation():
     """
     Stop generation signal with verified dispatch to Antigravity IDE workbench.
-    Triggers UI stop/cancel and Ctrl+D/Escape signals via CDP.
     """
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)
@@ -347,13 +423,15 @@ async def stop_generation():
     if cdp_connected:
         dispatch_res = await antigravity_adapter.stop_generation()
 
-    # Mark active turn as stopped in memory and broadcast immediately
     _conversation_service.mark_active_turn_stopped()
     try:
-        updated_turns = _conversation_service.get_recent_conversation(limit=50)
+        paginated = _conversation_service.get_paginated_conversation(limit=15)
         await websocket_manager.broadcast({
             "type": "chat_update",
-            "messages": updated_turns
+            "messages": paginated["messages"],
+            "total": paginated["total"],
+            "oldest_index": paginated["oldest_index"],
+            "has_more": paginated["has_more"],
         })
     except Exception:
         pass
@@ -418,6 +496,7 @@ def new_chat():
 
 
 @router.get("/chat-history")
+@router.get("/api/v1/chat/history")
 def get_chat_history():
     """Retrieve chat history for frontend drawer."""
     from repositories.session_repository import SessionRepository
@@ -432,16 +511,18 @@ def select_chat(payload: Dict[str, Any]):
     return {"success": True, "selected": payload.get("title") or payload.get("session_id")}
 
 
-
 @router.post("/set-mode")
 @router.post("/api/v1/set-mode")
-def set_mode(payload: SetModeRequest):
+@router.post("/api/v1/controls/mode")
+async def set_mode(payload: SetModeRequest):
     """Set active agent mode (Fast vs Planning) with strict enum validation."""
+    await antigravity_adapter.set_active_mode(payload.mode.value)
     return {"success": True, "mode": payload.mode.value}
 
 
 @router.post("/set-model")
 @router.post("/api/v1/set-model")
+@router.post("/api/v1/controls/model")
 async def set_model(payload: SetModelRequest):
     """Switch active AI model in Antigravity IDE without static guessing."""
     is_testing = os.environ.get("ENVIRONMENT") == "testing" or settings.environment == "testing"
@@ -466,7 +547,6 @@ def remote_click(payload: RemoteClickRequest):
     Guards against unauthorized permission bypass while allowing safe UI toggles (Thought/Worked blocks).
     """
     element_text = payload.text or ""
-    # Explicit native security boundary check
     if any(k in element_text.lower() for k in ["allow", "authorize", "grant permission", "approve"]):
         return {
             "success": False,
@@ -485,6 +565,3 @@ def get_ssl_status():
         "tailnet_tls": True if ts["serve_active"] else False,
         "mode": "tailscale_serve_automated_tls",
     }
-
-
-
