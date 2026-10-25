@@ -227,25 +227,17 @@ export default function ApprovalModal({
                                             <button
                                                 type="button"
                                                 onClick={() => { setShowCustomInput(false); setCustomInstructions(''); }}
-                                                className="px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 transition"
+                                                className="px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
                                             >
                                                 Cancel
                                             </button>
                                             <button
                                                 type="button"
                                                 disabled={!customInstructions.trim() || isSubmitting}
-                                                onClick={() => handleDecide('allow', 'Allow', customInstructions.trim())}
-                                                className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold transition disabled:opacity-40 cursor-pointer"
-                                            >
-                                                Allow + Send Note
-                                            </button>
-                                            <button
-                                                type="button"
-                                                disabled={!customInstructions.trim() || isSubmitting}
                                                 onClick={handleSendCustomDeny}
-                                                className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition disabled:opacity-40 cursor-pointer"
+                                                className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition disabled:opacity-40 cursor-pointer shadow-md shadow-blue-900/30"
                                             >
-                                                Deny &amp; Send Instructions
+                                                Send Instructions
                                             </button>
                                         </div>
                                     </div>
