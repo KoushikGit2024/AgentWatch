@@ -33,7 +33,7 @@ export default function InteractionModal({
 
     if (!interaction) return null;
 
-    const isMulti = interaction.kind === 'multiple_choice';
+    const isMulti = interaction.kind === 'multiple_choice' || Boolean(interaction.is_multi_select);
     const hasOptions = Array.isArray(interaction.options) && interaction.options.length > 0;
     const hasQuestions = Array.isArray(interaction.questions) && interaction.questions.length > 0;
     const totalQuestions = hasQuestions ? interaction.questions.length : 0;
@@ -169,7 +169,7 @@ export default function InteractionModal({
                                                             : 'bg-zinc-850/60 border-zinc-700/60 hover:border-zinc-600 hover:bg-zinc-800 text-zinc-250'
                                                     }`}
                                                 >
-                                                    <div className={`w-4 h-4 mt-0.5 rounded-full flex items-center justify-center border shrink-0 text-[9px] font-bold ${
+                                                    <div className={`w-4 h-4 mt-0.5 ${q.is_multi_select ? 'rounded-md' : 'rounded-full'} flex items-center justify-center border shrink-0 text-[9px] font-bold ${
                                                         isSelected
                                                             ? 'bg-blue-600 border-blue-400 text-white'
                                                             : 'border-zinc-600 bg-zinc-900 text-zinc-400'
@@ -180,7 +180,21 @@ export default function InteractionModal({
                                                             <span>{optIdx + 1}</span>
                                                         )}
                                                     </div>
-                                                    <span className="flex-1 min-w-0 font-medium">{opt.label}</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className="font-semibold text-zinc-100">{opt.label}</span>
+                                                            {opt.is_recommended && (
+                                                                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-400">
+                                                                    Recommended
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {opt.description && (
+                                                            <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                                                                {opt.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </button>
                                             );
                                         })}
@@ -206,8 +220,8 @@ export default function InteractionModal({
                                                     : 'bg-zinc-800/60 border-zinc-700/80 hover:border-zinc-600 hover:bg-zinc-800'
                                             }`}
                                         >
-                                            {/* Selection Indicator */}
-                                            <div className={`w-5 h-5 mt-0.5 rounded-full flex items-center justify-center border shrink-0 transition-all text-[10px] font-bold ${
+                                            {/* Selection Indicator: Checkbox for multi-select, Radio for single-select */}
+                                            <div className={`w-5 h-5 mt-0.5 ${isMulti ? 'rounded-md' : 'rounded-full'} flex items-center justify-center border shrink-0 transition-all text-[10px] font-bold ${
                                                 isSelected
                                                     ? 'bg-blue-600 border-blue-400 text-white shadow-md shadow-blue-800/60'
                                                     : 'border-zinc-600 bg-zinc-900 text-zinc-400 group-hover:border-zinc-500'

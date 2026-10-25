@@ -133,7 +133,7 @@ export default function PendingInteractionBanner({
                                             : 'bg-zinc-850 border-zinc-800 hover:border-zinc-700 text-zinc-300'
                                     }`}
                                 >
-                                    <div className={`w-5 h-5 mt-0.5 rounded-full flex items-center justify-center border shrink-0 transition text-[10px] font-bold ${
+                                    <div className={`w-5 h-5 mt-0.5 ${pendingInteraction?.kind === 'multiple_choice' || pendingInteraction?.is_multi_select ? 'rounded-md' : 'rounded-full'} flex items-center justify-center border shrink-0 transition text-[10px] font-bold ${
                                         isSelected ? 'bg-blue-600 border-blue-500 text-white' : 'border-zinc-700 bg-zinc-900 text-zinc-400'
                                     }`}>
                                         {isSelected ? <div className="w-3 h-3">{Icon.check}</div> : <span>{idx + 1}</span>}

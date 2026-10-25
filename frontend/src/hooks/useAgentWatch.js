@@ -449,7 +449,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
                 }
             } else {
                 // Top-level single or multi-choice
-                const isMulti = pendingInteraction?.kind === 'multiple_choice';
+                const isMulti = pendingInteraction?.kind === 'multiple_choice' || Boolean(pendingInteraction?.is_multi_select);
                 if (isMulti) {
                     if (next.has(id)) next.delete(id);
                     else next.add(id);

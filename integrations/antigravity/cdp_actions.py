@@ -365,12 +365,19 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                             continue;
                         }
                         const span = lbl.querySelector('span.text-secondary-foreground, span:not(.font-mono), .text-sm') || lbl;
-                        const optText = (span.innerText || span.textContent || '').trim();
-                        if (optText) {
+                        const rawText = (span.innerText || span.textContent || '').trim();
+                        if (rawText) {
+                            const isRec = rawText.toLowerCase().includes('(recommended)') || rawText.toLowerCase().includes('recommended');
+                            const cleanText = rawText.replace(/^\(recommended\)\s*/i, '').replace(/\s*\(recommended\)$/i, '').trim();
+                            const lines = cleanText.split('\n').map(l => l.trim()).filter(Boolean);
+                            const optLabel = lines[0] || cleanText;
+                            const optDesc = lines.length > 1 ? lines.slice(1).join(' ') : null;
+
                             parsedOptions.push({
                                 id: `opt_${idx + 1}`,
-                                label: optText,
-                                is_recommended: optText.toLowerCase().includes('(recommended)') || optText.toLowerCase().includes('recommended')
+                                label: optLabel,
+                                description: optDesc,
+                                is_recommended: isRec
                             });
                         }
                     }
