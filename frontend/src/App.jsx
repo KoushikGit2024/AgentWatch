@@ -5,6 +5,7 @@ import PendingInteractionBanner from './components/chat/PendingInteractionBanner
 import { PromptComposer } from './components/PromptComposer';
 import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
 import { SystemLogsDrawer } from './components/SystemLogsDrawer';
+import { TaskManagerDrawer } from './components/TaskManagerDrawer';
 import { RecoveryCenterModal } from './components/RecoveryCenterModal';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { ReviewChangesModal } from './components/ReviewChangesModal';
@@ -25,6 +26,7 @@ export default function App() {
     const [activeModal, setActiveModal] = useState(null); // 'mode' | 'model' | null
     const [timelineOpen, setTimelineOpen] = useState(false);
     const [logsOpen, setLogsOpen] = useState(false);
+    const [taskManagerOpen, setTaskManagerOpen] = useState(false);
     const [recoveryOpen, setRecoveryOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
@@ -140,6 +142,7 @@ export default function App() {
                 onViewModeChange={setViewMode}
                 onOpenTimeline={() => { setTimelineOpen(true); fetchTimelineEvents(); }}
                 onOpenLogs={() => { setLogsOpen(true); fetchSystemLogs(); }}
+                onOpenTaskManager={() => setTaskManagerOpen(true)}
                 onOpenRecovery={() => { setRecoveryOpen(true); fetchRecoveryItems(); }}
                 recoveryCount={recoveryItems.length}
                 onOpenHistory={() => { setHistoryOpen(true); fetchHistoryChats(); }}
@@ -274,6 +277,11 @@ export default function App() {
                 logs={systemLogs}
                 isLoading={isLogsLoading}
                 onRefresh={fetchSystemLogs}
+            />
+
+            <TaskManagerDrawer
+                isOpen={taskManagerOpen}
+                onClose={() => setTaskManagerOpen(false)}
             />
 
             <RecoveryCenterModal

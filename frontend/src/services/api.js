@@ -209,5 +209,10 @@ export const api = {
     async getHistoryChats() {
         const res = await request('/chat-history');
         return res.json();
+    },
+
+    async getSystemProcesses(sortBy = 'memory', limit = 15) {
+        const res = await request(`/api/v1/system/processes?sort_by=${sortBy}&limit=${limit}`);
+        return res.json();
     }
 };

@@ -8,6 +8,7 @@ export default function Navbar({
     onViewModeChange,
     onOpenTimeline,
     onOpenLogs,
+    onOpenTaskManager,
     onOpenRecovery,
     recoveryCount = 0,
     onOpenHistory,
@@ -82,6 +83,14 @@ export default function Navbar({
                     className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition active:scale-95 cursor-pointer"
                 >
                     <div className="w-4 h-4">{Icon.terminal}</div>
+                </button>
+                <button
+                    type="button"
+                    onClick={onOpenTaskManager}
+                    title="System Task Manager & Processes"
+                    className="p-2 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 transition active:scale-95 cursor-pointer"
+                >
+                    <div className="w-4 h-4">{Icon.activity}</div>
                 </button>
                 <button
                     type="button"

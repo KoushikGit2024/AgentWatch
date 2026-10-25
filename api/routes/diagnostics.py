@@ -52,3 +52,16 @@ def get_operational_diagnostics():
         "reconnection_attempts": ag_status.get("reconnect_attempts", 0),
         "last_error": ag_status.get("last_error"),
     }
+
+
+@router.get("/api/v1/system/processes")
+def get_system_processes(sort_by: str = "memory", limit: int = 15):
+    """
+    Return host system task manager statistics and top CPU/Memory consumers.
+    Supports sort_by='memory' or 'cpu' with configurable item limit (10-30).
+    """
+    from services.system_metrics_service import system_metrics_service
+
+    bounded_limit = max(5, min(int(limit), 35))
+    clean_sort = "cpu" if sort_by.lower() == "cpu" else "memory"
+    return system_metrics_service.get_task_manager_snapshot(sort_by=clean_sort, limit=bounded_limit)
