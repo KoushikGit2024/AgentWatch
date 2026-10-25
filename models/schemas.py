@@ -239,6 +239,7 @@ class InteractionStatus(str, Enum):
     PENDING = "pending"
     SUBMITTED = "submitted"
     CANCELLED = "cancelled"
+    DISMISSED = "dismissed"
     EXPIRED = "expired"
     SUPERSEDED = "superseded"
     RESOLVED = "resolved"
