@@ -195,12 +195,13 @@ const ChatTurn = memo(function ChatTurn({
                     <div className="space-y-1.5 py-1 select-text">
                         {streamItems.map((item, itemIdx) => {
                             const itemKey = item.step_id || `${turn.id || turnIndex}-${item.id || itemIdx}`;
+                            const isLiveExecuting = item.kind === 'command' && item.exit_code === undefined && (item.status !== 'done' || turn.is_working);
                             return (
                                 <StreamItem
                                     key={itemKey}
                                     item={item}
                                     itemKey={itemKey}
-                                    isOpen={openItemIds.has(itemKey)}
+                                    isOpen={openItemIds.has(itemKey) || isLiveExecuting}
                                     approvalState={approvals[itemKey] || item.approval_decision}
                                     isWorking={turn.is_working}
                                     onToggle={onToggleItem}
@@ -209,11 +210,21 @@ const ChatTurn = memo(function ChatTurn({
                             );
                         })}
 
-                        {/* Working Indicator */}
+                        {/* Working Indicator with Active Executing Command Preview */}
                         {turn.is_working && (
-                            <div className="flex items-center gap-2 text-zinc-400 text-xs pt-1 font-sans">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-                                <span className="text-zinc-300 font-medium">Working</span>
+                            <div className="pt-1.5 space-y-1.5 font-sans">
+                                <div className="flex items-center gap-2 text-zinc-400 text-xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                                    <span className="text-zinc-300 font-medium">
+                                        {turn.active_command ? 'Executing command…' : 'Working…'}
+                                    </span>
+                                </div>
+                                {turn.active_command && (
+                                    <div className="p-2 rounded-xl bg-zinc-950/90 border border-amber-500/30 font-mono text-[11px] text-amber-200/90 overflow-x-auto flex items-center gap-2">
+                                        <span className="text-amber-500 font-bold select-none">$</span>
+                                        <span className="break-all">{turn.active_command}</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

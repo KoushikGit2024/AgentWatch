@@ -364,8 +364,16 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                             hasCustomInput = true;
                             continue;
                         }
-                        const span = lbl.querySelector('span.text-secondary-foreground, span:not(.font-mono), .text-sm') || lbl;
-                        const rawText = (span.innerText || span.textContent || '').trim();
+                        // Clone label and remove inputs, SVGs, and index badges to extract full text and description
+                        let rawText = '';
+                        try {
+                            const clone = lbl.cloneNode(true);
+                            clone.querySelectorAll('input, svg, .font-mono, [class*="select-none"]').forEach(el => el.remove());
+                            rawText = (clone.innerText || clone.textContent || '').trim();
+                        } catch (e) {
+                            rawText = (lbl.innerText || lbl.textContent || '').trim();
+                        }
+
                         if (rawText) {
                             const isRec = rawText.toLowerCase().includes('(recommended)') || rawText.toLowerCase().includes('recommended');
                             const cleanText = rawText.replace(/^\(recommended\)\s*/i, '').replace(/\s*\(recommended\)$/i, '').trim();
@@ -383,15 +391,26 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                     }
 
                     if (parsedOptions.length > 0) {
+                        // Check if this radiogroup card is an elevated command approval (contains command textarea or code block)
+                        const cmdTextarea = card.querySelector('textarea[aria-label*="permission"], textarea.bg-muted, pre, code');
+                        const cmdVal = cmdTextarea ? (cmdTextarea.value || cmdTextarea.innerText || '').trim() : '';
+                        const isCmdApproval = Boolean(
+                            cmdVal ||
+                            parsedOptions.some(o => /allow this time|always allow/i.test(o.label)) ||
+                            /allow|command|permission/i.test(questionTitle)
+                        );
+
                         return {
                             has_popup: true,
-                            popup_kind: 'question',
+                            popup_kind: isCmdApproval ? 'approval' : 'question',
                             title: questionTitle,
+                            command: cmdVal || null,
+                            target: cmdVal || questionTitle,
                             is_multi_select: isMultiSelect,
                             step_indicator: stepText,
                             options: parsedOptions,
                             allow_custom_response: hasCustomInput || Boolean(card.querySelector('[data-testid="ask-question-writein"]')),
-                            custom_response_label: "Other (write your answer)"
+                            custom_response_label: isCmdApproval ? "Tell the agent what to do instead" : "Other (write your answer)"
                         };
                     }
                 }
@@ -692,25 +711,36 @@ async def dispatch_forward_approval(
                     const radioLabels = Array.from(radioGroup.querySelectorAll('label')).filter(isVisible);
 
                     let targetRadio = null;
-                    if (isAlwaysAllow) {{
-                        targetRadio = radioLabels.find(l => (l.innerText || '').toLowerCase().includes('always allow'));
-                    }} else if (isAllow) {{
-                        targetRadio = radioLabels.find(l => {{
-                            const txt = (l.innerText || '').toLowerCase();
-                            return (txt.includes('allow this time') || txt.includes('yes, allow')) && !txt.includes('always allow');
-                        }});
-                    }} else if (isDeny) {{
-                        targetRadio = radioLabels.find(l => (l.innerText || '').toLowerCase().startsWith('no'));
+                    if (explicitLabel) {{
+                        targetRadio = radioLabels.find(l => (l.innerText || '').toLowerCase().includes(explicitLabel));
+                    }}
+                    if (!targetRadio) {{
+                        if (isAlwaysAllow) {{
+                            targetRadio = radioLabels.find(l => (l.innerText || '').toLowerCase().includes('always allow'));
+                        }} else if (isAllow) {{
+                            targetRadio = radioLabels.find(l => {{
+                                const txt = (l.innerText || '').toLowerCase();
+                                return (txt.includes('allow this time') || txt.includes('yes, allow') || txt.startsWith('yes')) && !txt.includes('always allow');
+                            }});
+                        }} else if (isDeny) {{
+                            targetRadio = radioLabels.find(l => {{
+                                const txt = (l.innerText || '').toLowerCase();
+                                return txt.startsWith('no') || txt.includes('tell the agent');
+                            }});
+                        }}
                     }}
 
                     if (targetRadio) {{
                         const input = targetRadio.querySelector('input[type="radio"]') || targetRadio;
+                        input.checked = true;
                         input.click();
+                        input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        input.dispatchEvent(new Event('change', {{ bubbles: true }}));
                         await new Promise(r => setTimeout(r, 120));
 
                         // If user provided custom denial instructions
                         if (isDeny && custom_response && custom_response.trim()) {{
-                            const writeIn = targetRadio.querySelector('textarea, [data-testid="ask-question-writein"]');
+                            const writeIn = targetRadio.querySelector('textarea, [data-testid="ask-question-writein"]') || card.querySelector('textarea[data-testid="ask-question-writein"]');
                             if (writeIn) {{
                                 writeIn.focus();
                                 writeIn.value = custom_response.trim();
@@ -721,7 +751,8 @@ async def dispatch_forward_approval(
 
                         // Click the card submit button: [data-testid="interaction-continue-button"]
                         const submitBtn = card ? card.querySelector('[data-testid="interaction-continue-button"]') : document.querySelector('[data-testid="interaction-continue-button"]');
-                        if (submitBtn && isVisible(submitBtn) && !submitBtn.disabled) {{
+                        if (submitBtn && isVisible(submitBtn)) {{
+                            submitBtn.disabled = false;
                             submitBtn.click();
                             return {{ clicked: true, via: 'native_approval_card', target: (targetRadio.innerText || '').trim().split('\n')[0] }};
                         }}

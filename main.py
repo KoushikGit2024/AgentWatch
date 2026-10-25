@@ -128,14 +128,14 @@ async def watch_transcript_loop():
                         "has_more": paginated["has_more"],
                     })
 
-            dom_probe_tick = (dom_probe_tick + 1) % 4
+            dom_probe_tick = (dom_probe_tick + 1) % 2
             if websocket_manager.active_connections or transcript_changed:
                 if not transcript_changed and dom_probe_tick == 0:
                     conversation_service.get_recent_conversation(limit=15)
 
                 pending_approval = conversation_service.get_pending_approval()
 
-                if not pending_approval and dom_probe_tick == 0:
+                if dom_probe_tick == 0:
                     ag_status = antigravity_adapter.get_status()
                     if ag_status.get("cdp", {}).get("connected"):
                         dom_popup = await antigravity_adapter.inspect_active_popup()
@@ -146,12 +146,12 @@ async def watch_transcript_loop():
                                     question_data={
                                         "question": dom_popup.get("title") or "Select an option",
                                         "options": dom_popup.get("options") or [],
-                                        "is_multi_select": False,
+                                        "is_multi_select": dom_popup.get("is_multi_select", False),
                                         "allow_custom_response": dom_popup.get("allow_custom_response", True),
                                     },
                                     is_active=True,
                                 )
-                            else:
+                            elif not pending_approval:
                                 target_str = dom_popup.get("command") or dom_popup.get("target") or dom_popup.get("title") or "action"
                                 step_hash = hashlib.md5(target_str.encode("utf-8", errors="ignore")).hexdigest()[:8]
                                 step_id = f"dom-{step_hash}"
@@ -166,6 +166,13 @@ async def watch_transcript_loop():
                                         "options": dom_popup.get("options"),
                                         "allow_custom_response": True,
                                     }
+                        else:
+                            # DOM popup has been clicked, approved, or dismissed in the IDE
+                            interaction_service.sync_question_from_transcript(
+                                session_id="cdp_live_session",
+                                question_data=None,
+                                is_active=False,
+                            )
 
                 cur_approval_key = pending_approval.get("step_id") if pending_approval else None
                 if cur_approval_key and cur_approval_key != last_approval_key:

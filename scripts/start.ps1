@@ -20,9 +20,13 @@ $pythonExe = Join-Path $projectRoot ".venv\Scripts\python.exe"
 $pyReady = $false
 
 if (Test-Path $pythonExe) {
-    $verifyPy = & $pythonExe -c "import sys; print(sys.executable)" 2>$null
-    if ($LASTEXITCODE -eq 0 -and $verifyPy) {
-        $pyReady = $true
+    try {
+        $verifyPy = & $pythonExe -c "import sys; print(sys.executable)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $verifyPy) {
+            $pyReady = $true
+        }
+    } catch {
+        $pyReady = $false
     }
 }
 
