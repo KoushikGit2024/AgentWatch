@@ -36,12 +36,23 @@ export default function App() {
 
     const handleOpenFile = useCallback((rawPath, lineRange = {}) => {
         const parsed = parseFileLink(rawPath);
-        if (lineRange.startLine !== undefined) parsed.startLine = lineRange.startLine;
-        if (lineRange.endLine !== undefined) parsed.endLine = lineRange.endLine;
+        if (lineRange.startLine != null) parsed.startLine = lineRange.startLine;
+        if (lineRange.endLine != null) parsed.endLine = lineRange.endLine;
+
+        // Ensure startLine <= endLine if both present
+        if (parsed.startLine != null && parsed.endLine == null) {
+            parsed.endLine = parsed.startLine;
+        } else if (parsed.startLine != null && parsed.endLine != null && parsed.startLine > parsed.endLine) {
+            const tmp = parsed.startLine;
+            parsed.startLine = parsed.endLine;
+            parsed.endLine = tmp;
+        }
+
+        parsed.hasHighlight = parsed.startLine != null && parsed.startLine > 0;
 
         // Guard: Only open the modal if the target passes genuine file path validation
         if (parsed.isValid && parsed.cleanPath) {
-            setActiveFileViewer(parsed);
+            setActiveFileViewer({ ...parsed });
         }
     }, []);
 

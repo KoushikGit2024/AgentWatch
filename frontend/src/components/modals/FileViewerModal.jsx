@@ -74,12 +74,13 @@ export default function FileViewerModal({ targetFile, onClose }) {
 
     // Scroll highlighted line into view upon data load in code mode
     useEffect(() => {
-        if (fileData && viewMode === 'code' && targetLineRef.current) {
-            requestAnimationFrame(() => {
+        if (fileData && viewMode === 'code' && hasHighlight) {
+            const timer = setTimeout(() => {
                 targetLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            });
+            }, 60);
+            return () => clearTimeout(timer);
         }
-    }, [fileData, startLine, viewMode]);
+    }, [fileData, startLine, endLine, viewMode, hasHighlight]);
 
     // Close on Escape key
     useEffect(() => {

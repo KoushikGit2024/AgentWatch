@@ -96,10 +96,15 @@ const StreamItem = memo(function StreamItem({
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (typeof onOpenFile === 'function') {
-                                                onOpenFile(rawFileCandidate, {
-                                                    startLine: parsedTarget.startLine,
-                                                    endLine: parsedTarget.endLine
-                                                });
+                                                // Extract line range from item.target (e.g. "MarkdownView.jsx #L1-10")
+                                                // or from rawFileCandidate
+                                                const targetRange = parseFileLink(item.target || '');
+                                                const fileRange = parseFileLink(item.file || '');
+                                                const startLine = targetRange.startLine || fileRange.startLine || parsedTarget.startLine;
+                                                const endLine = targetRange.endLine || fileRange.endLine || parsedTarget.endLine;
+
+                                                const fullPath = item.file || parsedTarget.cleanPath || item.target || '';
+                                                onOpenFile(fullPath, { startLine, endLine });
                                             }
                                         }}
                                         title="Click to view file contents"
