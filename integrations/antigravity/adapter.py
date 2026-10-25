@@ -67,9 +67,10 @@ class AntigravityAdapter:
         Detects target replacement, validates target identity, and records observation time.
         """
         now_ts = time.time()
-        if not force and (now_ts - self._last_scan_time < 1.5) and self.last_status == "connected":
+        cooldown = 1.5 if self.last_status == "connected" else 4.0
+        if not force and (now_ts - self._last_scan_time < cooldown):
             return {
-                "connected": True,
+                "connected": self.last_status == "connected",
                 "port": self.active_cdp_port,
                 "target_id": self.active_target_id,
                 "title": self.active_target_title,
