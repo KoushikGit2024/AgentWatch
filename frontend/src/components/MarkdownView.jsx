@@ -2,7 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { marked } from 'marked';
 import { toast } from '../services/toastService';
 import { getFileInfo, getFileSvgHtml } from '../constants/fileIcons';
-import { isValidFilePath } from '../utils/fileLinkParser';
+import { isValidFilePath, parseFileLink } from '../utils/fileLinkParser';
 
 // Escape HTML utility for code blocks
 function escapeHtml(str) {
