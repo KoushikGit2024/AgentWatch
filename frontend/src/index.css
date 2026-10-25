@@ -95,7 +95,6 @@
 
 .monaco-highlight-glyph {
   background: #f59e0b !important;
-  width: 4px !important;
-  margin-left: 3px !important;
+  width: 12px !important;
   border-radius: 2px !important;
 }

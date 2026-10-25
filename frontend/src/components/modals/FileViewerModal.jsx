@@ -228,7 +228,7 @@ export default function FileViewerModal({ targetFile, onClose }) {
             onClick={onClose}
         >
             <div
-                className="w-full max-w-4xl max-h-[92vh] bg-zinc-900 border border-zinc-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden select-text"
+                className="w-full max-w-5xl h-[88vh] bg-zinc-900 border border-zinc-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden select-text"
                 onClick={e => e.stopPropagation()}
             >
                 {/* ─── Modal Header Bar ─── */}
@@ -344,7 +344,7 @@ export default function FileViewerModal({ targetFile, onClose }) {
                 </div>
 
                 {/* ─── Modal Viewport (Rendered Markdown Preview OR Monaco Editor) ─── */}
-                <div className="flex-1 overflow-hidden bg-zinc-950 min-h-[380px] max-h-[75vh] flex flex-col">
+                <div className="flex-1 overflow-hidden bg-zinc-950 flex flex-col relative w-full h-full min-h-[450px]">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 text-zinc-500 space-y-2 flex-1">
                             <div className="w-6 h-6 animate-spin text-blue-400">{Icon.activity}</div>
@@ -363,7 +363,7 @@ export default function FileViewerModal({ targetFile, onClose }) {
                         </div>
                     ) : (
                         /* Monaco Editor View with Language-Based Syntax Highlighting & Line Decorators */
-                        <div className="flex-1 w-full h-full min-h-[380px] relative">
+                        <div className="flex-1 w-full h-full relative overflow-hidden" style={{ minHeight: '450px' }}>
                             <Editor
                                 height="100%"
                                 width="100%"
