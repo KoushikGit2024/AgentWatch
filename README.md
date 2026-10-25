@@ -61,56 +61,52 @@ Monitor, approve, and steer your local **Google Antigravity** AI coding sessions
 +-------------------------------------------------------------------------------+
 ```
 
-## Device-Wise Copy-Paste Setup & Run Guide
+## 🚀 Getting Started & Launch Guide
 
-### 1. Windows 10 / 11 (PowerShell)
+### 1. One-Click Automated Launch (Windows — Recommended)
 
-Open **PowerShell** in the project root folder and copy-paste the block below:
+AgentWatch features a zero-configuration, self-healing launcher that automatically locates your Python and Node/NPM runtimes, builds the frontend if needed, frees port 8000 from stale instances, starts MongoDB, verifies Antigravity CDP, and opens your browser:
+
+Simply double-click:
+```bat
+run.bat
+```
+Or run in PowerShell:
+```powershell
+.\run.ps1
+```
+
+---
+
+### 2. Manual & Device-Wise Setup Guide
+
+#### A. Windows 10 / 11 (PowerShell)
+
+If you prefer running commands manually, copy-paste the block below:
 
 ```powershell
-# 1. Create and activate Python virtual environment
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+# 1. Run dynamic automated setup (locates Python 3.10+, creates .venv, installs requirements, generates .env)
+.\scripts\setup.ps1
 
-# 2. Create .env configuration if not already present
-if (-not (Test-Path ".env")) {
-    @"
-HOST=127.0.0.1
-PORT=8000
-ENVIRONMENT=development
-LOG_LEVEL=INFO
-APP_PASSWORD=ChangeMe123!
-JWT_SECRET=agentwatch_local_secret_key_change_in_prod
-MONGODB_URI=mongodb://127.0.0.1:27017/
-MONGODB_DATABASE=AgentWatch_v2
-CDP_PORTS=9000,9001,9002,9003
-"@ | Out-File -FilePath ".env" -Encoding utf8
+# 2. Build the React frontend (or skip if static/dist already exists)
+if (Get-Command npm -ErrorAction SilentlyContinue) {
+    cd frontend; npm run build; cd ..
 }
 
-# 3. Build the React 19 production bundle into static/dist
-cd frontend
-npm install
-npm run build
-cd ..
-
-# 4. Start MongoDB service if installed (optional: AgentWatch has automatic in-memory fallback)
+# 3. Start MongoDB if installed (optional: AgentWatch has automatic in-memory fallback)
 Start-Service MongoDB -ErrorAction SilentlyContinue
 
-# 5. Restart Antigravity with Remote Debugging Port 9000 enabled
+# 4. Restart Antigravity with Remote Debugging Port 9000 enabled
 Stop-Process -Name "Antigravity*" -Force -ErrorAction SilentlyContinue
 $agExe = "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe"
 if (-not (Test-Path $agExe)) { $agExe = "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe" }
-if (Test-Path $agExe) {
+if (-not (Test-Path $agExe)) { $agExe = (Get-Command antigravity -ErrorAction SilentlyContinue).Source }
+if ($agExe -and (Test-Path $agExe)) {
     Start-Process $agExe -ArgumentList "--remote-debugging-port=9000"
-} else {
-    Start-Process "antigravity" -ArgumentList "--remote-debugging-port=9000"
 }
 
-# 6. Start AgentWatch Backend on http://127.0.0.1:8000
-$env:PYTHONPATH = (Get-Location).Path
-.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+# 5. Start AgentWatch Backend on http://127.0.0.1:8000
+.\scripts\start.ps1
 ```
 
 **Run AgentWatch Silently in the Background on Windows (Safe to Close PowerShell):**

@@ -13,14 +13,13 @@ Write-Host "==========================================================" -Foregro
 Write-Host "                AgentWatch Setup                       " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
+. "$scriptDir\find_tools.ps1"
+
 # 1. Locate System Python
-$pythonCmd = (Get-Command python -ErrorAction SilentlyContinue).Source
-if (-not $pythonCmd -and (Test-Path "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe")) {
-    $pythonCmd = "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe"
-}
+$pythonCmd = Find-PythonExecutable
 
 if (-not $pythonCmd) {
-    Write-Host "❌ Python 3.12+ was not found. Please install Python 3.12 or later." -ForegroundColor Red
+    Write-Host "❌ A functional Python 3.10+ runtime was not found. Please install Python 3.12 or later." -ForegroundColor Red
     exit 1
 }
 
@@ -28,12 +27,22 @@ Write-Host "Using Python executable: $pythonCmd" -ForegroundColor Gray
 
 # 2. Create Virtual Environment
 $venvPath = Join-Path $projectRoot ".venv"
-if (-not (Test-Path $venvPath)) {
-    Write-Host "📦 Creating virtual environment at .venv..." -ForegroundColor Yellow
+$venvPython = Join-Path $venvPath "Scripts\python.exe"
+
+$recreate = $true
+if (Test-Path $venvPython) {
+    $verifyPy = & $venvPython -c "import sys; print(sys.executable)" 2>$null
+    if ($LASTEXITCODE -eq 0 -and $verifyPy) {
+        $recreate = $false
+        Write-Host "✅ Existing virtual environment verified at .venv." -ForegroundColor Green
+    }
+}
+
+if ($recreate) {
+    Write-Host "📦 Initializing virtual environment at .venv..." -ForegroundColor Yellow
+    Remove-Item -Path $venvPath -Recurse -Force -ErrorAction SilentlyContinue
     & $pythonCmd -m venv $venvPath
     Write-Host "✅ Virtual environment created." -ForegroundColor Green
-} else {
-    Write-Host "✅ Virtual environment already exists at .venv." -ForegroundColor Green
 }
 
 # 3. Upgrade pip and Install Dependencies
