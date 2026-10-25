@@ -11,7 +11,8 @@ const StreamItem = memo(function StreamItem({
     approvalState,
     isWorking,
     onToggle,
-    onApprove
+    onApprove,
+    onOpenFile
 }) {
     if (item.type === 'thought') {
         return (
@@ -78,9 +79,25 @@ const StreamItem = memo(function StreamItem({
                             <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.brain}</div>
                         )}
 
-                        <span className={`font-mono text-[11px] font-medium break-all ${fileInfo ? fileInfo.color : 'text-zinc-200'}`}>
-                            {item.target}
-                        </span>
+                        {fileInfo ? (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (typeof onOpenFile === 'function') {
+                                        onOpenFile(item.target || item.file);
+                                    }
+                                }}
+                                title="Click to view file contents"
+                                className={`font-mono text-[11px] font-medium break-all hover:underline cursor-pointer ${fileInfo.color}`}
+                            >
+                                {item.target}
+                            </button>
+                        ) : (
+                            <span className="font-mono text-[11px] font-medium break-all text-zinc-200">
+                                {item.target}
+                            </span>
+                        )}
 
                         {fileInfo && fileInfo.label && (
                             <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium uppercase tracking-wider bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">

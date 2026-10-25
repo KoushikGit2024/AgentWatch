@@ -11,7 +11,8 @@ const ChatTurn = memo(function ChatTurn({
     openItemIds,
     approvals,
     onToggleItem,
-    onApprove
+    onApprove,
+    onOpenFile
 }) {
     const isUser = turn.role === 'user';
     const timeStr = turn.timestamp
@@ -206,6 +207,7 @@ const ChatTurn = memo(function ChatTurn({
                                     isWorking={turn.is_working}
                                     onToggle={onToggleItem}
                                     onApprove={onApprove}
+                                    onOpenFile={onOpenFile}
                                 />
                             );
                         })}
@@ -232,7 +234,7 @@ const ChatTurn = memo(function ChatTurn({
 
                 {/* Markdown Agent Response */}
                 {turn.text && (
-                    <MarkdownView content={turn.text} />
+                    <MarkdownView content={turn.text} onOpenFile={onOpenFile} />
                 )}
 
                 {/* Response Action Buttons */}

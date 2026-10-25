@@ -214,5 +214,11 @@ export const api = {
     async getSystemProcesses(sortBy = 'memory', limit = 15) {
         const res = await request(`/api/v1/system/processes?sort_by=${sortBy}&limit=${limit}`);
         return res.json();
+    },
+
+    async getFileContent(filePath) {
+        const encoded = encodeURIComponent(filePath);
+        const res = await request(`/api/v1/files/content?path=${encoded}`);
+        return res.json();
     }
 };

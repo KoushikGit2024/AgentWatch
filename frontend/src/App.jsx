@@ -14,8 +14,10 @@ import ModeModal from './components/modals/ModeModal';
 import LightboxModal from './components/modals/LightboxModal';
 import InteractionModal from './components/modals/InteractionModal';
 import ApprovalModal from './components/modals/ApprovalModal';
+import FileViewerModal from './components/modals/FileViewerModal';
 import ToastContainer from './components/ToastContainer';
 import { useAgentWatch } from './hooks/useAgentWatch';
+import { parseFileLink } from './utils/fileLinkParser';
 import { Icon } from './constants/icons';
 
 export default function App() {
@@ -30,6 +32,25 @@ export default function App() {
     const [recoveryOpen, setRecoveryOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
+    const [activeFileViewer, setActiveFileViewer] = useState(null); // { cleanPath, filename, startLine, endLine } | null
+
+    const handleOpenFile = useCallback((rawPath, lineRange = {}) => {
+        const parsed = parseFileLink(rawPath);
+        if (lineRange.startLine !== undefined) parsed.startLine = lineRange.startLine;
+        if (lineRange.endLine !== undefined) parsed.endLine = lineRange.endLine;
+        setActiveFileViewer(parsed);
+    }, []);
+
+    // Listen for agentwatch:open-file window events
+    useEffect(() => {
+        const onCustomOpenFile = (e) => {
+            if (e.detail?.path) {
+                handleOpenFile(e.detail.path, e.detail);
+            }
+        };
+        window.addEventListener('agentwatch:open-file', onCustomOpenFile);
+        return () => window.removeEventListener('agentwatch:open-file', onCustomOpenFile);
+    }, [handleOpenFile]);
 
     // Custom Hook for State & Backend Sync (only polls /snapshot when screen view or lightbox is open)
     const {
@@ -166,6 +187,7 @@ export default function App() {
                             isScrolledUp={isScrolledUp}
                             onToggleItem={toggleItem}
                             onApprove={handleApproval}
+                            onOpenFile={handleOpenFile}
                             onScroll={handleChatScroll}
                             onScrollToBottom={scrollToBottom}
                             messagesEndRef={messagesEndRef}
@@ -348,6 +370,12 @@ export default function App() {
                 isSubmitting={isApprovaling}
                 onDecide={handleApproval}
                 onDismiss={handleDismissApproval}
+            />
+
+            {/* ─── File Viewer Modal (Full file & line highlighting inspector) ─── */}
+            <FileViewerModal
+                targetFile={activeFileViewer}
+                onClose={() => setActiveFileViewer(null)}
             />
         </div>
     );

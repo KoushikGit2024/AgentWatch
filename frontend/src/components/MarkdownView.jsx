@@ -84,7 +84,7 @@ marked.use({
     }
 });
 
-export default function MarkdownView({ content }) {
+export default function MarkdownView({ content, onOpenFile }) {
     const html = useMemo(() => {
         if (!content) return '';
         try {
@@ -94,24 +94,21 @@ export default function MarkdownView({ content }) {
         }
     }, [content]);
 
-    const handleClick = useCallback(async (e) => {
+    const handleClick = useCallback((e) => {
         const fileBtn = e.target.closest('[data-file-path]');
         if (fileBtn) {
             e.preventDefault();
             e.stopPropagation();
             const filePath = fileBtn.getAttribute('data-file-path');
             if (filePath) {
-                try {
-                    await navigator.clipboard.writeText(filePath);
-                    const parts = filePath.split(/[/\\]/);
-                    const fileName = parts[parts.length - 1] || filePath;
-                    toast.success(`Copied path: ${fileName}`, 'File Path Copied');
-                } catch {
-                    toast.info(`Path: ${filePath}`, 'File Path');
+                if (typeof onOpenFile === 'function') {
+                    onOpenFile(filePath);
+                } else if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('agentwatch:open-file', { detail: { path: filePath } }));
                 }
             }
         }
-    }, []);
+    }, [onOpenFile]);
 
     if (!content) return null;
 
