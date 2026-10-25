@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Icon } from '../../constants/icons';
 import { FileIcon } from '../../constants/fileIcons';
 import { formatFileSize } from './AttachmentPreview';
 import StreamItem from './StreamItem';
 import MarkdownView from '../MarkdownView';
 
-export default function ChatTurn({
+const ChatTurn = memo(function ChatTurn({
     turn,
     turnIndex,
     openItemIds,
@@ -31,7 +31,7 @@ export default function ChatTurn({
 
     if (isUser) {
         return (
-            <div className="flex justify-end w-full min-w-0 max-w-full animate-in fade-in duration-150">
+            <div className="chat-turn-item flex justify-end w-full min-w-0 max-w-full animate-in fade-in duration-150">
                 <div className="max-w-[88%] md:max-w-[85%] min-w-0 rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white shadow-md break-words [overflow-wrap:anywhere] [word-break:break-word] overflow-hidden space-y-2">
                     {/* Attached Images */}
                     {turn.attachments && turn.attachments.some(a => a.is_image) && (
@@ -47,6 +47,7 @@ export default function ChatTurn({
                                     <img
                                         src={att.url}
                                         alt={att.original_name || att.filename}
+                                        loading="lazy"
                                         className="w-full h-full object-cover group-hover:scale-105 transition"
                                     />
                                 </button>
@@ -151,18 +152,25 @@ export default function ChatTurn({
             turn.steps.forEach((s, sidx) => {
                 streamItems.push({
                     id: s.id || `act-${sidx}`,
+                    step_id: s.step_id,
                     type: 'action',
                     kind: s.kind || 'generic',
                     verb: s.verb || (s.kind === 'analyze' ? 'Analyzed' : s.kind === 'search' ? 'Searched' : s.kind === 'command' ? 'Ran' : s.kind === 'edit' ? 'Edited' : 'Used'),
                     target: s.target || s.file_short || s.command || s.summary || s.name,
                     command: s.command,
+                    cwd: s.cwd,
                     cwd_short: s.cwd_short,
                     file: s.file,
                     extra: s.extra,
+                    status: s.status,
                     requires_permission: s.requires_permission,
+                    requires_native_ide: s.requires_native_ide,
                     permission_type: s.permission_type,
                     permission_title: s.permission_title,
-                    permission_desc: s.permission_desc
+                    permission_desc: s.permission_desc,
+                    approval_options: s.approval_options,
+                    approval_decision: s.approval_decision,
+                    question_data: s.question_data
                 });
             });
         }
@@ -171,7 +179,7 @@ export default function ChatTurn({
     const hasStream = streamItems.length > 0 || turn.is_working;
 
     return (
-        <div className="flex justify-start w-full min-w-0 max-w-full overflow-hidden animate-in fade-in duration-150">
+        <div className="chat-turn-item flex justify-start w-full min-w-0 max-w-full overflow-hidden animate-in fade-in duration-150">
             <div className="max-w-[95%] md:max-w-[88%] w-full min-w-0 rounded-2xl rounded-bl-sm bg-zinc-850 border border-zinc-750/70 p-3.5 sm:p-4 text-sm text-zinc-100 shadow-md space-y-2.5 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word]">
                 {/* Agent Header */}
                 <div className="flex items-center gap-2 pb-1 border-b border-zinc-750/40 text-xs text-zinc-400">
@@ -186,14 +194,14 @@ export default function ChatTurn({
                 {hasStream && (
                     <div className="space-y-1.5 py-1 select-text">
                         {streamItems.map((item, itemIdx) => {
-                            const itemKey = `${turn.id || turnIndex}-${item.id || itemIdx}`;
+                            const itemKey = item.step_id || `${turn.id || turnIndex}-${item.id || itemIdx}`;
                             return (
                                 <StreamItem
                                     key={itemKey}
                                     item={item}
                                     itemKey={itemKey}
                                     isOpen={openItemIds.has(itemKey)}
-                                    approvalState={approvals[itemKey]}
+                                    approvalState={approvals[itemKey] || item.approval_decision}
                                     isWorking={turn.is_working}
                                     onToggle={onToggleItem}
                                     onApprove={onApprove}
@@ -252,4 +260,6 @@ export default function ChatTurn({
             </div>
         </div>
     );
-}
+});
+
+export default ChatTurn;

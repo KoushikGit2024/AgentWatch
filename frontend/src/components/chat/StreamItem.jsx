@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Icon } from '../../constants/icons';
 import { FileIcon, getFileInfo } from '../../constants/fileIcons';
 import ApprovalCard from './ApprovalCard';
 import DiffViewer from './DiffViewer';
 
-export default function StreamItem({
+const StreamItem = memo(function StreamItem({
     item,
     itemKey,
     isOpen,
@@ -38,8 +38,10 @@ export default function StreamItem({
     const isCommand = item.kind === 'command';
     const isEdit = item.kind === 'edit';
     const isAnalyze = item.kind === 'analyze';
-    const hasDetails = Boolean(item.command || item.output || item.diff || item.instruction || item.file);
+    const isQuestion = item.kind === 'question';
+    const hasDetails = Boolean(item.command || item.output || item.diff || item.instruction || item.file || item.question_data);
     const fileInfo = (isAnalyze || isEdit) ? getFileInfo(item.target || item.file) : null;
+    const effectiveApproval = approvalState || item.approval_decision;
 
     return (
         <div className="space-y-1.5 w-full min-w-0 max-w-full overflow-hidden">
@@ -72,6 +74,9 @@ export default function StreamItem({
                         {item.kind === 'browser' && (
                             <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>
                         )}
+                        {isQuestion && (
+                            <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.brain}</div>
+                        )}
 
                         <span className={`font-mono text-[11px] font-medium break-all ${fileInfo ? fileInfo.color : 'text-zinc-200'}`}>
                             {item.target}
@@ -103,7 +108,7 @@ export default function StreamItem({
                         </span>
                     )}
 
-                    {isCommand && item.exit_code === undefined && item.status !== 'done' && isWorking && (
+                    {isCommand && item.exit_code === undefined && (item.status !== 'done' || isWorking) && (
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                     )}
 
@@ -115,10 +120,9 @@ export default function StreamItem({
                 </div>
             </div>
 
-            {/* Expandable Details Card (Terminal Output / Diff Preview) */}
+            {/* Expandable Details Card (Terminal Output / Diff Preview / Question Details) */}
             {isOpen && hasDetails && (
                 <div className="mt-1 mb-2.5 ml-2 pl-3 border-l-2 border-zinc-700/70 space-y-2 text-xs w-full min-w-0 max-w-full overflow-hidden">
-                    {/* Command Details */}
                     {isCommand && (
                         <div className="space-y-1.5 w-full min-w-0 max-w-full">
                             {item.cwd && (
@@ -141,13 +145,12 @@ export default function StreamItem({
                                 </div>
                             ) : (
                                 <div className="text-[11px] text-zinc-500 italic py-1">
-                                    {item.status === 'done' ? 'Completed with no standard output.' : 'Command executing…'}
+                                    {item.status === 'done' ? 'Completed with no standard output.' : 'Waiting for approval or execution…'}
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* File Modification Details */}
                     {isEdit && (
                         <div className="space-y-1.5">
                             {item.file && (
@@ -171,25 +174,41 @@ export default function StreamItem({
                         </div>
                     )}
 
-                    {/* File Analysis Details */}
                     {item.kind === 'analyze' && item.file && (
                         <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-300 break-all [word-break:break-all] [overflow-wrap:anywhere] bg-zinc-950 p-2 rounded border border-zinc-850 w-full max-w-full">
                             <FileIcon path={item.file} className="w-3.5 h-3.5" />
                             <span>{item.file}</span>
                         </div>
                     )}
+
+                    {isQuestion && item.question_data && (
+                        <div className="space-y-1.5 bg-zinc-950/80 p-2.5 rounded-lg border border-zinc-800">
+                            <div className="text-xs font-semibold text-zinc-200">{item.question_data.question}</div>
+                            {Array.isArray(item.question_data.options) && item.question_data.options.length > 0 && (
+                                <div className="space-y-1 pt-1">
+                                    {item.question_data.options.map((opt, idx) => (
+                                        <div key={opt.id || idx} className="text-[11px] text-zinc-300 flex items-start gap-1.5">
+                                            <span className="text-blue-400 font-mono">{idx + 1}.</span>
+                                            <span>{typeof opt === 'string' ? opt : opt.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Approval Decision Card if elevation required */}
-            {item.requires_permission && item.status !== 'done' && !item.output && (isWorking || approvalState) && (
+            {(item.requires_permission || effectiveApproval) && !item.output && (item.status === 'pending' || effectiveApproval || isWorking) && (
                 <ApprovalCard
                     item={item}
-                    itemKey={itemKey}
-                    approvalState={approvalState}
+                    itemKey={item.step_id || itemKey}
+                    approvalState={effectiveApproval}
                     onApprove={onApprove}
                 />
             )}
         </div>
     );
-}
+});
+
+export default StreamItem;

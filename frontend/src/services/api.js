@@ -1,6 +1,7 @@
 /**
  * AgentWatch Frontend API Service Layer
- * Centralized, type-consistent HTTP client with automatic authentication headers.
+ * Centralized, type-consistent HTTP client with automatic authentication headers,
+ * upward cursor pagination, and screenshot hash deduplication.
  */
 
 export const getAuthToken = () => {
@@ -64,13 +65,19 @@ export const api = {
         return res.json();
     },
 
-    async getSnapshot() {
-        const res = await request('/snapshot');
+    async getSnapshot(lastHash = null) {
+        const query = lastHash ? `?last_hash=${encodeURIComponent(lastHash)}` : '';
+        const res = await request(`/snapshot${query}`);
         return res.json();
     },
 
     async getPendingInteractions() {
         const res = await request('/api/v1/interactions/pending');
+        return res.json();
+    },
+
+    async getPendingApprovals() {
+        const res = await request('/api/v1/approvals/pending');
         return res.json();
     },
 
@@ -87,8 +94,21 @@ export const api = {
         return res.json();
     },
 
-    async getChatMessages(limit = 50) {
-        const res = await request(`/api/v1/chat/messages?limit=${limit}`);
+    async dismissInteraction(interactionId) {
+        const res = await request('/api/v1/interactions/dismiss', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ interaction_id: interactionId })
+        });
+        return res.json();
+    },
+
+    async getChatMessages(limit = 15, before = null) {
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (before !== null && before !== undefined) {
+            params.set('before', String(before));
+        }
+        const res = await request(`/api/v1/chat/messages?${params.toString()}`);
         return res.json();
     },
 
@@ -127,22 +147,24 @@ export const api = {
         return res.json();
     },
 
-    async submitApproval(requestType, target, decision, stepId) {
+    async submitApproval(requestType, target, decision, stepId, customResponse = '', optionLabel = '') {
         const res = await request('/api/v1/approvals/respond', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                request_type: requestType,
+                request_type: requestType || 'command',
                 target: target || 'unknown',
                 decision,
-                step_id: stepId
+                step_id: stepId,
+                option_label: optionLabel || undefined,
+                custom_response: customResponse ? customResponse.trim() : undefined
             })
         });
         return res.json();
     },
 
     async setMode(mode) {
-        const res = await request('/api/v1/controls/mode', {
+        const res = await request('/api/v1/set-mode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode })
@@ -151,7 +173,7 @@ export const api = {
     },
 
     async setModel(model) {
-        const res = await request('/api/v1/controls/model', {
+        const res = await request('/api/v1/set-model', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model })
@@ -160,7 +182,7 @@ export const api = {
     },
 
     async stopAgent() {
-        const res = await request('/api/v1/controls/stop', { method: 'POST' });
+        const res = await request('/api/v1/stop', { method: 'POST' });
         return res.json();
     },
 
@@ -185,7 +207,7 @@ export const api = {
     },
 
     async getHistoryChats() {
-        const res = await request('/api/v1/chat/history');
+        const res = await request('/chat-history');
         return res.json();
     }
 };

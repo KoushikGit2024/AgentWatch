@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import ChatStream from './components/chat/ChatStream';
+import PendingInteractionBanner from './components/chat/PendingInteractionBanner';
 import { PromptComposer } from './components/PromptComposer';
 import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
 import { SystemLogsDrawer } from './components/SystemLogsDrawer';
@@ -8,6 +9,7 @@ import { RecoveryCenterModal } from './components/RecoveryCenterModal';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { ReviewChangesModal } from './components/ReviewChangesModal';
 import ModelModal from './components/modals/ModelModal';
+import ModeModal from './components/modals/ModeModal';
 import LightboxModal from './components/modals/LightboxModal';
 import InteractionModal from './components/modals/InteractionModal';
 import ApprovalModal from './components/modals/ApprovalModal';
@@ -16,12 +18,27 @@ import { useAgentWatch } from './hooks/useAgentWatch';
 import { Icon } from './constants/icons';
 
 export default function App() {
-    // Custom Hook for State & Backend Sync
+    // UI View & Drawer State
+    const [viewMode, setViewMode] = useState('chat');
+    const [fitMode, setFitMode] = useState('fit');
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [activeModal, setActiveModal] = useState(null); // 'mode' | 'model' | null
+    const [timelineOpen, setTimelineOpen] = useState(false);
+    const [logsOpen, setLogsOpen] = useState(false);
+    const [recoveryOpen, setRecoveryOpen] = useState(false);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
+
+    // Custom Hook for State & Backend Sync (only polls /snapshot when screen view or lightbox is open)
     const {
         appState,
         snapshotData,
         chatMessages,
+        hasMoreHistory,
+        isLoadingOlder,
+        loadOlderMessages,
         pendingInteraction,
+        isInteractionMinimized,
         selectedOptions,
         customResponse,
         isSubmitting,
@@ -38,31 +55,26 @@ export default function App() {
         isHistoryLoading,
         approvals,
         pendingApproval,
+        isApprovalMinimized,
         isApprovaling,
         setCustomResponse,
         handleApproval,
         handleDismissApproval,
+        handleReopenApproval,
+        handleDismissInteraction,
+        handleCancelInteraction,
+        handleReopenInteraction,
         handleSendPrompt,
         handleInteractionSubmit,
         handleToggleOption,
         handleSetModel,
+        handleSetMode,
         handleStopAgent,
         fetchTimelineEvents,
         fetchSystemLogs,
         fetchRecoveryItems,
         fetchHistoryChats
-    } = useAgentWatch();
-
-    // UI View & Drawer State
-    const [viewMode, setViewMode] = useState('chat');
-    const [fitMode, setFitMode] = useState('fit');
-    const [lightboxOpen, setLightboxOpen] = useState(false);
-    const [activeModal, setActiveModal] = useState(null); // 'mode' | 'model' | null
-    const [timelineOpen, setTimelineOpen] = useState(false);
-    const [logsOpen, setLogsOpen] = useState(false);
-    const [recoveryOpen, setRecoveryOpen] = useState(false);
-    const [historyOpen, setHistoryOpen] = useState(false);
-    const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
+    } = useAgentWatch({ isScreenActive: viewMode === 'screen' || lightboxOpen });
 
     // Composer & Chat Stream State
     const [promptText, setPromptText] = useState('');
@@ -72,25 +84,25 @@ export default function App() {
     const messagesEndRef = useRef(null);
     const shouldAutoScrollRef = useRef(true);
 
-    const toggleItem = (itemId) => {
+    const toggleItem = useCallback((itemId) => {
         setOpenItemIds(prev => {
             const next = new Set(prev);
             if (next.has(itemId)) next.delete(itemId);
             else next.add(itemId);
             return next;
         });
-    };
+    }, []);
 
-    const handleChatScroll = (e) => {
+    const handleChatScroll = useCallback((e) => {
         const el = e.currentTarget;
         if (!el) return;
         const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
         const isNearBottom = distanceFromBottom < 90;
         shouldAutoScrollRef.current = isNearBottom;
         setIsScrolledUp(!isNearBottom);
-    };
+    }, []);
 
-    const scrollToBottom = () => {
+    const scrollToBottom = useCallback(() => {
         shouldAutoScrollRef.current = true;
         setIsScrolledUp(false);
         if (chatScrollRef.current) {
@@ -99,7 +111,7 @@ export default function App() {
                 behavior: 'smooth'
             });
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (shouldAutoScrollRef.current && chatScrollRef.current) {
@@ -110,6 +122,7 @@ export default function App() {
     const handleSend = (text, attachments = []) => {
         const msg = text !== undefined ? text : promptText;
         if (!msg?.trim() && (!attachments || attachments.length === 0)) return;
+        shouldAutoScrollRef.current = true;
         handleSendPrompt(msg, attachments);
         setPromptText('');
     };
@@ -138,10 +151,13 @@ export default function App() {
             <main className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full relative overflow-hidden">
                 {viewMode === 'chat' ? (
                     <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden overflow-x-hidden">
-                        {/* Conversation Stream */}
+                        {/* Conversation Stream with Upward Lazy-Loading */}
                         <ChatStream
                             ref={chatScrollRef}
                             chatMessages={chatMessages}
+                            hasMoreHistory={hasMoreHistory}
+                            isLoadingOlder={isLoadingOlder}
+                            onLoadOlder={loadOlderMessages}
                             openItemIds={openItemIds}
                             approvals={approvals}
                             isScrolledUp={isScrolledUp}
@@ -152,6 +168,24 @@ export default function App() {
                             messagesEndRef={messagesEndRef}
                         />
 
+                        {/* Minimized Pending Interaction / Approval Banner */}
+                        {((pendingInteraction && isInteractionMinimized) || (pendingApproval && isApprovalMinimized)) && (
+                            <PendingInteractionBanner
+                                pendingInteraction={isInteractionMinimized ? pendingInteraction : null}
+                                pendingApproval={isApprovalMinimized ? pendingApproval : null}
+                                selectedOptions={selectedOptions}
+                                customResponse={customResponse}
+                                isSubmitting={isSubmitting}
+                                submitSuccess={submitSuccess}
+                                onToggleOption={handleToggleOption}
+                                onChangeCustomResponse={setCustomResponse}
+                                onSubmit={handleInteractionSubmit}
+                                onReopenInteraction={handleReopenInteraction}
+                                onCancelInteraction={handleCancelInteraction}
+                                onReopenApproval={handleReopenApproval}
+                                onApprove={handleApproval}
+                            />
+                        )}
 
                         {/* Bottom Prompt Composer */}
                         <PromptComposer
@@ -162,6 +196,7 @@ export default function App() {
                             isWorking={chatMessages.length > 0 && chatMessages[chatMessages.length - 1]?.role === 'agent' && Boolean(chatMessages[chatMessages.length - 1]?.is_working)}
                             appState={appState}
                             onOpenModelModal={() => setActiveModal('model')}
+                            onOpenModeModal={() => setActiveModal('mode')}
                             onOpenReviewChanges={() => setReviewChangesOpen(true)}
                             onOpenLogs={() => { setLogsOpen(true); fetchSystemLogs(); }}
                             onOpenRecovery={() => { setRecoveryOpen(true); fetchRecoveryItems(); }}
@@ -248,7 +283,7 @@ export default function App() {
                 diagnostics={diagnostics}
                 isLoading={isRecoveryLoading}
                 onRefresh={fetchRecoveryItems}
-                onOpenInteraction={() => { setRecoveryOpen(false); setViewMode('chat'); }}
+                onOpenInteraction={() => { setRecoveryOpen(false); setViewMode('chat'); handleReopenInteraction(); }}
             />
 
             <HistoryDrawer
@@ -271,6 +306,14 @@ export default function App() {
                 onSelectModel={(m) => { handleSetModel(m); setActiveModal(null); }}
             />
 
+            <ModeModal
+                isOpen={activeModal === 'mode'}
+                onClose={() => setActiveModal(null)}
+                currentMode={appState.mode}
+                availableModes={appState.available_modes}
+                onSelectMode={(m) => { handleSetMode(m); setActiveModal(null); }}
+            />
+
             <LightboxModal
                 isOpen={lightboxOpen}
                 onClose={() => setLightboxOpen(false)}
@@ -279,7 +322,7 @@ export default function App() {
 
             {/* ─── Interaction Modal (Agent decision requests) ─────────────── */}
             <InteractionModal
-                interaction={pendingInteraction}
+                interaction={isInteractionMinimized ? null : pendingInteraction}
                 selectedOptions={selectedOptions}
                 customResponse={customResponse}
                 isSubmitting={isSubmitting}
@@ -287,12 +330,13 @@ export default function App() {
                 onToggleOption={handleToggleOption}
                 onChangeCustomResponse={setCustomResponse}
                 onSubmit={handleInteractionSubmit}
-                onDismiss={() => {}}
+                onDismiss={handleDismissInteraction}
+                onCancel={handleCancelInteraction}
             />
 
             {/* ─── Approval Modal (CDP / IDE permission requests) ─────────────── */}
             <ApprovalModal
-                approval={pendingApproval}
+                approval={isApprovalMinimized ? null : pendingApproval}
                 isSubmitting={isApprovaling}
                 onDecide={handleApproval}
                 onDismiss={handleDismissApproval}
