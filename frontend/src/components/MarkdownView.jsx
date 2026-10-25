@@ -85,9 +85,8 @@ marked.use({
 });
 
 export default function MarkdownView({ content }) {
-    if (!content) return null;
-
     const html = useMemo(() => {
+        if (!content) return '';
         try {
             return marked.parse(content);
         } catch {
@@ -104,7 +103,7 @@ export default function MarkdownView({ content }) {
             if (filePath) {
                 try {
                     await navigator.clipboard.writeText(filePath);
-                    const parts = filePath.split(/[\/\\]/);
+                    const parts = filePath.split(/[/\\]/);
                     const fileName = parts[parts.length - 1] || filePath;
                     toast.success(`Copied path: ${fileName}`, 'File Path Copied');
                 } catch {
@@ -113,6 +112,8 @@ export default function MarkdownView({ content }) {
             }
         }
     }, []);
+
+    if (!content) return null;
 
     return (
         <div

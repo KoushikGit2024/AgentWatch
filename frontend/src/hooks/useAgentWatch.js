@@ -432,18 +432,30 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         }
     }, [pendingInteraction, isSubmitting, selectedOptions, customResponse, fetchChatMessages]);
 
-    const handleToggleOption = useCallback((id) => {
-        const isMulti = pendingInteraction?.kind === 'multiple_choice';
+    const handleToggleOption = useCallback((id, questionContext = null) => {
         setSelectedOptions(prev => {
             const next = new Set(prev);
-            if (isMulti) {
-                if (next.has(id)) next.delete(id);
-                else next.add(id);
-            } else {
-                if (next.has(id)) next.clear();
-                else {
-                    next.clear();
+            if (questionContext) {
+                // Per-question selection logic
+                const siblingIds = new Set((questionContext.options || []).map(o => o.id));
+                if (next.has(id)) {
+                    next.delete(id);
+                } else {
+                    if (!questionContext.is_multi_select) {
+                        // Single-select: clear other options from this question only
+                        for (const sid of siblingIds) next.delete(sid);
+                    }
                     next.add(id);
+                }
+            } else {
+                // Top-level single or multi-choice
+                const isMulti = pendingInteraction?.kind === 'multiple_choice';
+                if (isMulti) {
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                } else {
+                    if (next.has(id)) next.clear();
+                    else { next.clear(); next.add(id); }
                 }
             }
             return next;
