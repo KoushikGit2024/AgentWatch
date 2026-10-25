@@ -17,6 +17,7 @@ import InteractionModal from './components/modals/InteractionModal';
 import ApprovalModal from './components/modals/ApprovalModal';
 import FileViewerModal from './components/modals/FileViewerModal';
 import ToastContainer from './components/ToastContainer';
+import { toast } from './services/toastService';
 import { useAgentWatch } from './hooks/useAgentWatch';
 import { useQueuedMessages } from './hooks/useQueuedMessages';
 import { parseFileLink } from './utils/fileLinkParser';
@@ -168,9 +169,16 @@ export default function App() {
         isActionPending: isQueueActionPending,
         handleSendNow: handleQueueSendNow,
         handleDelete: handleQueueDelete,
-        handleEdit: handleQueueEdit,
+        handleEdit: handleQueueDirectEdit,
         handleQueueMessage
     } = useQueuedMessages(isAgentWorking);
+
+    const handleQueueEdit = async (item) => {
+        if (!item) return;
+        setPromptText(item.text || '');
+        await handleQueueDelete(item);
+        toast.info('Message loaded into composer for editing', 'Editing Queued Prompt');
+    };
 
     const handleSend = (text, attachments = []) => {
         const msg = text !== undefined ? text : promptText;
