@@ -103,6 +103,8 @@ async def watch_transcript_loop():
     last_approval_key = None
     last_interaction_id = None
     dom_probe_tick = 0
+    cached_dom_approval = None
+    dom_miss_count = 0
 
     while True:
         try:
@@ -140,7 +142,9 @@ async def watch_transcript_loop():
                     if ag_status.get("cdp", {}).get("connected"):
                         dom_popup = await antigravity_adapter.inspect_active_popup()
                         if dom_popup.get("has_popup"):
+                            dom_miss_count = 0
                             if dom_popup.get("popup_kind") == "question":
+                                cached_dom_approval = None
                                 interaction_service.sync_question_from_transcript(
                                     session_id="cdp_live_session",
                                     question_data={
@@ -156,7 +160,7 @@ async def watch_transcript_loop():
                                 step_hash = hashlib.md5(target_str.encode("utf-8", errors="ignore")).hexdigest()[:8]
                                 step_id = f"dom-{step_hash}"
                                 if step_id not in conversation_service._resolved_approvals:
-                                    pending_approval = {
+                                    cached_dom_approval = {
                                         "step_id": step_id,
                                         "request_type": "command" if dom_popup.get("command") else "decision",
                                         "target": target_str,
@@ -167,12 +171,19 @@ async def watch_transcript_loop():
                                         "allow_custom_response": True,
                                     }
                         else:
-                            # DOM popup has been clicked, approved, or dismissed in the IDE
-                            interaction_service.sync_question_from_transcript(
-                                session_id="cdp_live_session",
-                                question_data=None,
-                                is_active=False,
-                            )
+                            dom_miss_count += 1
+                            # Require 2 consecutive misses (~1.4s) before dismissing live popup to prevent transient flicker
+                            if dom_miss_count >= 2:
+                                cached_dom_approval = None
+                                interaction_service.sync_question_from_transcript(
+                                    session_id="cdp_live_session",
+                                    question_data=None,
+                                    is_active=False,
+                                )
+
+                # Use cached dom approval if transcript doesn't specify one
+                if not pending_approval and cached_dom_approval:
+                    pending_approval = cached_dom_approval
 
                 cur_approval_key = pending_approval.get("step_id") if pending_approval else None
                 if cur_approval_key and cur_approval_key != last_approval_key:
