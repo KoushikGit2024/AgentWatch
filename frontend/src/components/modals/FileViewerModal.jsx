@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../constants/icons';
 import { FileIcon, getFileInfo } from '../../constants/fileIcons';
+import MarkdownView from '../MarkdownView';
 import { api } from '../../services/api';
 import { toast } from '../../services/toastService';
 
 /**
  * FileViewerModal — Interactive full-file inspector with line-range highlighting,
- * automatic centering, line number gutters, and quick code copy actions.
+ * automatic centering, line number gutters, quick copy, and formatted Markdown Preview
+ * for system-generated plan files (*.md, plan*, instructions).
  */
 export default function FileViewerModal({ targetFile, onClose }) {
     const [fileData, setFileData] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'code'
     const [copiedContent, setCopiedContent] = useState(false);
     const [copiedPath, setCopiedPath] = useState(false);
     const targetLineRef = useRef(null);
@@ -20,6 +23,24 @@ export default function FileViewerModal({ targetFile, onClose }) {
     const startLine = targetFile?.startLine || null;
     const endLine = targetFile?.endLine || startLine;
     const hasHighlight = startLine !== null && startLine > 0;
+
+    const isMarkdown = Boolean(
+        filePath.endsWith('.md') ||
+        filePath.endsWith('.markdown') ||
+        filePath.toLowerCase().includes('plan') ||
+        fileData?.extension === 'md'
+    );
+
+    // Default to 'preview' for Markdown documents, 'code' for code files
+    useEffect(() => {
+        if (hasHighlight) {
+            setViewMode('code');
+        } else if (isMarkdown) {
+            setViewMode('preview');
+        } else {
+            setViewMode('code');
+        }
+    }, [filePath, hasHighlight, isMarkdown]);
 
     useEffect(() => {
         if (!filePath) {
@@ -51,14 +72,14 @@ export default function FileViewerModal({ targetFile, onClose }) {
         };
     }, [filePath]);
 
-    // Scroll highlighted line into view upon data load
+    // Scroll highlighted line into view upon data load in code mode
     useEffect(() => {
-        if (fileData && targetLineRef.current) {
+        if (fileData && viewMode === 'code' && targetLineRef.current) {
             requestAnimationFrame(() => {
                 targetLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
         }
-    }, [fileData, startLine]);
+    }, [fileData, startLine, viewMode]);
 
     // Close on Escape key
     useEffect(() => {
@@ -93,7 +114,7 @@ export default function FileViewerModal({ targetFile, onClose }) {
             toast.success('File content copied to clipboard');
             setTimeout(() => setCopiedContent(false), 1800);
         } catch {
-            toast.error('Could not copy code to clipboard');
+            toast.error('Could not copy content to clipboard');
         }
     };
 
@@ -135,8 +156,36 @@ export default function FileViewerModal({ targetFile, onClose }) {
                         </div>
                     </div>
 
-                    {/* Action buttons */}
+                    {/* Action controls & Markdown preview toggle */}
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {/* Preview / Raw Code Toggle for Markdown files */}
+                        {isMarkdown && (
+                            <div className="flex items-center rounded-lg bg-zinc-900 border border-zinc-700/80 p-0.5 text-xs mr-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('preview')}
+                                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                                        viewMode === 'preview'
+                                            ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                                            : 'text-zinc-400 hover:text-zinc-200'
+                                    }`}
+                                >
+                                    Plan View
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('code')}
+                                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                                        viewMode === 'code'
+                                            ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                                            : 'text-zinc-400 hover:text-zinc-200'
+                                    }`}
+                                >
+                                    Raw Source
+                                </button>
+                            </div>
+                        )}
+
                         <button
                             type="button"
                             onClick={handleCopyPath}
@@ -158,7 +207,7 @@ export default function FileViewerModal({ targetFile, onClose }) {
                             type="button"
                             onClick={handleCopyCode}
                             disabled={!fileData?.content}
-                            title="Copy entire file content"
+                            title="Copy content"
                             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition active:scale-95 cursor-pointer disabled:opacity-40"
                         >
                             {copiedContent ? (
@@ -167,7 +216,7 @@ export default function FileViewerModal({ targetFile, onClose }) {
                                 </span>
                             ) : (
                                 <span className="text-zinc-400 text-xs font-mono flex items-center gap-1">
-                                    <div className="w-3.5 h-3.5">{Icon.copy}</div> Code
+                                    <div className="w-3.5 h-3.5">{Icon.copy}</div> Text
                                 </span>
                             )}
                         </button>
@@ -190,8 +239,8 @@ export default function FileViewerModal({ targetFile, onClose }) {
                     {filePath}
                 </div>
 
-                {/* ─── Modal Code Content / Viewport ─── */}
-                <div className="flex-1 overflow-auto bg-zinc-950 p-2 sm:p-3 font-mono text-xs leading-relaxed min-h-[300px] max-h-[75vh]">
+                {/* ─── Modal Viewport (Rendered Markdown Preview OR Numbered Code Lines) ─── */}
+                <div className="flex-1 overflow-auto bg-zinc-950 p-3 sm:p-5 text-xs min-h-[350px] max-h-[75vh]">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 text-zinc-500 space-y-2">
                             <div className="w-6 h-6 animate-spin text-blue-400">{Icon.activity}</div>
@@ -203,8 +252,14 @@ export default function FileViewerModal({ targetFile, onClose }) {
                             <p className="text-sm font-semibold">{error}</p>
                             <p className="text-xs text-zinc-500 font-mono break-all">{filePath}</p>
                         </div>
+                    ) : viewMode === 'preview' && isMarkdown ? (
+                        /* Beautiful Rendered Markdown Preview for Plans & Specs */
+                        <div className="max-w-3xl mx-auto py-2">
+                            <MarkdownView content={fileData?.content} />
+                        </div>
                     ) : (
-                        <div className="min-w-full inline-block">
+                        /* Monospace Code Editor View with Line Highlighting & Numbered Gutters */
+                        <div className="min-w-full inline-block font-mono leading-relaxed">
                             {lines.map((lineText, idx) => {
                                 const lineNum = idx + 1;
                                 const isHighlighted = hasHighlight && lineNum >= startLine && lineNum <= endLine;
@@ -239,12 +294,22 @@ export default function FileViewerModal({ targetFile, onClose }) {
                 </div>
 
                 {/* ─── Footer Status ─── */}
-                {hasHighlight && (
-                    <div className="px-4 py-2 bg-zinc-950/90 border-t border-zinc-850 text-[11px] font-mono text-zinc-400 flex items-center justify-between select-none">
+                <div className="px-4 py-2 bg-zinc-950/90 border-t border-zinc-850 text-[11px] font-mono text-zinc-400 flex items-center justify-between select-none">
+                    {hasHighlight ? (
                         <span className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-amber-400" />
                             Highlighted: <strong className="text-amber-300">Lines {startLine}–{endLine}</strong> ({endLine - startLine + 1} lines)
                         </span>
+                    ) : isMarkdown ? (
+                        <span className="flex items-center gap-1.5 text-zinc-400">
+                            <span className="w-2 h-2 rounded-full bg-blue-400" />
+                            Mode: <strong className="text-zinc-200">{viewMode === 'preview' ? 'Formatted Plan View' : 'Raw Markdown Source'}</strong>
+                        </span>
+                    ) : (
+                        <span>Total: <strong className="text-zinc-200">{lines.length} lines</strong></span>
+                    )}
+
+                    {hasHighlight && viewMode === 'code' && (
                         <button
                             type="button"
                             onClick={() => targetLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
@@ -252,8 +317,8 @@ export default function FileViewerModal({ targetFile, onClose }) {
                         >
                             Jump to highlight
                         </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
