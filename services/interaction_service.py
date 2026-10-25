@@ -9,6 +9,7 @@ from models.schemas import (
     InteractionKind,
     InteractionStatus,
     InteractionOption,
+    QuestionItem,
     SubmitInteractionRequest,
     CapabilityItem,
     CapabilityStatus,
@@ -175,11 +176,17 @@ class InteractionService:
         # Validate options if choice kind
         kind = interaction.get("kind")
         if kind in (InteractionKind.SINGLE_CHOICE.value, InteractionKind.MULTIPLE_CHOICE.value):
+            # Build allowed IDs from top-level options AND nested question sub-options
             allowed_ids = {opt["id"] for opt in interaction.get("options", [])}
+            for q in interaction.get("questions", []):
+                for sub_opt in q.get("options", []):
+                    allowed_ids.add(sub_opt["id"])
             selected = set(payload.selected_option_ids)
             # If custom response permitted and custom text provided, allow with or without selected options
             is_custom = bool(payload.custom_response and payload.custom_response.strip())
-            if not is_custom and not selected:
+            # For multi-question interactions, also allow if questions exist (selection optional per-question)
+            has_questions = bool(interaction.get("questions"))
+            if not is_custom and not selected and not has_questions:
                 if payload.idempotency_key:
                     self.idempotency_repo.fail(scope, payload.idempotency_key, "No option selected")
                 return {"success": False, "error": "No option selected", "status": "validation_error"}
@@ -187,7 +194,7 @@ class InteractionService:
                 if payload.idempotency_key:
                     self.idempotency_repo.fail(scope, payload.idempotency_key, "Invalid option selection")
                 return {"success": False, "error": "Invalid option selection", "status": "validation_error"}
-            if kind == InteractionKind.SINGLE_CHOICE.value and len(selected) > 1:
+            if kind == InteractionKind.SINGLE_CHOICE.value and len(selected) > 1 and not has_questions:
                 if payload.idempotency_key:
                     self.idempotency_repo.fail(scope, payload.idempotency_key, "Single choice allows only one selection")
                 return {"success": False, "error": "Single choice allows only one selection", "status": "validation_error"}
@@ -220,8 +227,12 @@ class InteractionService:
             }
 
         # Formulate answer text and dispatch to Antigravity IDE if connected
+        # Collect labels from top-level options and nested question sub-options
+        all_opts = list(interaction.get("options", []))
+        for q in interaction.get("questions", []):
+            all_opts.extend(q.get("options", []))
         selected_labels = [
-            opt["label"] for opt in interaction.get("options", [])
+            opt["label"] for opt in all_opts
             if opt["id"] in payload.selected_option_ids
         ]
         parts = []
@@ -247,8 +258,8 @@ class InteractionService:
             except Exception as e:
                 logger.warning("Failed to dispatch interaction via CDP: %s", str(e))
 
-        if not cdp_dispatch and not is_testing:
-            # Fallback: send the answer as a text prompt so the agent receives it
+        # Only attempt text prompt fallback if CDP is completely disconnected and not testing
+        if not cdp_status.get("connected") and not is_testing:
             try:
                 q_title = interaction.get("title", "your question")
                 fallback_message = (
@@ -396,7 +407,39 @@ class InteractionService:
                         )
                     )
 
-        if not options_list:
+        # Parse multi-question array if provided
+        raw_questions = question_data.get("questions") or []
+        questions_list: List[QuestionItem] = []
+        for q_idx, q_obj in enumerate(raw_questions):
+            if isinstance(q_obj, dict):
+                sub_title = str(q_obj.get("question") or f"Question {q_idx + 1}").strip()[:250]
+                sub_opts_raw = q_obj.get("options") or []
+                sub_opts_list: List[InteractionOption] = []
+                for o_idx, o_raw in enumerate(sub_opts_raw):
+                    if isinstance(o_raw, dict):
+                        lbl = str(o_raw.get("label") or o_raw.get("title") or f"Option {o_idx + 1}").strip()[:250]
+                        d_val = o_raw.get("description") or o_raw.get("detail")
+                        sub_opts_list.append(InteractionOption(
+                            id=str(o_raw.get("id") or f"q{q_idx+1}_opt_{o_idx+1}"),
+                            label=lbl,
+                            description=str(d_val).strip()[:950] if d_val else None,
+                            is_recommended=bool(o_raw.get("is_recommended") or "(recommended)" in lbl.lower())
+                        ))
+                    elif o_raw is not None:
+                        lbl = str(o_raw).strip()[:250]
+                        sub_opts_list.append(InteractionOption(
+                            id=f"q{q_idx+1}_opt_{o_idx+1}",
+                            label=lbl,
+                            is_recommended="(recommended)" in lbl.lower()
+                        ))
+                questions_list.append(QuestionItem(
+                    id=f"q_{q_idx + 1}",
+                    question=sub_title,
+                    is_multi_select=bool(q_obj.get("is_multi_select", False)),
+                    options=sub_opts_list
+                ))
+
+        if not options_list and not questions_list:
             kind = InteractionKind.FREE_TEXT
         elif question_data.get("is_multi_select"):
             kind = InteractionKind.MULTIPLE_CHOICE
@@ -410,6 +453,7 @@ class InteractionService:
             title=q_text,
             description=q_desc,
             options=options_list,
+            questions=questions_list,
             allow_custom_response=True,
             custom_response_label="Type something else / Custom instructions",
             status=InteractionStatus.PENDING,

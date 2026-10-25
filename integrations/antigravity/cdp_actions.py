@@ -262,7 +262,7 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
         import websockets
 
         async with websockets.connect(target_url, close_timeout=2.5) as ws:
-            inspect_js = """
+            inspect_js = r"""
             (() => {
                 function isVisible(el) {
                     if (!el) return false;
@@ -334,6 +334,83 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                     }
                 }
 
+                // Check native Antigravity IDE inline question card (radiogroup or multi-select checkbox list)
+                const questionContainer = document.querySelector(
+                    '[role="radiogroup"], .bg-ide-editor-background:has([data-testid*="ask-question"]), [class*="rounded-2xl"]:has([data-testid="ask-question-writein"]), [class*="rounded-2xl"]:has([data-testid="interaction-continue-button"])'
+                );
+                if (questionContainer && isVisible(questionContainer)) {
+                    const card = questionContainer.closest('.bg-ide-editor-background, [class*="rounded-2xl"]') || questionContainer;
+                    const questionEl = card.querySelector('p[node], p, .leading-relaxed') || card;
+                    const questionTitle = (questionEl.innerText || questionEl.textContent || 'Agent Question').trim().split('\n')[0];
+
+                    // Check multi-select badge: <span ...>Multi-select</span> or input[type="checkbox"]
+                    const isMultiSelect = Boolean(
+                        card.querySelector('input[type="checkbox"]') ||
+                        Array.from(card.querySelectorAll('span')).some(s => (s.innerText || '').trim().toLowerCase() === 'multi-select')
+                    );
+
+                    // Check step progression indicator (e.g., "1 of 2")
+                    const stepEl = Array.from(card.querySelectorAll('span')).find(s => /\d+\s+of\s+\d+/i.test((s.innerText || '').trim()));
+                    const stepText = stepEl ? stepEl.innerText.trim() : null;
+
+                    const optionLabels = Array.from(card.querySelectorAll('label:has(input[type="checkbox"]), label:has(input[type="radio"]), [role="radio"]')).filter(isVisible);
+                    const parsedOptions = [];
+                    let hasCustomInput = false;
+
+                    for (let idx = 0; idx < optionLabels.length; idx++) {
+                        const lbl = optionLabels[idx];
+                        const writeIn = lbl.querySelector('textarea, input[type="text"], [data-testid="ask-question-writein"]');
+                        if (writeIn) {
+                            hasCustomInput = true;
+                            continue;
+                        }
+                        const span = lbl.querySelector('span.text-secondary-foreground, span:not(.font-mono), .text-sm') || lbl;
+                        const optText = (span.innerText || span.textContent || '').trim();
+                        if (optText) {
+                            parsedOptions.push({
+                                id: `opt_${idx + 1}`,
+                                label: optText,
+                                is_recommended: optText.toLowerCase().includes('(recommended)') || optText.toLowerCase().includes('recommended')
+                            });
+                        }
+                    }
+
+                    if (parsedOptions.length > 0) {
+                        return {
+                            has_popup: true,
+                            popup_kind: 'question',
+                            title: questionTitle,
+                            is_multi_select: isMultiSelect,
+                            step_indicator: stepText,
+                            options: parsedOptions,
+                            allow_custom_response: hasCustomInput || Boolean(card.querySelector('[data-testid="ask-question-writein"]')),
+                            custom_response_label: "Other (write your answer)"
+                        };
+                    }
+                }
+
+                // Check native Antigravity IDE browser/URL permission prompt: "Agent needs permission to act on <domain>"
+                const browserPermPara = Array.from(document.querySelectorAll('p')).find(p => isVisible(p) && /Agent needs permission to act on/i.test(p.innerText || ''));
+                if (browserPermPara) {
+                    const permContainer = browserPermPara.closest('.flex.w-full, .flex-col, [class*="rounded"]') || browserPermPara.parentElement;
+                    const domainMatch = (browserPermPara.innerText || '').match(/act on\s+([a-zA-Z0-9.-]+)/i);
+                    const targetDomain = domainMatch ? domainMatch[1] : 'External Domain';
+
+                    return {
+                        has_popup: true,
+                        popup_kind: 'browser_permission',
+                        title: `Browser Permission: ${targetDomain}`,
+                        target: targetDomain,
+                        command: null,
+                        options: [
+                            { id: 'always_allow', label: 'Always Allow', is_recommended: true },
+                            { id: 'allow_this_time', label: 'Allow this time' },
+                            { id: 'deny', label: 'Deny' }
+                        ],
+                        allow_custom_response: false
+                    };
+                }
+
                 // Check dialog/approval containers and inline chat cards with approval buttons
                 const approvalActionRegex = /^(allow|always allow|allow all|always run|run|run command|accept|approve|yes|continue|deny|reject|cancel|decline|no)$/i;
                 for (const c of containers) {
@@ -379,6 +456,75 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
     except Exception as exc:
         logger.debug("CDP popup inspection notice: %s", str(exc))
         return {"has_popup": False}
+
+
+async def dispatch_inspect_active_banners(target_url: str) -> Dict[str, Any]:
+    """
+    Inspect active Antigravity IDE workbench DOM for error banners, rate limits,
+    quota exhaustion toasts, and connection drops that never appear in transcript.jsonl.
+    """
+    try:
+        import websockets
+
+        async with websockets.connect(target_url, close_timeout=2.0) as ws:
+            inspect_js = """
+            (() => {
+                function isVisible(el) {
+                    if (!el) return false;
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width <= 0 || rect.height <= 0) return false;
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                }
+
+                const toastSelectors = [
+                    '.notifications-toasts .notification-toast-container',
+                    '.notifications-toasts .notification-list-item',
+                    '.monaco-notification',
+                    '[class*="notification-toast"]',
+                    '[class*="banner-error"]',
+                    '[class*="alert-danger"]',
+                    '[class*="rate-limit"]',
+                    '[class*="quota-exceeded"]'
+                ];
+
+                const foundBanners = [];
+                const toastEls = document.querySelectorAll(toastSelectors.join(','));
+                for (const el of toastEls) {
+                    if (!isVisible(el)) continue;
+                    const text = (el.innerText || el.textContent || '').trim();
+                    if (!text || text.length < 5) continue;
+
+                    const lower = text.toLowerCase();
+                    const isError = lower.includes('error') || lower.includes('failed') || lower.includes('exception');
+                    const isRateLimit = lower.includes('rate limit') || lower.includes('quota') || lower.includes('too many requests') || lower.includes('resource exhausted');
+                    const isDisconnect = lower.includes('connection closed') || lower.includes('disconnected') || lower.includes('offline');
+
+                    if (isError || isRateLimit || isDisconnect) {
+                        foundBanners.push({
+                            text: text.substring(0, 300),
+                            kind: isRateLimit ? 'rate_limit' : (isDisconnect ? 'network_drop' : 'error'),
+                            severity: isRateLimit ? 'warning' : 'error'
+                        });
+                    }
+                }
+
+                return {
+                    has_banners: foundBanners.length > 0,
+                    banners: foundBanners.slice(0, 3)
+                };
+            })()
+            """
+            await ws.send(json.dumps({
+                "id": 218,
+                "method": "Runtime.evaluate",
+                "params": {"expression": inspect_js, "returnByValue": True}
+            }))
+            reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
+            return reply.get("result", {}).get("result", {}).get("value", {}) or {"has_banners": False, "banners": []}
+    except Exception as exc:
+        logger.debug("CDP banner inspection notice: %s", str(exc))
+        return {"has_banners": False, "banners": []}
 
 
 async def dispatch_forward_approval(
@@ -439,18 +585,31 @@ async def dispatch_forward_approval(
 
                     // 2. Always Allow / Always Run
                     if (isAlwaysAllow) {{
-                        const alwaysExact = ['always allow', 'always run', 'allow all', 'always accept', 'allow for this session', 'always approve'];
+                        const alwaysExact = [
+                            'always allow', 'always run', 'allow all', 'always accept',
+                            'allow for this session', 'always approve', 'always trust',
+                            'always authorize', 'remember this choice and allow'
+                        ];
                         for (const t of alwaysExact) {{
                             if (txt === t || aria === t) return {{ score: 110, label: txt || aria }};
                             if (primary.includes(t)) return {{ score: 90, label: txt || aria }};
                         }}
+                        // Match native Antigravity IDE "Yes, and always allow '...'" option
+                        if (primary.startsWith('yes, and always allow') || primary.includes('always allow')) {{
+                            return {{ score: 115, label: txt || aria }};
+                        }}
                         return null;
                     }}
 
-                    // 3. Single Allow / Run / Accept (strictly avoid clicking 'Always Allow' by mistake)
+                    // 3. Single Allow / Run / Accept / Open Link / Trust / Execute
                     if (isAllow) {{
                         if (primary.includes('always')) return null;
-                        const exactAllow = ['allow', 'run', 'run command', 'accept', 'approve', 'yes', 'continue', 'confirm', 'execute'];
+                        const exactAllow = [
+                            'yes, allow this time', 'allow this time', 'allow', 'run', 'run command',
+                            'accept', 'approve', 'yes', 'continue', 'confirm', 'execute', 'open',
+                            'open link', 'open external link', 'open external website', 'trust',
+                            'trust workspace', 'authorize', 'authorize browser', 'run in terminal', 'proceed'
+                        ];
                         for (const t of exactAllow) {{
                             if (txt === t || aria === t) return {{ score: 100, label: txt || aria }};
                         }}
@@ -460,14 +619,17 @@ async def dispatch_forward_approval(
                         return null;
                     }}
 
-                    // 4. Deny / Reject / Cancel
+                    // 4. Deny / Reject / Cancel / Don't Open / Don't Trust
                     if (isDeny) {{
-                        const exactDeny = ['deny', 'reject', 'cancel', 'decline', 'no', 'block', 'refuse', 'skip'];
+                        const exactDeny = [
+                            'no', 'deny', 'reject', 'cancel', 'decline', 'block', 'refuse', 'skip',
+                            'don\'t open', 'dont open', 'don\'t trust', 'dont trust', 'dismiss'
+                        ];
                         for (const t of exactDeny) {{
                             if (txt === t || aria === t) return {{ score: 100, label: txt || aria }};
                         }}
                         for (const t of exactDeny) {{
-                            if (primary.includes(t)) return {{ score: 75, label: txt || aria }};
+                            if (primary === t || primary.startsWith(t + ' ') || primary.includes(t)) return {{ score: 75, label: txt || aria }};
                         }}
                         return null;
                     }}
@@ -516,9 +678,114 @@ async def dispatch_forward_approval(
                     '[class*="command"]',
                     '[class*="tool"]'
                 ];
-                const containers = document.querySelectorAll(containerSelectors.join(','));
+                // Priority 1: Check native Antigravity IDE approval card ([role="radiogroup"])
+                const radioGroup = document.querySelector('[role="radiogroup"]');
+                if (radioGroup && isVisible(radioGroup)) {{
+                    const card = radioGroup.closest('.bg-ide-editor-background, [class*="rounded-2xl"]') || radioGroup.parentElement;
+                    const radioLabels = Array.from(radioGroup.querySelectorAll('label')).filter(isVisible);
+
+                    let targetRadio = null;
+                    if (isAlwaysAllow) {{
+                        targetRadio = radioLabels.find(l => (l.innerText || '').toLowerCase().includes('always allow'));
+                    }} else if (isAllow) {{
+                        targetRadio = radioLabels.find(l => {{
+                            const txt = (l.innerText || '').toLowerCase();
+                            return (txt.includes('allow this time') || txt.includes('yes, allow')) && !txt.includes('always allow');
+                        }});
+                    }} else if (isDeny) {{
+                        targetRadio = radioLabels.find(l => (l.innerText || '').toLowerCase().startsWith('no'));
+                    }}
+
+                    if (targetRadio) {{
+                        const input = targetRadio.querySelector('input[type="radio"]') || targetRadio;
+                        input.click();
+                        await new Promise(r => setTimeout(r, 120));
+
+                        // If user provided custom denial instructions
+                        if (isDeny && custom_response && custom_response.trim()) {{
+                            const writeIn = targetRadio.querySelector('textarea, [data-testid="ask-question-writein"]');
+                            if (writeIn) {{
+                                writeIn.focus();
+                                writeIn.value = custom_response.trim();
+                                writeIn.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                writeIn.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                            }}
+                        }}
+
+                        // Click the card submit button: [data-testid="interaction-continue-button"]
+                        const submitBtn = card ? card.querySelector('[data-testid="interaction-continue-button"]') : document.querySelector('[data-testid="interaction-continue-button"]');
+                        if (submitBtn && isVisible(submitBtn) && !submitBtn.disabled) {{
+                            submitBtn.click();
+                            return {{ clicked: true, via: 'native_approval_card', target: (targetRadio.innerText || '').trim().split('\n')[0] }};
+                        }}
+                    }}
+                }}
+
+                // Priority 1b: Check native Antigravity IDE browser permission prompt
+                const browserPermP = Array.from(document.querySelectorAll('p')).find(p => isVisible(p) && /Agent needs permission to act on/i.test(p.innerText || ''));
+                if (browserPermP) {{
+                    const permCard = browserPermP.closest('.flex.w-full, .flex-col, [class*="rounded"]') || browserPermP.parentElement;
+                    const buttons = Array.from(permCard.querySelectorAll('button')).filter(isVisible);
+
+                    if (isDeny) {{
+                        const denyBtn = buttons.find(b => (b.innerText || '').trim().toLowerCase() === 'deny');
+                        if (denyBtn) {{
+                            denyBtn.click();
+                            return {{ clicked: true, via: 'browser_permission_deny', target: 'Deny' }};
+                        }}
+                    }}
+
+                    if (isAlwaysAllow) {{
+                        const alwaysBtn = buttons.find(b => (b.innerText || '').trim().toLowerCase().includes('always allow'));
+                        if (alwaysBtn) {{
+                            alwaysBtn.click();
+                            return {{ clicked: true, via: 'browser_permission_always_allow', target: 'Always Allow' }};
+                        }}
+                    }}
+
+                    if (isAllow) {{
+                        // Check if there is an 'Allow this time' directly or via dropdown
+                        const allowThisTimeBtn = buttons.find(b => (b.innerText || '').trim().toLowerCase().includes('allow this time'));
+                        if (allowThisTimeBtn) {{
+                            allowThisTimeBtn.click();
+                            return {{ clicked: true, via: 'browser_permission_allow_this_time', target: 'Allow this time' }};
+                        }}
+
+                        // Check the split-button dropdown chevron for 'Allow this time'
+                        const moreActionsBtn = buttons.find(b => b.getAttribute('aria-label') === 'More actions' || b.getAttribute('aria-haspopup') === 'menu');
+                        if (moreActionsBtn) {{
+                            moreActionsBtn.click();
+                            await new Promise(r => setTimeout(r, 150));
+                            const menuItems = Array.from(document.querySelectorAll('[role="menuitem"], button, [class*="menu-item"]')).filter(isVisible);
+                            const allowItem = menuItems.find(m => /(allow this time|allow once|allow)/i.test(m.innerText || ''));
+                            if (allowItem) {{
+                                allowItem.click();
+                                return {{ clicked: true, via: 'browser_permission_menu_allow', target: 'Allow this time' }};
+                            }}
+                        }}
+
+                        // Fallback: click Always Allow if no dropdown options
+                        const alwaysBtn = buttons.find(b => (b.innerText || '').trim().toLowerCase().includes('always allow'));
+                        if (alwaysBtn) {{
+                            alwaysBtn.click();
+                            return {{ clicked: true, via: 'browser_permission_always_allow_fallback', target: 'Always Allow' }};
+                        }}
+                    }}
+                }}
+
                 const containerBtns = [];
                 for (const container of containers) {{
+                    // If isAlwaysAllow was chosen, check if there is an unselected 'Remember my choice' / 'Always allow' checkbox inside the dialog
+                    if (isAlwaysAllow) {{
+                        const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"], [role="checkbox"]')).filter(isVisible);
+                        for (const cb of checkboxes) {{
+                            const isChecked = cb.checked || cb.getAttribute('aria-checked') === 'true';
+                            if (!isChecked) {{
+                                cb.click();
+                                await new Promise(r => setTimeout(r, 60));
+                            }}
+                        }}
+                    }}
                     container.querySelectorAll('button, .monaco-button, [role="button"], .monaco-list-row').forEach(b => containerBtns.push(b));
                 }}
                 const bestInContainer = pickBestButton(containerBtns);
@@ -639,104 +906,212 @@ async def dispatch_answer_question(
     fallback_prompt: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Answer an interactive agent question in Antigravity IDE via CDP.
-    1. Attempts to click the matching option button(s) or QuickInput row(s) directly in the IDE DOM.
-    2. If custom_response ("Type something else") is provided, checks for an inline "Other" input or
-       sends the response directly through the chat composer.
-    3. Falls back to dispatch_send_prompt so the agent always receives the user's answer.
+    Answer an interactive agent question or multi-question modal in Antigravity IDE via CDP.
+    1. Scopes DOM querying strictly to active dialogs ([role="dialog"], .quick-input-widget, .monaco-dialog-box).
+    2. Performs sequential step-by-step option clicking: clicks Q1 option, waits for DOM advance, then clicks Q2.
+    3. Handles inline custom text / 'Other' field input inside the active dialog if present.
+    4. Post-click verification: verifies the dialog has advanced or closed completely.
+    5. Returns clean diagnostic status without writing unrequested out-of-band text to the chat composer.
     """
     try:
         import websockets
 
-        clicked_options: List[str] = []
-        used_inline_custom = False
+        clean_labels = [lbl.strip() for lbl in selected_labels if lbl and lbl.strip()]
+        has_custom = bool(custom_response and custom_response.strip())
+        custom_txt = custom_response.strip() if has_custom else ""
 
-        if selected_labels and not (custom_response and custom_response.strip()):
-            async with websockets.connect(target_url, close_timeout=3) as ws:
-                option_js = f"""
-                (async () => {{
-                    const targets = {json.dumps([lbl.strip().lower() for lbl in selected_labels if lbl.strip()])};
-                    if (!targets.length) return {{ clicked: [] }};
+        if not clean_labels and not has_custom:
+            return {"success": False, "error": "No options or custom response provided"}
 
-                    function isVisible(el) {{
-                        if (!el || el.disabled) return false;
-                        const rect = el.getBoundingClientRect();
-                        return rect.width > 0 && rect.height > 0;
+        async with websockets.connect(target_url, close_timeout=4.0) as ws:
+            step_js = f"""
+            (async () => {{
+                const targetLabels = {json.dumps(clean_labels)};
+                const customText = {json.dumps(custom_txt)};
+
+                function isVisible(el) {{
+                    if (!el) return false;
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width <= 0 || rect.height <= 0) return false;
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                }}
+
+                function getActiveContainer() {{
+                    const selectors = [
+                        '[role="radiogroup"]',
+                        '[data-testid*="ask-question"]',
+                        '.bg-ide-editor-background',
+                        '.quick-input-widget',
+                        '[role="dialog"]',
+                        '.monaco-dialog-box',
+                        '.monaco-modal-dialog',
+                        '.agy-dialog',
+                        '.tool-use-dialog',
+                        '[class*="question-card"]'
+                    ];
+                    for (const sel of selectors) {{
+                        const found = Array.from(document.querySelectorAll(sel)).filter(isVisible);
+                        if (found.length > 0) {{
+                            const el = found[found.length - 1];
+                            return el.closest('.bg-ide-editor-background, [class*="rounded-2xl"]') || el;
+                        }}
                     }}
+                    return null;
+                }}
 
-                    const candidates = Array.from(document.querySelectorAll(
-                        '.quick-input-list .monaco-list-row, [role="option"], [role="radio"], [role="checkbox"], button, .monaco-button, [role="button"]'
+                let container = getActiveContainer();
+                if (!container) {{
+                    return {{
+                        success: false,
+                        error: "No active dialog or question modal found in Antigravity IDE DOM",
+                        clicked_options: [],
+                        closed_verified: false
+                    }};
+                }}
+
+                const clicked_options = [];
+
+                // Step-by-step sequential selection loop
+                for (let i = 0; i < targetLabels.length; i++) {{
+                    const rawTarget = targetLabels[i];
+                    const cleanTarget = rawTarget.replace(/^\\(recommended\\)\\s*/i, '').trim().toLowerCase();
+                    const fullTarget = rawTarget.trim().toLowerCase();
+
+                    container = getActiveContainer() || container;
+                    const candidates = Array.from(container.querySelectorAll(
+                        'label, [role="radio"], .quick-input-list .monaco-list-row, [role="option"], [role="checkbox"], button, .monaco-button, [role="button"]'
                     )).filter(isVisible);
 
-                    const clicked = [];
-                    for (const t of targets) {{
-                        // Clean '(recommended)' suffix for flexible matching
-                        const cleanTarget = t.replace(/\\(recommended\\)/gi, '').trim();
-                        let match = candidates.find(el => {{
-                            const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
-                            return txt === t || txt === cleanTarget || txt.startsWith(cleanTarget + '\\n');
+                    let match = candidates.find(el => {{
+                        const txt = (el.innerText || el.textContent || el.getAttribute('aria-label') || '').trim().toLowerCase();
+                        return txt === fullTarget || txt === cleanTarget || txt.startsWith(cleanTarget + '\\n');
+                    }});
+
+                    if (!match) {{
+                        match = candidates.find(el => {{
+                            const txt = (el.innerText || el.textContent || el.getAttribute('aria-label') || '').trim().toLowerCase();
+                            return cleanTarget.length >= 2 && txt.includes(cleanTarget) && txt.length < cleanTarget.length + 80;
                         }});
-                        if (!match) {{
-                            match = candidates.find(el => {{
-                                const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
-                                return cleanTarget.length >= 2 && txt.includes(cleanTarget) && txt.length < cleanTarget.length + 60;
-                            }});
-                        }}
-                        if (match) {{
-                            match.click();
-                            clicked.push(t);
-                            await new Promise(r => setTimeout(r, 100));
-                        }}
                     }}
 
-                    // If multi-select or card has a Submit/Confirm button, click it
-                    if (clicked.length > 0) {{
-                        const submitBtn = candidates.find(el => {{
-                            const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
-                            return txt === 'submit' || txt === 'confirm' || txt === 'continue' || txt === 'done' || txt === 'ok';
+                    if (match) {{
+                        const clickable = match.tagName === 'LABEL' ? (match.querySelector('input') || match) : match;
+                        clickable.click();
+                        clicked_options.push(rawTarget);
+                        // Brief pause to allow DOM state transition or next question rendering
+                        await new Promise(r => setTimeout(r, 120));
+                    }}
+                }}
+
+                // Inject custom response if present into the active modal's input
+                let injectedCustom = false;
+                if (customText) {{
+                    container = getActiveContainer() || container;
+                    const inputSelectors = [
+                        'textarea[data-testid="ask-question-writein"]',
+                        '[data-testid="ask-question-writein"]',
+                        'textarea.min-w-0',
+                        '.quick-input-widget input.input',
+                        '.quick-input-widget input',
+                        'textarea.monaco-inputbox',
+                        'textarea',
+                        'input[type="text"]',
+                        'input:not([type="checkbox"]):not([type="radio"])'
+                    ];
+                    let inputEl = null;
+                    for (const sel of inputSelectors) {{
+                        const found = Array.from(container.querySelectorAll(sel)).filter(isVisible);
+                        if (found.length > 0) {{
+                            inputEl = found[found.length - 1];
+                            break;
+                        }}
+                    }}
+                    if (inputEl) {{
+                        // Select the write_in radio button if present
+                        const writeInLabel = container.querySelector('label:has(textarea[data-testid="ask-question-writein"]), label:has(textarea)');
+                        if (writeInLabel) {{
+                            const radio = writeInLabel.querySelector('input[type="radio"]');
+                            if (radio) radio.click();
+                        }}
+
+                        inputEl.focus();
+                        inputEl.value = customText;
+                        inputEl.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        inputEl.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                        injectedCustom = true;
+                    }}
+                }}
+
+                // Submit confirmation: click modal submit/confirm/ok button if present
+                container = getActiveContainer() || container;
+                if (container) {{
+                    const directSubmit = container.querySelector('[data-testid="interaction-continue-button"], button[type="submit"]');
+                    if (directSubmit && isVisible(directSubmit) && !directSubmit.disabled) {{
+                        directSubmit.click();
+                        await new Promise(r => setTimeout(r, 180));
+                    }} else {{
+                        const btns = Array.from(container.querySelectorAll('button, .monaco-button, [role="button"]')).filter(isVisible);
+                        const submitBtn = btns.find(b => {{
+                            const txt = (b.innerText || b.textContent || b.getAttribute('aria-label') || '').trim().toLowerCase();
+                            return (txt === 'submit' || txt.startsWith('submit') || txt === 'confirm' || txt === 'ok' || txt === 'done' || txt === 'continue') && !b.disabled;
                         }});
                         if (submitBtn) {{
                             submitBtn.click();
+                            await new Promise(r => setTimeout(r, 180));
                         }}
                     }}
+                }}
 
-                    return {{ clicked }};
-                }})()
-                """
-                await ws.send(json.dumps({
-                    "id": 225,
-                    "method": "Runtime.evaluate",
-                    "params": {"expression": option_js, "awaitPromise": True, "returnByValue": True}
-                }))
-                reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.5))
-                val = reply.get("result", {}).get("result", {}).get("value", {}) or {}
-                clicked_options = val.get("clicked") or []
+                // Post-Click Verification: Check whether the modal is now closed or advancing
+                await new Promise(r => setTimeout(r, 150));
+                const remainingContainer = getActiveContainer();
+                const closed_verified = !remainingContainer;
 
-        if len(clicked_options) == len(selected_labels) and len(clicked_options) > 0 and not (custom_response and custom_response.strip()):
+                return {{
+                    success: clicked_options.length > 0 || injectedCustom || closed_verified,
+                    clicked_options,
+                    custom_injected: injectedCustom,
+                    closed_verified,
+                    remaining_modal: Boolean(remainingContainer)
+                }};
+            }})()
+            """
+            await ws.send(json.dumps({
+                "id": 225,
+                "method": "Runtime.evaluate",
+                "params": {"expression": step_js, "awaitPromise": True, "returnByValue": True}
+            }))
+            reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.5))
+            val = reply.get("result", {}).get("result", {}).get("value", {}) or {}
+
+            # If dialog wasn't closed and Enter key was needed for confirmation
+            if not val.get("closed_verified") and (val.get("custom_injected") or val.get("clicked_options")):
+                for ev in ("rawKeyDown", "keyUp"):
+                    await ws.send(json.dumps({
+                        "id": 226,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {"type": ev, "key": "Enter", "code": "Enter", "windowsVirtualKeyCode": 13}
+                    }))
+                    await asyncio.wait_for(ws.recv(), timeout=1.5)
+
             return {
-                "success": True,
-                "via": "dom_option_click",
-                "clicked_options": clicked_options
+                "success": bool(val.get("success")),
+                "via": "scoped_modal_interaction",
+                "clicked_options": val.get("clicked_options", []),
+                "custom_injected": val.get("custom_injected", False),
+                "closed_verified": val.get("closed_verified", False),
+                "remaining_modal": val.get("remaining_modal", False),
+                "error": val.get("error")
             }
-
-        # Fallback or custom response ("Type something else"): send via prompt composer
-        text_to_send = fallback_prompt or custom_response or ", ".join(selected_labels)
-        if text_to_send:
-            prompt_res = await dispatch_send_prompt(target_url, text_to_send)
-            return {
-                "success": prompt_res.get("success", False),
-                "via": "composer_prompt",
-                "clicked_options": clicked_options,
-                "prompt_details": prompt_res
-            }
-
-        return {"success": False, "error": "Empty interaction answer"}
     except Exception as exc:
-        logger.warning("CDP answer_question fallback notice: %s", str(exc))
-        text_to_send = fallback_prompt or custom_response or ", ".join(selected_labels)
-        if text_to_send:
-            return await dispatch_send_prompt(target_url, text_to_send)
-        return {"success": False, "error": str(exc)}
+        logger.warning("CDP answer_question execution error: %s", str(exc))
+        return {
+            "success": False,
+            "error": str(exc),
+            "clicked_options": [],
+            "closed_verified": False
+        }
 
 
 async def dispatch_switch_model(target_url: str, target_model: str) -> Dict[str, Any]:

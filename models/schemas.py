@@ -233,6 +233,8 @@ class InteractionKind(str, Enum):
     FREE_TEXT = "free_text"
     CONFIRMATION = "confirmation"
     FORM = "form"
+    APPROVAL = "approval"
+    BROWSER_PERMISSION = "browser_permission"
 
 
 class InteractionStatus(str, Enum):
@@ -261,6 +263,14 @@ class InteractionFormField(BaseModel):
     options: Optional[List[str]] = None
 
 
+class QuestionItem(BaseModel):
+    """Individual question inside a multi-question ask_question tool call."""
+    id: str = Field(..., min_length=1, max_length=128)
+    question: str = Field(..., min_length=1, max_length=500)
+    is_multi_select: bool = False
+    options: List[InteractionOption] = Field(default_factory=list)
+
+
 class InteractionDocument(BaseModel):
     """Persisted dynamic interaction request schema."""
     model_config = ConfigDict(populate_by_name=True)
@@ -269,10 +279,15 @@ class InteractionDocument(BaseModel):
     interaction_id: str = Field(..., min_length=1, max_length=128)
     session_id: str = Field(..., min_length=1, max_length=128)
     kind: InteractionKind
+    popup_kind: Optional[str] = Field(default=None, description="question, approval, browser_permission")
     title: str = Field(..., min_length=1, max_length=256)
     description: Optional[str] = Field(default=None, max_length=2000)
+    target_domain: Optional[str] = Field(default=None, max_length=256, description="Target domain for browser permissions")
+    command: Optional[str] = Field(default=None, max_length=2000, description="Command/script target for approval cards")
     options: List[InteractionOption] = Field(default_factory=list)
+    questions: List[QuestionItem] = Field(default_factory=list)
     fields: List[InteractionFormField] = Field(default_factory=list)
+    step_indicator: Optional[str] = Field(default=None, max_length=64, description="Step count, e.g., 1 of 2")
     allow_custom_response: bool = False
     custom_response_label: str = "Other / Custom Text"
     status: InteractionStatus = InteractionStatus.PENDING

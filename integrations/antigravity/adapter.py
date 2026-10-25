@@ -223,6 +223,16 @@ class AntigravityAdapter:
         from integrations.antigravity.cdp_actions import dispatch_inspect_active_popup
         return await dispatch_inspect_active_popup(self.active_target_url)
 
+    async def inspect_active_banners(self) -> Dict[str, Any]:
+        """Inspect live Antigravity DOM for rate-limit warnings, quota drops, and error toasts."""
+        if not self.active_target_url:
+            self.discover_cdp()
+        if not self.active_target_url:
+            return {"has_banners": False, "banners": []}
+
+        from integrations.antigravity.cdp_actions import dispatch_inspect_active_banners
+        return await dispatch_inspect_active_banners(self.active_target_url)
+
     async def forward_approval(
         self,
         request_type: str,
