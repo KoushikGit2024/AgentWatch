@@ -220,5 +220,35 @@ export const api = {
         const encoded = encodeURIComponent(filePath);
         const res = await request(`/api/v1/files/content?path=${encoded}`);
         return res.json();
+    },
+
+    async getQueuedMessages() {
+        const res = await request('/api/v1/queue/messages');
+        return res.json();
+    },
+
+    async queueMessage(message, attachments = []) {
+        const res = await request('/api/v1/queue/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, attachments })
+        });
+        return res.json();
+    },
+
+    async executeQueuedAction(itemId, action, text = null) {
+        const res = await request(`/api/v1/queue/messages/${encodeURIComponent(itemId)}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, text })
+        });
+        return res.json();
+    },
+
+    async deleteQueuedMessage(itemId) {
+        const res = await request(`/api/v1/queue/messages/${encodeURIComponent(itemId)}`, {
+            method: 'DELETE'
+        });
+        return res.json();
     }
 };

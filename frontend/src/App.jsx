@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import ChatStream from './components/chat/ChatStream';
 import PendingInteractionBanner from './components/chat/PendingInteractionBanner';
+import QueuedMessagesCard from './components/chat/QueuedMessagesCard';
 import { PromptComposer } from './components/PromptComposer';
 import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
 import { SystemLogsDrawer } from './components/SystemLogsDrawer';
@@ -17,6 +18,7 @@ import ApprovalModal from './components/modals/ApprovalModal';
 import FileViewerModal from './components/modals/FileViewerModal';
 import ToastContainer from './components/ToastContainer';
 import { useAgentWatch } from './hooks/useAgentWatch';
+import { useQueuedMessages } from './hooks/useQueuedMessages';
 import { parseFileLink } from './utils/fileLinkParser';
 import { Icon } from './constants/icons';
 
@@ -157,11 +159,31 @@ export default function App() {
         }
     }, [chatMessages]);
 
+    const isAgentWorking = chatMessages.length > 0 &&
+        chatMessages[chatMessages.length - 1]?.role === 'agent' &&
+        Boolean(chatMessages[chatMessages.length - 1]?.is_working);
+
+    const {
+        queuedMessages,
+        isActionPending: isQueueActionPending,
+        handleSendNow: handleQueueSendNow,
+        handleDelete: handleQueueDelete,
+        handleEdit: handleQueueEdit,
+        handleQueueMessage
+    } = useQueuedMessages(isAgentWorking);
+
     const handleSend = (text, attachments = []) => {
         const msg = text !== undefined ? text : promptText;
         if (!msg?.trim() && (!attachments || attachments.length === 0)) return;
         shouldAutoScrollRef.current = true;
         handleSendPrompt(msg, attachments);
+        setPromptText('');
+    };
+
+    const handleQueue = (text, attachments = []) => {
+        const msg = text !== undefined ? text : promptText;
+        if (!msg?.trim() && (!attachments || attachments.length === 0)) return;
+        handleQueueMessage(msg, attachments);
         setPromptText('');
     };
 
@@ -227,13 +249,25 @@ export default function App() {
                             />
                         )}
 
+                        {/* Queued Messages Card matching IDE native workbench */}
+                        {queuedMessages.length > 0 && (
+                            <QueuedMessagesCard
+                                messages={queuedMessages}
+                                onSendNow={handleQueueSendNow}
+                                onDelete={handleQueueDelete}
+                                onEdit={handleQueueEdit}
+                                isActionPending={isQueueActionPending}
+                            />
+                        )}
+
                         {/* Bottom Prompt Composer */}
                         <PromptComposer
                             promptText={promptText}
                             onChangePrompt={setPromptText}
                             onSend={handleSend}
+                            onQueue={handleQueue}
                             isSending={isSendingPrompt}
-                            isWorking={chatMessages.length > 0 && chatMessages[chatMessages.length - 1]?.role === 'agent' && Boolean(chatMessages[chatMessages.length - 1]?.is_working)}
+                            isWorking={isAgentWorking}
                             appState={appState}
                             onOpenModelModal={() => setActiveModal('model')}
                             onOpenModeModal={() => setActiveModal('mode')}
