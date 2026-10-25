@@ -44,7 +44,7 @@ Issue Observed:
   1. Close any running Antigravity IDE instances.
   2. Start Antigravity with the port argument:
      ```powershell
-     & "C:\Users\koush\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
+     & "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
      ```
   3. Verify port 9000 is listening:
      ```powershell
