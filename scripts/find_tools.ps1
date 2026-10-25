@@ -107,16 +107,11 @@ function Find-NpmExecutable {
 function Find-AntigravityExecutable {
     $candidates = @(
         "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe",
-        "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe",
-        "C:\Program Files\Antigravity IDE\Antigravity IDE.exe",
-        "C:\Program Files\Antigravity\Antigravity.exe"
+        "C:\Program Files\Antigravity IDE\Antigravity IDE.exe"
     )
 
-    $cmdAg = (Get-Command "antigravity" -ErrorAction SilentlyContinue).Source
-    if ($cmdAg) { return $cmdAg }
-
     foreach ($cand in $candidates) {
-        if (Test-Path $cand) { return $cand }
+        if (Test-Path $cand -ErrorAction SilentlyContinue) { return $cand }
     }
     return $null
 }

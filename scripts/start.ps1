@@ -27,7 +27,7 @@ if (Test-Path $pythonExe) {
 }
 
 if (-not $pyReady) {
-    Write-Host "📦 Virtual environment not found or broken. Running automated setup..." -ForegroundColor Yellow
+    Write-Host "[SETUP] Virtual environment not found or broken. Running automated setup..." -ForegroundColor Yellow
     & "$scriptDir\setup.ps1"
 }
 
@@ -39,11 +39,11 @@ if ($port8000) {
         try {
             $p = Get-Process -Id $pidToKill -ErrorAction SilentlyContinue
             if ($p -and ($p.ProcessName -like "*python*" -or $p.ProcessName -like "*uvicorn*")) {
-                Write-Host "🔄 Stopping existing AgentWatch instance (PID $pidToKill)..." -ForegroundColor Yellow
+                Write-Host "[INFO] Stopping existing AgentWatch instance (PID $pidToKill)..." -ForegroundColor Yellow
                 Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
                 Start-Sleep -Milliseconds 800
             } else {
-                Write-Host "⚠️  Port 8000 is occupied by '$($p.ProcessName)' (PID $pidToKill)." -ForegroundColor Yellow
+                Write-Host "[WARN] Port 8000 is occupied by '$($p.ProcessName)' (PID $pidToKill)." -ForegroundColor Yellow
             }
         } catch { }
     }
@@ -52,12 +52,12 @@ if ($port8000) {
 # 3. Check MongoDB service
 $mongoSvc = Get-Service -Name "MongoDB" -ErrorAction SilentlyContinue
 if ($mongoSvc -and $mongoSvc.Status -ne "Running") {
-    Write-Host "⚠️  MongoDB Windows Service is stopped. Starting..." -ForegroundColor Yellow
+    Write-Host "[WARN] MongoDB Windows Service is stopped. Starting..." -ForegroundColor Yellow
     Start-Service MongoDB -ErrorAction SilentlyContinue
 }
 
 # 4. Start AgentWatch
-Write-Host "🚀 Launching AgentWatch on http://127.0.0.1:8000 ..." -ForegroundColor Green
+Write-Host "[START] Launching AgentWatch on http://127.0.0.1:8000 ..." -ForegroundColor Green
 $env:PYTHONPATH = $projectRoot
 
 # Execute Uvicorn server

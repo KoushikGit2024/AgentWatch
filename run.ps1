@@ -1,144 +1,252 @@
-<#
-.SYNOPSIS
-    AgentWatch One-Click Launch Script
-    Builds the frontend, checks/frees ports, verifies environment, and launches AgentWatch.
-#>
+# AgentWatch One-Click Launch Script
 
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location -Path $scriptDir
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "         AgentWatch Automatic Build & Launch              " -ForegroundColor Cyan
+Write-Host "         AgentWatch Automatic Build and Launch" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-. "$scriptDir\scripts\find_tools.ps1"
-
-# 1. Check Python Virtual Environment & System Python
-Write-Host "🔍 Locating Python runtime..." -ForegroundColor Cyan
+# 1. Locate Python
 $venvPython = Join-Path $scriptDir ".venv\Scripts\python.exe"
-$pythonUsable = $false
+$pyOk = $false
 
 if (Test-Path $venvPython) {
-    $verifyPy = & $venvPython -c "import sys; print(sys.executable)" 2>$null
-    if ($LASTEXITCODE -eq 0 -and $verifyPy) {
-        $pythonUsable = $true
+    try {
+        $check = & $venvPython -c "import uvicorn, fastapi, websockets; print('OK')" 2>$null
+        if ($LASTEXITCODE -eq 0 -and "$check".Trim() -eq "OK") {
+            $pyOk = $true
+        }
+    } catch {
+        $pyOk = $false
     }
 }
 
-if (-not $pythonUsable) {
-    Write-Host "📦 Virtual environment missing or broken. Locating system Python..." -ForegroundColor Yellow
-    $sysPython = Find-PythonExecutable
-    if (-not $sysPython) {
-        Write-Host "❌ Could not find a working Python 3.10+ installation." -ForegroundColor Red
-        Write-Host "   Please install Python from https://python.org and add it to your PATH." -ForegroundColor Yellow
+if (-not $pyOk) {
+    Write-Host "Locating Python..." -ForegroundColor Yellow
+    $foundPy = (Get-Command python -ErrorAction SilentlyContinue).Source
+
+    if (-not $foundPy) {
+        $candidates = @(
+            "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
+            "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+            "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+            "C:\Program Files\Python313\python.exe",
+            "C:\Program Files\Python312\python.exe",
+            "C:\Program Files\Python311\python.exe"
+        )
+
+        foreach ($candidate in $candidates) {
+            if (Test-Path $candidate) {
+                $foundPy = $candidate
+                break
+            }
+        }
+    }
+
+    if (-not $foundPy) {
+        Write-Host "Python was not found. Install Python 3.10 or newer." -ForegroundColor Red
         exit 1
     }
-    Write-Host "Using system Python: $sysPython" -ForegroundColor Gray
-    Write-Host "📦 Initializing clean .venv at $scriptDir\.venv..." -ForegroundColor Yellow
-    Remove-Item -Path (Join-Path $scriptDir ".venv") -Recurse -Force -ErrorAction SilentlyContinue
-    & $sysPython -m venv (Join-Path $scriptDir ".venv")
-    $venvPython = Join-Path $scriptDir ".venv\Scripts\python.exe"
-    & $venvPython -m pip install --upgrade pip -q 2>$null
-    & $venvPython -m pip install -r (Join-Path $scriptDir "requirements.txt") -q
+
+    Write-Host "Creating virtual environment..." -ForegroundColor Yellow
+
+    $venvDir = Join-Path $scriptDir ".venv"
+    if (Test-Path $venvDir) {
+        Remove-Item -Path $venvDir -Recurse -Force
+    }
+
+    & $foundPy -m venv $venvDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to create the Python virtual environment."
+    }
+
+    $venvPython = Join-Path $venvDir "Scripts\python.exe"
+
+    Write-Host "Installing Python dependencies..." -ForegroundColor Yellow
+    & $venvPython -m pip install --upgrade pip
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to upgrade pip."
+    }
+
+    $requirements = Join-Path $scriptDir "requirements.txt"
+    if (-not (Test-Path $requirements)) {
+        throw "requirements.txt was not found."
+    }
+
+    & $venvPython -m pip install -r $requirements
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install Python dependencies."
+    }
 }
 
-Write-Host "✅ Python runtime verified: $venvPython" -ForegroundColor Green
+if (-not (Test-Path $venvPython)) {
+    throw "The virtual environment Python executable is missing."
+}
 
-# 2. Build Frontend (Dynamic Node/NPM detection)
-Write-Host "`n🔨 Checking Frontend Build..." -ForegroundColor Cyan
+Write-Host "Python runtime: $venvPython" -ForegroundColor Green
+
+# 2. Build Frontend
 $frontendDir = Join-Path $scriptDir "frontend"
 $distIndex = Join-Path $scriptDir "static\dist\index.html"
+$nodeModules = Join-Path $frontendDir "node_modules"
 
 if (Test-Path $frontendDir) {
-    $nodeExe = Find-NodeExecutable
-    $npmExe = Find-NpmExecutable
+    $foundNpm = (Get-Command npm -ErrorAction SilentlyContinue).Source
 
-    if ($nodeExe -and $npmExe) {
-        $nodeDir = Split-Path -Parent $nodeExe
-        $env:PATH = "$nodeDir;$env:PATH"
-        try {
-            Push-Location $frontendDir
-            Write-Host "📦 Building React bundle using $npmExe..." -ForegroundColor Gray
-            & $npmExe run build
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "✅ Frontend successfully built and deployed to static/dist" -ForegroundColor Green
-            } else {
-                Write-Host "⚠️  Frontend build command returned non-zero ($LASTEXITCODE). Using existing static/dist..." -ForegroundColor Yellow
+    if (-not $foundNpm) {
+        $npmCandidates = @(
+            "$env:APPDATA\npm\npm.cmd",
+            "C:\Program Files\nodejs\npm.cmd",
+            "$env:LOCALAPPDATA\Programs\nodejs\npm.cmd"
+        )
+
+        foreach ($candidate in $npmCandidates) {
+            if (Test-Path $candidate) {
+                $foundNpm = $candidate
+                break
             }
-        } catch {
-            Write-Host "⚠️  Build step encountered an error: $_. Continuing with existing assets..." -ForegroundColor Yellow
+        }
+    }
+
+    if ($foundNpm) {
+        Push-Location $frontendDir
+        try {
+            if (-not (Test-Path $nodeModules)) {
+                Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
+                & $foundNpm install
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Frontend dependency installation failed."
+                }
+            }
+
+            Write-Host "Building frontend..." -ForegroundColor Cyan
+            & $foundNpm run build
+            if ($LASTEXITCODE -ne 0) {
+                throw "Frontend build failed."
+            }
         } finally {
             Pop-Location
         }
+
+        Write-Host "Frontend build completed." -ForegroundColor Green
     } elseif (Test-Path $distIndex) {
-        Write-Host "ℹ️  Node/npm not detected in PATH, but existing production bundle is present at static/dist." -ForegroundColor Gray
+        Write-Host "Using existing frontend build." -ForegroundColor Gray
     } else {
-        Write-Host "⚠️  Node/npm not detected in standard paths and static/dist is missing. Frontend may be unavailable until 'npm run build' is executed." -ForegroundColor Yellow
+        throw "npm is unavailable and the frontend build is missing."
     }
 }
 
-# 3. Check and clean up Port 8000 if occupied
-Write-Host "`n🔍 Checking Port 8000..." -ForegroundColor Cyan
-$port8000 = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" }
+# 3. Check and clean Port 8000
+Write-Host "Checking port 8000..." -ForegroundColor Cyan
+
+$port8000 = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+
 if ($port8000) {
-    foreach ($conn in $port8000) {
-        $pidToKill = $conn.OwningProcess
-        try {
-            $p = Get-Process -Id $pidToKill -ErrorAction SilentlyContinue
-            if ($p -and ($p.ProcessName -like "*python*" -or $p.ProcessName -like "*uvicorn*")) {
-                Write-Host "🔄 Stopping existing AgentWatch server (PID $pidToKill)..." -ForegroundColor Yellow
-                Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
-                Start-Sleep -Milliseconds 800
-            } else {
-                Write-Host "⚠️  Port 8000 is occupied by '$($p.ProcessName)' (PID $pidToKill)." -ForegroundColor Yellow
-            }
-        } catch { }
+    foreach ($connection in $port8000) {
+        $processIdToStop = $connection.OwningProcess
+        $process = Get-Process -Id $processIdToStop -ErrorAction SilentlyContinue
+
+        if ($process -and $process.ProcessName -match "python|uvicorn") {
+            Write-Host "Stopping existing server process $processIdToStop..." -ForegroundColor Yellow
+            Stop-Process -Id $processIdToStop -Force
+            Start-Sleep -Milliseconds 600
+        } else {
+            throw "Port 8000 is occupied by another process. PID: $processIdToStop"
+        }
     }
-} else {
-    Write-Host "✅ Port 8000 is free." -ForegroundColor Green
 }
 
-# 4. Check Antigravity CDP Port 9000 status
-Write-Host "`n🔌 Checking Antigravity CDP Ports (9000-9003)..." -ForegroundColor Cyan
-$cdpFound = $false
-foreach ($cdpPort in 9000..9003) {
-    $cdpConn = Get-NetTCPConnection -LocalPort $cdpPort -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" }
-    if ($cdpConn) {
-        Write-Host "✅ Antigravity CDP active on port $cdpPort" -ForegroundColor Green
-        $cdpFound = $true
+# 4. Check Antigravity CDP & Auto-Launch if missing
+$cdpActive = $false
+
+foreach ($port in 9000..9003) {
+    $connection = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+
+    if ($connection) {
+        Write-Host "Antigravity CDP active on port $port." -ForegroundColor Green
+        $cdpActive = $true
         break
     }
 }
-if (-not $cdpFound) {
-    Write-Host "ℹ️  Antigravity IDE not currently listening on remote-debugging port 9000." -ForegroundColor Gray
-    Write-Host "   (Make sure Antigravity is running with --remote-debugging-port=9000 if you want live IDE interaction)" -ForegroundColor Gray
-}
 
-# 5. Check MongoDB status
-Write-Host "`n🍃 Checking MongoDB..." -ForegroundColor Cyan
-$mongoSvc = Get-Service -Name "MongoDB" -ErrorAction SilentlyContinue
-if ($mongoSvc) {
-    if ($mongoSvc.Status -ne "Running") {
-        Write-Host "⚠️  MongoDB service is stopped. Attempting to start..." -ForegroundColor Yellow
-        Start-Service MongoDB -ErrorAction SilentlyContinue
+if (-not $cdpActive) {
+    Write-Host "[INFO] Antigravity IDE CDP not detected on port 9000. Launching Antigravity IDE..." -ForegroundColor Yellow
+
+    # Target strictly Antigravity IDE (the desktop editor)
+    $ideCandidates = @(
+        "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe",
+        "C:\Program Files\Antigravity IDE\Antigravity IDE.exe"
+    )
+    $agPath = $null
+    foreach ($cand in $ideCandidates) {
+        if (Test-Path $cand -ErrorAction SilentlyContinue) {
+            $agPath = $cand
+            break
+        }
     }
-    Write-Host "✅ MongoDB service: Running" -ForegroundColor Green
-} else {
-    $mongoPort = Get-NetTCPConnection -LocalPort 27017 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" }
-    if ($mongoPort) {
-        Write-Host "✅ MongoDB listening on port 27017" -ForegroundColor Green
+
+    if ($agPath) {
+        Write-Host "[START] Starting Antigravity IDE with --remote-debugging-port=9000..." -ForegroundColor Cyan
+        Start-Process -FilePath $agPath -ArgumentList "--remote-debugging-port=9000"
+        
+        # Wait up to 10 seconds for CDP port 9000 to bind
+        Write-Host "Waiting for Antigravity IDE CDP port 9000 to bind..." -ForegroundColor Gray
+        for ($i = 0; $i -lt 10; $i++) {
+            Start-Sleep -Seconds 1
+            $c = Get-NetTCPConnection -LocalPort 9000 -State Listen -ErrorAction SilentlyContinue
+            if ($c) {
+                Write-Host "[OK] Antigravity IDE CDP bound to port 9000." -ForegroundColor Green
+                $cdpActive = $true
+                break
+            }
+        }
     } else {
-        Write-Host "⚠️  MongoDB port 27017 not detected. AgentWatch will run with local fallback/retries." -ForegroundColor Yellow
+        Write-Host "   Could not locate 'Antigravity IDE.exe' in standard install paths." -ForegroundColor Yellow
+        Write-Host "   Please ensure Antigravity IDE is running with '--remote-debugging-port=9000'." -ForegroundColor Gray
     }
 }
 
-# 6. Launch Server & Open Browser
-Write-Host "`n==========================================================" -ForegroundColor Cyan
-Write-Host "🚀 Launching AgentWatch on http://127.0.0.1:8000" -ForegroundColor Green
+# 5. Check MongoDB
+$mongoService = Get-Service -Name "MongoDB" -ErrorAction SilentlyContinue
+
+if ($mongoService) {
+    if ($mongoService.Status -ne "Running") {
+        try {
+            Start-Service -Name "MongoDB" -ErrorAction Stop
+            $mongoService.WaitForStatus("Running", [TimeSpan]::FromSeconds(10))
+        } catch {
+            Write-Host "MongoDB service could not be started: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+
+    if ((Get-Service -Name "MongoDB").Status -eq "Running") {
+        Write-Host "MongoDB service is running." -ForegroundColor Green
+    } else {
+        Write-Host "MongoDB service is not running." -ForegroundColor Yellow
+    }
+} else {
+    $mongoPort = Get-NetTCPConnection -LocalPort 27017 -State Listen -ErrorAction SilentlyContinue
+
+    if ($mongoPort) {
+        Write-Host "MongoDB is listening on port 27017." -ForegroundColor Green
+    } else {
+        Write-Host "MongoDB was not detected. Application fallback depends on its configuration." -ForegroundColor Yellow
+    }
+}
+
+# 6. Launch AgentWatch
 Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host "Launching AgentWatch at http://127.0.0.1:8000" -ForegroundColor Green
+Write-Host "==========================================================" -ForegroundColor Cyan
+
+$env:PYTHONPATH = $scriptDir
 
 Start-Process "http://127.0.0.1:8000"
 
-$env:PYTHONPATH = $scriptDir
 & $venvPython -m uvicorn main:app --host 127.0.0.1 --port 8000
+
+if ($LASTEXITCODE -ne 0) {
+    throw "The AgentWatch server exited with code $LASTEXITCODE."
+}

@@ -1,4 +1,4 @@
-# AgentWatch — Remote Access and Tailscale Status Check
+# AgentWatch -- Remote Access and Tailscale Status Check
 $ErrorActionPreference = "SilentlyContinue"
 
 Write-Host "==========================================================" -ForegroundColor Cyan

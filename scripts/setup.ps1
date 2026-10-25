@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    AgentWatch Setup Script — initializes Python venv and installs all dependencies reproducibly.
+    AgentWatch Setup Script -- initializes Python venv and installs all dependencies reproducibly.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -19,7 +19,7 @@ Write-Host "==========================================================" -Foregro
 $pythonCmd = Find-PythonExecutable
 
 if (-not $pythonCmd) {
-    Write-Host "❌ A functional Python 3.10+ runtime was not found. Please install Python 3.12 or later." -ForegroundColor Red
+    Write-Host "[ERROR] A functional Python 3.10+ runtime was not found. Please install Python 3.12 or later." -ForegroundColor Red
     exit 1
 }
 
@@ -34,30 +34,30 @@ if (Test-Path $venvPython) {
     $verifyPy = & $venvPython -c "import sys; print(sys.executable)" 2>$null
     if ($LASTEXITCODE -eq 0 -and $verifyPy) {
         $recreate = $false
-        Write-Host "✅ Existing virtual environment verified at .venv." -ForegroundColor Green
+        Write-Host "[OK] Existing virtual environment verified at .venv." -ForegroundColor Green
     }
 }
 
 if ($recreate) {
-    Write-Host "📦 Initializing virtual environment at .venv..." -ForegroundColor Yellow
+    Write-Host "[INFO] Initializing virtual environment at .venv..." -ForegroundColor Yellow
     Remove-Item -Path $venvPath -Recurse -Force -ErrorAction SilentlyContinue
     & $pythonCmd -m venv $venvPath
-    Write-Host "✅ Virtual environment created." -ForegroundColor Green
+    Write-Host "[OK] Virtual environment created." -ForegroundColor Green
 }
 
 # 3. Upgrade pip and Install Dependencies
 $venvPython = Join-Path $venvPath "Scripts\python.exe"
-Write-Host "📦 Installing project dependencies from requirements.txt..." -ForegroundColor Yellow
+Write-Host "[INFO] Installing project dependencies from requirements.txt..." -ForegroundColor Yellow
 & $venvPython -m pip install -i https://pypi.org/simple -r (Join-Path $projectRoot "requirements.txt")
 
-Write-Host "✅ Dependencies installed successfully." -ForegroundColor Green
+Write-Host "[OK] Dependencies installed successfully." -ForegroundColor Green
 
 # 4. Copy .env.example to .env if missing
 $envFile = Join-Path $projectRoot ".env"
 $envExample = Join-Path $projectRoot ".env.example"
 if (-not (Test-Path $envFile) -and (Test-Path $envExample)) {
     Copy-Item $envExample $envFile
-    Write-Host "✅ Created default local .env file from .env.example template." -ForegroundColor Green
+    Write-Host "[OK] Created default local .env file from .env.example template." -ForegroundColor Green
 }
 
 Write-Host "`nSetup complete! You can now start AgentWatch using:" -ForegroundColor Cyan
