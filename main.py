@@ -117,18 +117,19 @@ async def watch_transcript_loop():
                     last_size = size
                     transcript_changed = True
 
-            if transcript_changed and websocket_manager.active_connections:
+            if transcript_changed:
                 paginated = conversation_service.get_paginated_conversation(limit=15)
-                await websocket_manager.broadcast({
-                    "type": "chat_update",
-                    "messages": paginated["messages"],
-                    "total": paginated["total"],
-                    "oldest_index": paginated["oldest_index"],
-                    "has_more": paginated["has_more"],
-                })
+                if websocket_manager.active_connections:
+                    await websocket_manager.broadcast({
+                        "type": "chat_update",
+                        "messages": paginated["messages"],
+                        "total": paginated["total"],
+                        "oldest_index": paginated["oldest_index"],
+                        "has_more": paginated["has_more"],
+                    })
 
             dom_probe_tick = (dom_probe_tick + 1) % 4
-            if websocket_manager.active_connections:
+            if websocket_manager.active_connections or transcript_changed:
                 if not transcript_changed and dom_probe_tick == 0:
                     conversation_service.get_recent_conversation(limit=15)
 

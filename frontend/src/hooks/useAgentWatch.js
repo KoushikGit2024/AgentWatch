@@ -572,14 +572,12 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         // Low-frequency adaptive polling: slower when WebSocket is connected, paused when tab is hidden
         const appStateTimer = setInterval(fetchAppState, 10000);
         const interactionsTimer = setInterval(() => {
+            fetchInteractions();
+            fetchPendingApprovals();
             if (!wsConnectedRef.current) {
-                fetchInteractions();
-                fetchPendingApprovals();
                 fetchChatMessages();
-            } else {
-                fetchPendingApprovals();
             }
-        }, 6000);
+        }, 5000);
 
         const handleVisibilityChange = () => {
             if (!document.hidden && isMountedRef.current) {
