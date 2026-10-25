@@ -1,68 +1,79 @@
-# 12 — Troubleshooting & Diagnostics Runbook
+# 12 — Device-Wise Troubleshooting & Edge-Case Runbook
 
 **Document ID:** CW-DOC-012  
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Project:** AgentWatch  
-**Classification:** Operational Diagnostics Runbook  
+**Classification:** Operational Diagnostics & Edge-Case Runbook  
 
 ---
 
-## 1. Diagnostic Decision Tree
+## 1. Edge Case: Antigravity Launched with `--remote-debugging-port=9000`, But Port 9000 Is Still Closed
 
-```
-Issue Observed:
-|
-+---> [A] "Antigravity not connected via CDP (port 9000)" in Viewport
-|     |
-|     +---> Cause: Antigravity IDE was launched without remote debugging enabled.
-|     +---> Resolution: Launch Antigravity with '--remote-debugging-port=9000'
-|
-+---> [B] Mobile browser shows "Cannot Reach Server" / Timeout
-|     |
-|     +---> Cause: Tailscale not running or Serve not configured.
-|     +---> Resolution: Run 'tailscale status' and 'tailscale serve --bg 8000'
-|
-+---> [C] MongoDB Connection Error on Startup
-|     |
-|     +---> Cause: MongoDB Windows service is stopped.
-|     +---> Resolution: Run 'Start-Service -Name MongoDB' in Administrator PowerShell.
-|
-+---> [D] 409 Conflict on Interaction Submit
-|     |
-|     +---> Cause: Stale request / interaction already submitted in another session.
-|     +---> Resolution: Refresh the page; pending queue will synchronize.
-```
+- **Root Cause:** Electron applications (like Antigravity) use a single-instance lock. If an existing Antigravity window or background tray process was already running *without* `--remote-debugging-port=9000`, running `antigravity --remote-debugging-port=9000` simply focuses the existing process and **ignores the new command-line flag**.
+- **Exact Fix (Device-Wise):**
+  - **Windows (PowerShell):**
+    ```powershell
+    Stop-Process -Name "Antigravity*" -Force -ErrorAction SilentlyContinue
+    Start-Process "antigravity" -ArgumentList "--remote-debugging-port=9000"
+    Invoke-RestMethod -Uri "http://127.0.0.1:9000/json/list"
+    ```
+  - **macOS (zsh / bash):**
+    ```bash
+    killall "Antigravity" 2>/dev/null || true
+    open -a "Antigravity" --args --remote-debugging-port=9000
+    curl -s http://127.0.0.1:9000/json/list | head -n 20
+    ```
+  - **Linux (bash):**
+    ```bash
+    pkill -f antigravity || true
+    nohup antigravity --remote-debugging-port=9000 >/dev/null 2>&1 &
+    curl -s http://127.0.0.1:9000/json/list | head -n 20
+    ```
 
 ---
 
-## 2. Common Scenarios & Exact Resolutions
+## 2. Edge Case: Multiple Antigravity Windows Open Simultaneously
 
-### Scenario 1: Antigravity CDP Port Disconnected
-- **Symptom:** The viewport shows an empty state: `"Antigravity CDP is not currently connected."`
-- **Explanation:** Antigravity runs as an Electron application. By default, Electron disables Chrome remote debugging ports unless explicitly passed on startup.
-- **Fix:**
-  1. Close any running Antigravity IDE instances.
-  2. Start Antigravity with the port argument:
-     ```powershell
-     & "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
-     ```
-  3. Verify port 9000 is listening:
-     ```powershell
-     Get-NetTCPConnection -LocalPort 9000 -State Listen
-     ```
+- **Symptom:** You have two project windows open in Antigravity, or the Settings window is focused.
+- **How AgentWatch Handles It:** `AntigravityAdapter._target_priority()` scores targets so active `workbench.html` workspace windows (`score: 100`) are prioritized over Settings tabs (`score: 40`) or DevTools inspectors (`rejected`). You can also launch secondary windows on ports `9001`, `9002`, or `9003` (`CDP_PORTS=9000,9001,9002,9003`).
 
-### Scenario 2: Tailscale Authentication or TLS Certificate Warnings
-- **Symptom:** Browser warns of insecure connection or refuses to open URL.
-- **Explanation:** You may be trying to access the raw local IP without Tailscale Serve TLS.
-- **Fix:**
-  1. Verify Tailscale Serve: `tailscale serve status`.
-  2. Use the official machine HTTPS domain: `https://<device-name>.<tailnet>.ts.net/`.
-  3. Ensure Tailscale VPN is toggled "ON" in your Android settings.
+---
 
-### Scenario 3: MongoDB Service Unavailable
-- **Symptom:** Startup crashes with `ServerSelectionTimeoutError: 127.0.0.1:27017: [WinError 10061] No connection could be made`.
-- **Fix:**
-  ```powershell
-  Start-Service -Name MongoDB
-  Get-Service -Name MongoDB
+## 3. Edge Case: WSL2 Cannot Reach Windows Host Antigravity CDP (Port 9000)
+
+- **Root Cause:** When AgentWatch runs inside WSL2 Linux and Antigravity runs on the Windows desktop, WSL2 NAT mode isolates `127.0.0.1`.
+- **Exact Fix:** Enable **Mirrored Networking** in `C:\Users\<YourUser>\.wslconfig`:
+  ```ini
+  [wsl2]
+  networkingMode=mirrored
+  localhostForwarding=true
   ```
+  Then restart WSL from PowerShell:
+  ```powershell
+  wsl --shutdown
+  ```
+
+---
+
+## 4. Edge Case: Phone Cannot Connect Over Local Wi-Fi or Tailscale
+
+- **Windows Firewall Blocking Port 8000 (Local Wi-Fi Mode):**
+  ```powershell
+  New-NetFirewallRule -DisplayName "AgentWatch Port 8000" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow -Profile Private
+  ```
+- **Tailscale Serve HTTPS Reset / Stuck Proxy:**
+  ```powershell
+  tailscale serve --reset
+  tailscale serve --bg 8000
+  tailscale serve status
+  ```
+
+---
+
+## 5. Edge Case: MongoDB Service Stopped or Not Installed
+
+- **How AgentWatch Handles It:** `InteractionRepository` includes an automatic in-memory fallback store (`_fallback_store`) so command approvals and dynamic questions continue working even if MongoDB is temporarily offline.
+- **To Start MongoDB:**
+  - **Windows (Admin PowerShell):** `Start-Service MongoDB`
+  - **macOS (Homebrew):** `brew services start mongodb-community`
+  - **Linux (systemd):** `sudo systemctl enable --now mongod`

@@ -1,266 +1,26 @@
-# AgentWatch 📱 — Local-First Antigravity Observer & Mobile Monitor
-
-> **Empower your workflow:** Monitor, review, and control local Google Antigravity AI coding agents from any device — desktop, tablet, or phone — over private peer-to-peer networking with zero cloud dependencies.
-
----
-
-## 📑 Table of Contents
-
-- [1. Overview & What Problem AgentWatch Solves](#1-overview--what-problem-agentwatch-solves)
-- [2. Quick Start Cheat-Sheet](#2-quick-start-cheat-sheet)
-- [3. Antigravity IDE Integration & CDP Launch Guide](#3-antigravity-ide-integration--cdp-launch-guide)
-  - [Locating Your Antigravity Executable](#locating-your-antigravity-executable)
-  - [Launching Antigravity with Remote Debugging](#launching-antigravity-with-remote-debugging)
-  - [Important: Handling Already Running IDE Processes](#important-handling-already-running-ide-processes)
-  - [Verifying CDP Connectivity (`/json/version` vs `/json/list`)](#verifying-cdp-connectivity-jsonversion-vs-jsonlist)
-  - [Automatic Port Scanning (9000-9003) & Overrides](#automatic-port-scanning-9000-9003--overrides)
-  - [Security Notice: CDP Must Remain on Loopback](#security-notice-cdp-must-remain-on-loopback)
-- [4. Architectural Deep-Dive](#4-architectural-deep-dive)
-  - [How It Works Under the Hood](#how-it-works-under-the-hood)
-  - [Data Flow Diagram](#data-flow-diagram)
-- [5. Complete Feature Catalog](#5-complete-feature-catalog)
-  - [Live Agent Monitoring & Reasoning Stream](#live-agent-monitoring--reasoning-stream)
-  - [Interactive Command & Action Approvals](#interactive-command--action-approvals)
-  - [Agent Decision & Inquiry Dialogs](#agent-decision--inquiry-dialogs)
-  - [Prompt Composer with Image & File Attachments](#prompt-composer-with-image--file-attachments)
-  - [CDP-Powered IDE Viewport Screencast](#cdp-powered-ide-viewport-screencast)
-  - [Git Changes & File Diff Inspection](#git-changes--file-diff-inspection)
-- [6. System Requirements & Prerequisites](#6-system-requirements--prerequisites)
-- [7. Complete Step-by-Step Installation & Setup](#7-complete-step-by-step-installation--setup)
-  - [Step 1: Clone Repository & Virtual Environment Setup](#step-1-clone-repository--virtual-environment-setup)
-  - [Step 2: Configuration & Environment Variables](#step-2-configuration--environment-variables)
-  - [Step 3: Compiling the Frontend Client](#step-3-compiling-the-frontend-client)
-  - [Step 4: Running System Diagnostics](#step-4-running-system-diagnostics)
-  - [Step 5: Launching the Backend Service](#step-5-launching-the-backend-service)
-- [8. Mobile Remote Access via Tailscale](#8-mobile-remote-access-via-tailscale)
-  - [Why Tailscale?](#why-tailscale)
-  - [Tailscale Serve Configuration (Never Funnel)](#tailscale-serve-configuration-never-funnel)
-- [9. Operational Management & PowerShell Scripts](#9-operational-management--powershell-scripts)
-- [10. Repository Map & Codebase Anatomy](#10-repository-map--codebase-anatomy)
-- [11. Testing, Diagnostics & Privacy Validation](#11-testing-diagnostics--privacy-validation)
-- [12. Troubleshooting & FAQ](#12-troubleshooting--faq)
-
----
-
-## 1. Overview & What Problem AgentWatch Solves
-
-When running autonomous AI coding agents (such as Google Antigravity), developers frequently step away from their desk while long-running tasks execute: running test suites, refactoring code, conducting multi-turn web searches, or executing terminal scripts.
-
-However, existing agent workflows suffer from major friction points:
-1. **Approval Bottlenecks:** When an agent pauses to ask for elevation approval (e.g. running un-sandboxed commands), the workflow freezes until you return to your workstation.
-2. **Missing Visibility:** You cannot see the agent's step-by-step thought stream, command exit codes, or file edits from your mobile device.
-3. **Cloud Privacy Risks:** Sending internal source code, terminal output, and proprietary tokens to external SaaS dashboards compromises enterprise privacy.
-
-**AgentWatch solves this completely:**
-- **100% Local-First:** Runs locally on your machine. All session metadata, transcripts, and logs remain on your local disk and local MongoDB instance.
-- **Zero-Cloud Remote Control:** Securely connect from your mobile browser using private encrypted **Tailscale** peer-to-peer networking.
-- **Full Action Dispatch:** Review terminal commands, inspect line deltas, click **Allow / Deny**, or answer agent inquiries right from your phone.
-
----
-
-## 2. Quick Start Cheat-Sheet
-
-Run these portable commands in PowerShell from the project root directory:
-
-```powershell
-# 1. Setup Python virtual environment & install backend dependencies
-.\scripts\setup.ps1
-
-# 2. Build the production React frontend bundle
-Set-Location frontend; npm install; npm run build; Set-Location ..
-
-# 3. Verify environment health (MongoDB & Python)
-.\scripts\doctor.ps1
-
-# 4. Start the AgentWatch backend server (runs on http://127.0.0.1:8000)
-.\scripts\start.ps1
-```
-
-To stop all running AgentWatch instances at any time:
-```powershell
-.\scripts\stop.ps1
-```
-
----
-
-## 3. Antigravity IDE Integration & CDP Launch Guide
-
-AgentWatch integrates with Google Antigravity through two simultaneous, non-invasive channels:
-1. **Live Transcript Observation:** Continuously monitors the active Antigravity session transcript (`%USERPROFILE%\.gemini\antigravity-ide\brain\<session-id>\.system_generated\logs\transcript.jsonl`) to stream thoughts, commands, and file edits in real time.
-2. **Chrome DevTools Protocol (CDP) Bridge:** Connects to Antigravity's Chromium remote debugging port (default `9000`) to capture screenshots, monitor viewport tabs, and dispatch native **Allow / Deny** clicks when approvals are needed.
-
----
-
-### Locating Your Antigravity Executable
-
-Because Antigravity may not be registered in your system `PATH`, locate your executable using one of the following methods:
-
-#### Windows
-Run this discovery snippet in PowerShell to search common installation directories:
-
-```powershell
-# Check PATH first, then standard user-level application directories
-$antigravityCmd = (Get-Command antigravity -ErrorAction SilentlyContinue).Source
-if (-not $antigravityCmd) {
-    $candidatePaths = @(
-        (Join-Path $env:LOCALAPPDATA "Programs\Antigravity\Antigravity.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\Antigravity IDE\Antigravity IDE.exe"),
-        (Join-Path $env:ProgramFiles "Antigravity\Antigravity.exe")
-    )
-    $antigravityCmd = $candidatePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
-}
-
-if ($antigravityCmd) {
-    Write-Host "Found Antigravity executable at: $antigravityCmd" -ForegroundColor Green
-} else {
-    Write-Host "Antigravity executable not found automatically. Please locate Antigravity.exe manually." -ForegroundColor Yellow
-}
-```
-
-#### macOS
-Typically located at:
-```bash
-/Applications/Antigravity.app/Contents/MacOS/Antigravity
-```
-
-#### Linux
-Typically available in your desktop package path (e.g., `/usr/bin/antigravity` or `/opt/Antigravity/antigravity`).
-
----
-
-### Launching Antigravity with Remote Debugging
-
-To allow AgentWatch to interact with Antigravity, the IDE must be launched with the `--remote-debugging-port=9000` argument.
-
-#### Windows (PowerShell)
-
-**Configurable Portable Launcher:**
-```powershell
-# Define your executable path (adapt if installed in a custom location)
-$idePath = (Get-Command antigravity -ErrorAction SilentlyContinue).Source
-if (-not $idePath) {
-    $idePath = Join-Path $env:LOCALAPPDATA "Programs\Antigravity IDE\Antigravity IDE.exe"
-}
-
-if (Test-Path $idePath) {
-    # Launch Antigravity as an independent desktop process
-    Start-Process -FilePath $idePath -ArgumentList "--remote-debugging-port=9000"
-    Write-Host "Antigravity launched with remote debugging on port 9000." -ForegroundColor Green
-} else {
-    Write-Error "Antigravity executable not found at '$idePath'. Please update the path."
-}
-```
-
-#### macOS (Terminal / zsh)
-```bash
-# Launch as background process
-"/Applications/Antigravity.app/Contents/MacOS/Antigravity" --remote-debugging-port=9000 &
-```
-
-#### Linux (Bash)
-```bash
-antigravity --remote-debugging-port=9000 &
-```
-
----
-
-### Important: Handling Already Running IDE Processes
-
-> ⚠️ **CRITICAL:** Chromium and Electron applications check command-line flags only when the **initial/root process starts**. 
-
-If Antigravity is **already running** before you pass `--remote-debugging-port=9000`, the second launch simply focuses the existing window through an IPC message **without opening the debugging port**.
-
-**How to handle an already running IDE:**
-1. Check if Antigravity is currently running:
-   ```powershell
-   Get-Process -Name "*antigravity*" -ErrorAction SilentlyContinue | Select-Object Id, ProcessName
-   ```
-2. Close all running Antigravity IDE windows completely (or terminate stale worker processes).
-3. Verify port 9000 is completely released:
-   ```powershell
-   Get-NetTCPConnection -LocalPort 9000 -ErrorAction SilentlyContinue
-   ```
-4. Start Antigravity cleanly using `--remote-debugging-port=9000`.
-
----
-
-### Verifying CDP Connectivity (`/json/version` vs `/json/list`)
-
-Do not assume that an open port guarantees AgentWatch can capture the IDE viewport or dispatch clicks. Chromium exposes two distinct endpoints that serve different verification purposes:
-
-#### 1. Endpoint Verification (`/json/version`)
-Verifies that the debugging HTTP server is active and returns Chromium/V8 engine versions:
-
-```powershell
-Invoke-RestMethod "http://127.0.0.1:9000/json/version" | ConvertTo-Json -Depth 5
-```
-
-*Expected output structure:*
-```json
-{
-  "Browser": "Chrome/...",
-  "Protocol-Version": "1.3",
-  "User-Agent": "Mozilla/5.0 ... AntigravityIDE/...",
-  "webSocketDebuggerUrl": "ws://127.0.0.1:9000/devtools/browser/..."
-}
-```
-
-> **Note:** A successful response from `/json/version` proves that Chromium's debugger is listening, but does **not** prove that a usable workspace page exists.
-
-#### 2. Target Discovery Verification (`/json/list`)
-Lists active inspectable targets (workbench pages, background workers, extension hosts, dialogs):
-
-```powershell
-Invoke-RestMethod "http://127.0.0.1:9000/json/list" | ConvertTo-Json -Depth 5
-```
-
-*What AgentWatch specifically requires in the `/json/list` response:*
-- In `integrations/antigravity/adapter.py`, AgentWatch inspects target items and scores them using `_target_priority()`:
-  - It searches for a target with `type: "page"` whose `url` or `title` contains **`workbench`**, **`vscode-app`**, or **`antigravity`** (specifically prioritizing `workbench.html`).
-  - The target **must** contain a valid `webSocketDebuggerUrl` (e.g. `ws://127.0.0.1:9000/devtools/page/...`).
-  - Background targets (`type: "worker"`) are ignored.
-
-If `/json/list` returns an empty array `[]` or only workers, AgentWatch cannot observe the DOM or dispatch automated approval clicks. Ensure an active workspace window is open in Antigravity.
-
----
-
-### Automatic Port Scanning (9000-9003) & Overrides
-
-AgentWatch does not restrict you to port 9000. In `config/settings.py`, the configuration defaults to:
-```ini
-CDP_PORTS=9000,9001,9002,9003
-CDP_DISCOVERY_INTERVAL_SEC=3
-```
-- **Round-Robin Discovery:** AgentWatch iterates through the configured ports every 3 seconds. If your primary IDE window is on 9000 and a secondary workspace window opens on 9001, AgentWatch automatically discovers and connects to the active workbench target.
-- **Custom Ports:** If your setup requires a different debugging port (e.g. 9222), you can override this in your `.env` file:
-  ```ini
-  CDP_PORTS=9222,9000
-  ```
-
----
-
-### Security Notice: CDP Must Remain on Loopback
-
-> 🔒 **SECURITY WARNING:** The Chrome DevTools Protocol provides unrestricted remote code execution inside the inspected context. 
-> 
-> - **Never** bind `--remote-debugging-port` or `--remote-debugging-address` to `0.0.0.0` or a public IP address.
-> - Keep remote debugging strictly bound to loopback (`127.0.0.1`).
-> - AgentWatch communicates with CDP exclusively on localhost, and your remote phone access is tunneled through your private, authenticated Tailnet proxy.
-
----
-
-## 4. Architectural Deep-Dive
-
-### How It Works Under the Hood
-
-AgentWatch operates as an intelligent observer sitting between your local Antigravity runtime, local persistence, and connected web clients:
-
-1. **Transcript Watcher (`services/conversation_service.py`)**: Continuously monitors the active Antigravity session's `transcript.jsonl`. When new lines are written, it parses agent thoughts, tool invocations (`run_command`, `write_to_file`, `replace_file_content`, `grep_search`), terminal outputs, and calculates unified file diffs.
-2. **WebSocket Real-Time Broadcast (`services/websocket_manager.py`)**: Automatically broadcasts fresh turns and status updates to all connected browser sessions within milliseconds.
-3. **Chrome DevTools Protocol (CDP) Bridge (`integrations/antigravity/cdp_actions.py`)**: Connects to the Antigravity desktop IDE's remote debugging ports (`9000-9003`). When you click **Allow** or **Deny** on your phone, AgentWatch dispatches DOM events directly into the desktop IDE to click native dialog buttons without requiring physical keyboard/mouse interaction.
-4. **Local Document Store (`repositories/`)**: Persists events, sessions, interactions, and attachments in **MongoDB Community Server** (`mongodb://127.0.0.1:27017`), complete with SHA-256 deduplication and secret redaction.
-
-### Data Flow Diagram
+# AgentWatch 📱 — Local-First Antigravity Observer & Mobile Control Center
+
+Monitor, approve, and steer your local **Google Antigravity** AI coding sessions in real time from any phone, tablet, or browser over private peer-to-peer networking—with zero cloud dependencies, ultra-low memory/bandwidth usage, and full bidirectional popup support.
+
+## What AgentWatch Does
+
+1. **Live Command & Tool Approval Popups (`ApprovalModal` & `ApprovalCard`)**:
+   - Automatically detects commands waiting for approval (`SafeToAutoRun: False`, `BypassSandbox: True`, or live Antigravity DOM dialogs/quick-inputs).
+   - Displays all available options (**Allow**, **Always Allow**, **Deny**, plus any dynamic options scraped from the IDE).
+   - Includes a **"Type something else / Deny with instructions…"** input so you can reject a command (or approve it with a note) and immediately tell the agent what to do instead.
+2. **Dynamic Agent Question Popups (`InteractionModal` & `PendingInteractionBanner`)**:
+   - Captures `ask_question`, `notify_user`, and live IDE QuickInput option menus with single-choice, multi-choice, or free-text schemas.
+   - Displays numbered options, descriptions, and `Recommended` badges alongside an explicit **"Type something else / Provide custom instructions…"** option.
+   - Keeps popups active for as long as needed (exempt from the 7-second transcript inactivity timer) and supports minimizing to a sticky banner above the prompt composer.
+3. **Request-Based Upward Scroll Lazy-Loading (`ChatStream.jsx` + `/api/v1/chat/messages`)**:
+   - Loads only the latest **15 conversation turns** on startup (`limit=15`) for instant mobile rendering.
+   - When you scroll up near the top of the stream, automatically requests the next older block (`GET /api/v1/chat/messages?limit=15&before=<oldest_index>`), prepends it into memory with **scroll anchoring** (zero screen jump), and keeps that block rendered.
+   - Scrolling up again to the top of the newly loaded block triggers the next older batch repeatedly until the beginning of the conversation (`oldest_index === 0`) is reached.
+4. **Low-Memory & Low-Bandwidth Architecture**:
+   - **Screen-Only Hash-Deduplicated Snapshots:** `/snapshot` is only polled when you switch to the **Screen** tab (`viewMode === 'screen'`), passing `?last_hash=<md5>` so unchanged frames return a 50-byte `"unchanged"` status instead of re-sending 250 KB Base64 JPEGs.
+   - **GZip Compression & Memoized Diffs:** FastAPI `GZipMiddleware` compresses all responses, `services/diff_helper.py` caches unified diffs in an `@lru_cache`, `ConversationService` caches parsed turns by `(mtime, size)`, and `ChatTurn` / `StreamItem` use `React.memo` + CSS `content-visibility: auto`.
+
+## System Architecture & Data Flow
 
 ```
 +-------------------------------------------------------------------------------+
@@ -272,395 +32,236 @@ AgentWatch operates as an intelligent observer sitting between your local Antigr
 |  |  - CDP Remote Debugging (9000) |       |  - Local Git Repository        |  |
 |  +----------------+---------------+       +----------------+---------------+  |
 |                   |                                        |                  |
-|     Session Logs  | CDP Actions &                          | File Reads &     |
-|   & Transcripts   | Dialog Clicks                          | Git Inspection   |
+|     Session Logs  | CDP DOM Probe,                         |LRU Cached Diffs  |
+|   & Transcripts   | Option Clicks & Prompts                | & Git Review     |
 |                   v                                        v                  |
 |  +-------------------------------------------------------------------------+  |
-|  |                           AgentWatch Backend                            |  |
-|  |                            (FastAPI / Python)                           |  |
+|  |                         AgentWatch Backend (FastAPI)                    |  |
 |  |                                                                         |  |
-|  |  [Transcript Parser]   [CDP Integration]   [Diff Engine]   [Auth Guard] |  |
-|  |           |                     ^                 |              |      |  |
-|  |           v                     |                 v              |      |  |
-|  |     [WebSocket Bus] <-----------+---------> [REST API Endpoints]        |  |
-|  |           |                                       |                     |  |
-|  |           +-------------------+-------------------+                     |  |
-|  |                               |                                         |  |
-|  |                               v                                         |  |
-|  |                 [Local MongoDB Community Server]                        |  |
-|  |                  (127.0.0.1:27017/AgentWatch_v2)                        |  |
-|  +-------------------------------+-----------------------------------------+  |
-|                                  |                                            |
-|                                  v                                            |
-|                  [Tailscale Encrypted Private Proxy]                          |
-|                       (Port 8000 -> Private Tailnet)                          |
-+----------------------------------+--------------------------------------------+
-                                   |
-                                   v  (Private End-to-End Encrypted HTTPS)
+|  |  [Transcript Cache & Cursor Paginator]  [CDP Popup & Option Dispatcher] |  |
+|  |                     |                                  |                |  |
+|  |                     +----------------+-----------------+                |  |
+|  |                                      v                                  |  |
+|  |               [WebSocket Broadcast Bus + GZip REST API]                 |  |
+|  |                                      |                                  |  |
+|  |                                      v                                  |  |
+|  |          [MongoDB Community Server + Automatic In-Memory Fallback]      |  |
+|  +--------------------------------------+----------------------------------+  |
+|                                         |                                     |
+|                                         v                                     |
+|                     [Tailscale Serve Encrypted HTTPS Proxy]                   |
++-----------------------------------------+-------------------------------------+
+                                          |
+                                          v
 +-------------------------------------------------------------------------------+
-|                       Any Connected Client Device                             |
-|                                                                               |
-|   +----------------------------+             +----------------------------+   |
-|   |   Desktop Browser (Chrome) |             |  Mobile Browser (Phone)    |   |
-|   |   - Full Screen Dashboard  |             |  - Responsive Glass UI     |   |
-|   |   - Terminal Output Stream |             |  - Tap Allow / Deny        |   |
-|   |   - Image Paste & Upload   |             |  - Live Screencast View    |   |
-|   +----------------------------+             +----------------------------+   |
+|               Mobile Phone (Android / iOS) or Desktop Browser                 |
+|  - Upward Lazy-Loaded Chat Stream (15 turns/block + Scroll Anchoring)         |
+|  - Full-Screen Command Approval & Dynamic Question Modals + Custom Input      |
+|  - Screen-Only Hash-Deduplicated Live IDE Viewport                            |
 +-------------------------------------------------------------------------------+
 ```
 
----
+## Device-Wise Copy-Paste Setup & Run Guide
 
-## 5. Complete Feature Catalog
+### 1. Windows 10 / 11 (PowerShell)
 
-### Live Agent Monitoring & Reasoning Stream
-- **Real-Time Stream:** Watch agent actions unfold line-by-line.
-- **Thinking Accordion:** Collapsible thinking blocks calculating reasoning duration (e.g., *"Thought for 4s"*).
-- **Execution Badges:** Real-time feedback showing status (`working`, `done`, `failed`), command exit codes (`exit 0`), and execution timings.
-- **Line-by-Line Diffs:** Embedded diff viewer displaying exact red deletions and green additions directly inside the chat turn.
-
-### Interactive Command & Action Approvals
-- **`ApprovalModal`:** When an agent attempts an action that requires sandbox elevation or terminal execution permission, a full-screen glassmorphism modal opens immediately.
-- **Command Details:** Displays the exact command string (`$ npm run test`), the working directory (`cwd`), and permission risk notices.
-- **One-Tap Actions:**
-  - **Allow:** Dispatches an approval signal to the IDE via CDP.
-  - **Always Allow:** Whitelists the command pattern in the IDE.
-  - **Deny:** Cancels execution and returns a denial response to the agent.
-
-### Agent Decision & Inquiry Dialogs
-- **`InteractionModal`:** Triggered when the agent invokes `ask_question` to gather guidance.
-- **Custom Choices:** Renders interactive radio buttons or checkboxes for multiple options provided by the agent.
-- **Write-In Feedback:** Includes a text input field so you can provide custom written instructions or clarifications back to the agent.
-
-### Prompt Composer with Image & File Attachments
-- **Multi-Modal Input:** Remote prompt composer allowing you to steer the agent from your mobile phone.
-- **Clipboard Paste:** Paste screenshots directly from your clipboard (`Ctrl+V` or mobile paste); instant image thumbnail generation.
-- **Media Lightbox:** Click any uploaded or attached image in the chat stream to open a zoomable, high-resolution modal viewer.
-
-### CDP-Powered IDE Viewport Screencast
-- **Live Visual Feed:** Periodic capture of the agent's browser or IDE workspace viewport.
-- **Mobile Viewport Drawer:** Swipe open the viewport drawer on mobile to verify what the agent is currently seeing on the web or in the UI.
-
-### Git Changes & File Diff Inspection
-- **Git Review Route:** `/api/v1/git/diff` inspects uncommitted changes across your repository.
-- **File Hierarchy Tree:** Shows modified, added, and deleted files with visual filetype icons.
-
----
-
-## 6. System Requirements & Prerequisites
-
-Ensure the following environments are installed on your host machine:
-
-| Component | Minimum Version | Purpose |
-| :--- | :--- | :--- |
-| **Operating System** | Windows 10/11, macOS, Linux | Host development environment |
-| **Python** | 3.12 or newer | Backend FastAPI server, adapters, and services |
-| **Node.js & npm** | Node 20+, npm 10+ | Frontend React build pipeline and package management |
-| **MongoDB Community** | 7.0 or newer | Local document database for sessions and event logs |
-| **Tailscale** | Latest stable | Secure private encrypted mobile networking |
-| **PowerShell** | 5.1+ (Windows) or pwsh 7+ | Automated build, test, and startup scripts |
-
----
-
-## 7. Complete Step-by-Step Installation & Setup
-
-### Step 1: Clone Repository & Virtual Environment Setup
-
-Open PowerShell in your workspace root directory:
+Open **PowerShell** in the project root folder and copy-paste the block below:
 
 ```powershell
-# Run the automated initialization script
-.\scripts\setup.ps1
-```
-
-*Manual alternative:*
-```powershell
-# Create Python virtual environment
+# 1. Create and activate Python virtual environment
 python -m venv .venv
-
-# Activate virtual environment
 .\.venv\Scripts\Activate.ps1
-
-# Upgrade pip and install all backend dependencies
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-```
 
----
-
-### Step 2: Configuration & Environment Variables
-
-Copy the provided template to create your `.env` file (automatically performed by `setup.ps1` if absent):
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Open `.env` and configure your settings:
-
-```ini
-# --- Server Settings ---
+# 2. Create .env configuration if not already present
+if (-not (Test-Path ".env")) {
+    @"
 HOST=127.0.0.1
 PORT=8000
 ENVIRONMENT=development
 LOG_LEVEL=INFO
-
-# --- Security & Authentication ---
-# Replace with a strong, secure password for mobile login
-APP_PASSWORD=ReplaceWithYourSecurePassword123!
-# Replace with a cryptographically secure random string (e.g., openssl rand -hex 32)
-JWT_SECRET=replace_with_a_secure_random_jwt_secret_key
-# In production, specify your trusted domain (e.g. https://your-machine.tailnet.ts.net)
-ALLOWED_ORIGINS=*
-
-# --- Local MongoDB Configuration ---
+APP_PASSWORD=ChangeMe123!
+JWT_SECRET=agentwatch_local_secret_key_change_in_prod
 MONGODB_URI=mongodb://127.0.0.1:27017/
 MONGODB_DATABASE=AgentWatch_v2
-MONGODB_CONNECT_TIMEOUT_MS=3000
-MONGODB_SERVER_SELECTION_TIMEOUT_MS=3000
-
-# --- Antigravity Remote Debugging (CDP) ---
 CDP_PORTS=9000,9001,9002,9003
-CDP_DISCOVERY_INTERVAL_SEC=3
-ANTIGRAVITY_INTEGRATION_MODE=environment_and_cdp
+"@ | Out-File -FilePath ".env" -Encoding utf8
+}
 
-# --- Tailscale Configuration ---
-TAILSCALE_SERVE_ENABLED=true
-TAILSCALE_LOCAL_PORT=8000
-```
-
----
-
-### Step 3: Compiling the Frontend Client
-
-AgentWatch's FastAPI server serves the pre-compiled, optimized React dashboard from `static/dist/`. Compile it using:
-
-```powershell
-# Navigate into the frontend folder
-Set-Location frontend
-
-# Install client packages (React 19, Tailwind CSS 4, Lucide)
+# 3. Build the React 19 production bundle into static/dist
+cd frontend
 npm install
-
-# Build static production bundle into static/dist
 npm run build
+cd ..
 
-# Return to repository root
-Set-Location ..
-```
+# 4. Start MongoDB service if installed (optional: AgentWatch has automatic in-memory fallback)
+Start-Service MongoDB -ErrorAction SilentlyContinue
 
----
+# 5. Restart Antigravity with Remote Debugging Port 9000 enabled
+Stop-Process -Name "Antigravity*" -Force -ErrorAction SilentlyContinue
+$agExe = "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe"
+if (-not (Test-Path $agExe)) { $agExe = "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe" }
+if (Test-Path $agExe) {
+    Start-Process $agExe -ArgumentList "--remote-debugging-port=9000"
+} else {
+    Start-Process "antigravity" -ArgumentList "--remote-debugging-port=9000"
+}
 
-### Step 4: Running System Diagnostics
-
-Before starting the server, run the system doctor to verify that MongoDB is running, ports are free, and dependencies are intact:
-
-```powershell
-.\scripts\doctor.ps1
-```
-
-If MongoDB is installed as a service but not running, start it:
-```powershell
-Start-Service MongoDB
-```
-
----
-
-### Step 5: Launching the Backend Service
-
-Start the AgentWatch backend service:
-
-```powershell
-.\scripts\start.ps1
-```
-
-*Manual alternative (Foreground):*
-```powershell
+# 6. Start AgentWatch Backend on http://127.0.0.1:8000
 $env:PYTHONPATH = (Get-Location).Path
 .\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-*Silent Background Execution (Safe to close terminal):*
+**Run AgentWatch Silently in the Background on Windows (Safe to Close PowerShell):**
 ```powershell
-$py = Join-Path (Get-Location).Path ".venv\Scripts\python.exe"
+$py = (Join-Path (Get-Location).Path ".venv\Scripts\python.exe")
 Start-Process $py -ArgumentList "-m uvicorn main:app --host 127.0.0.1 --port 8000" -WorkingDirectory (Get-Location).Path -WindowStyle Hidden
 ```
 
-Once started:
-1. Open your desktop browser to **`http://127.0.0.1:8000`**.
-2. If prompted, enter the `APP_PASSWORD` configured in your `.env`.
-3. You are now connected to live agent monitoring!
+### 2. macOS (Apple Silicon M1/M2/M3/M4 & Intel — zsh / bash)
 
-To stop the server at any time:
-```powershell
-.\scripts\stop.ps1
+Open **Terminal** in the project root folder and copy-paste:
+
+```bash
+# 1. Create and activate Python virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+pip install -r requirements.txt
+
+# 2. Create .env file if missing
+if [ ! -f .env ]; then
+cat << 'EOF' > .env
+HOST=127.0.0.1
+PORT=8000
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+APP_PASSWORD=ChangeMe123!
+JWT_SECRET=agentwatch_local_secret_key_change_in_prod
+MONGODB_URI=mongodb://127.0.0.1:27017/
+MONGODB_DATABASE=AgentWatch_v2
+CDP_PORTS=9000,9001,9002,9003
+EOF
+fi
+
+# 3. Build the React frontend bundle into static/dist
+cd frontend
+npm install
+npm run build
+cd ..
+
+# 4. Start MongoDB via Homebrew (if installed)
+brew services start mongodb-community 2>/dev/null || true
+
+# 5. Quit any existing Antigravity instance so port 9000 flag is honored, then relaunch
+killall "Antigravity" 2>/dev/null || true
+open -a "Antigravity" --args --remote-debugging-port=9000
+
+# 6. Start AgentWatch server
+export PYTHONPATH="$(pwd)"
+python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
----
+### 3. Linux (Ubuntu / Debian / Fedora / Arch)
 
-## 8. Mobile Remote Access via Tailscale
+Open your Linux terminal in the project root folder and copy-paste:
 
-### Why Tailscale?
-Tailscale creates a secure, encrypted peer-to-peer mesh network (Tailnet) between your computer and mobile phone. 
-- **No Port Forwarding:** Never opens router ports.
-- **No Public Exposure:** The server is only accessible to devices logged into your personal Tailscale account.
-- **Zero Configuration HTTPS:** Tailscale provides automatic valid TLS certificates for your machine.
+```bash
+# 1. Setup Python virtual environment & dependencies
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+pip install -r requirements.txt
 
-### Tailscale Serve Configuration (Never Funnel)
+# 2. Build the React frontend bundle
+cd frontend
+npm install
+npm run build
+cd ..
 
-1. **Verify your workstation's Tailscale connection:**
+# 3. Start MongoDB (optional — automatic in-memory fallback is built-in)
+sudo systemctl start mongod 2>/dev/null || true
+
+# 4. Restart Antigravity with CDP port 9000 enabled
+pkill -f antigravity 2>/dev/null || true
+nohup antigravity --remote-debugging-port=9000 >/dev/null 2>&1 &
+
+# 5. Start AgentWatch server
+export PYTHONPATH="$(pwd)"
+python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+### 4. Windows Subsystem for Linux (WSL2)
+
+If you run `AgentWatch` inside **WSL2** while **Antigravity IDE** runs on the Windows desktop:
+
+1. **Enable Mirrored Networking** (so WSL2 and Windows share `127.0.0.1:9000` seamlessly). Run this in **Windows PowerShell**:
    ```powershell
-   .\scripts\remote-status.ps1
+   @"
+   [wsl2]
+   networkingMode=mirrored
+   localhostForwarding=true
+   "@ | Out-File -FilePath "$env:USERPROFILE\.wslconfig" -Encoding utf8
+   wsl --shutdown
    ```
+2. **Symlink your Windows Antigravity Transcript Directory inside WSL2** so `ConversationService` reads your live Windows transcripts:
+   ```bash
+   WIN_USER=$(cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r')
+   mkdir -p ~/.gemini/antigravity-ide
+   ln -sfn "/mnt/c/Users/${WIN_USER}/.gemini/antigravity-ide/brain" ~/.gemini/antigravity-ide/brain
+   ```
+3. Launch Antigravity on Windows with `--remote-debugging-port=9000` and start AgentWatch inside WSL2 using the Linux commands above.
 
-2. **Publish Backend over Secure Private HTTPS (Tailnet only):**
-   ```powershell
-   # Exposes port 8000 over secure private Tailnet HTTPS
+### 5. Android Phone / Tablet & iPhone / iPad (iOS) Setup
+
+#### Option A: Secure Anywhere Access via Tailscale (Recommended — Works on Mobile Data & Wi-Fi)
+1. Install **Tailscale** on your workstation and on your Android / iOS device, and sign in to the same account.
+2. On your workstation, expose port `8000` privately inside your Tailnet with automatic HTTPS:
+   ```bash
    tailscale serve --bg 8000
-   ```
-   > ⚠️ **IMPORTANT SECURITY NOTE:** Do **NOT** use `tailscale funnel`. `tailscale serve` keeps access restricted to your authenticated private devices only. `funnel` makes it public to the entire internet.
-
-3. **Check your active Tailscale URL:**
-   ```powershell
    tailscale serve status
    ```
+3. Copy the `https://<your-machine>.<tailnet>.ts.net` URL printed by `tailscale serve status` and open it in **Chrome (Android)** or **Safari (iOS)**.
+4. Log in with your `APP_PASSWORD`, then install as a full-screen app:
+   - **Android (Chrome):** Tap the **⋮** menu → **Add to Home screen** → **Install**.
+   - **iPhone / iPad (Safari):** Tap the **Share** button (`↑`) → **Add to Home Screen** → **Add**.
 
-4. **Disable Tailscale Serve when finished:**
-   ```powershell
-   tailscale serve --reset
-   ```
-
-5. **Open on Your Mobile Device:**
-   - In your mobile browser (Safari, Chrome), visit your machine's tailnet domain (e.g. `https://<device-name>.<tailnet>.ts.net`).
-   - Log in using your `APP_PASSWORD`.
-   - Tap your browser's **"Add to Home Screen"** button to install AgentWatch as a full-screen mobile app!
-
----
-
-## 9. Operational Management & PowerShell Scripts
-
-The `scripts/` directory contains convenient PowerShell utilities to automate everyday operations:
-
-| Script | Purpose | Copy-Paste Command |
-| :--- | :--- | :--- |
-| **`setup.ps1`** | Bootstraps Python virtual environment, installs requirements, sets up `.env`. | `.\scripts\setup.ps1` |
-| **`doctor.ps1`** | Health checks on Python, MongoDB, port bindings, and directory paths. | `.\scripts\doctor.ps1` |
-| **`start.ps1`** | Launches Uvicorn server on `127.0.0.1:8000` with virtual environment. | `.\scripts\start.ps1` |
-| **`stop.ps1`** | Terminates any active AgentWatch or port 8000 listener processes. | `.\scripts\stop.ps1` |
-| **`remote-status.ps1`** | Inspects Tailscale daemon status, IP addresses, and active serve proxies. | `.\scripts\remote-status.ps1` |
-| **`check_privacy.py`** | Scans logs, databases, and code trees for accidental token or secret leakage. | `.\.venv\Scripts\python.exe scripts\check_privacy.py` |
-
----
-
-## 10. Repository Map & Codebase Anatomy
-
-```
-AgentWatchV2/
-├── api/
-│   └── routes/                  # Modular FastAPI HTTP route controllers
-│       ├── attachments.py       # Handles file/image uploads & metadata serving
-│       ├── auth.py              # Cookie-based authentication & token validation
-│       ├── controls.py          # Remote agent actions (pause, resume, prompt, model)
-│       ├── diagnostics.py       # System health, log tailing, & self-tests
-│       ├── events.py            # Event ingestion with SHA-256 deduplication
-│       ├── git_review.py        # Repository git status and unified diff viewer
-│       ├── health.py            # Kubernetes-style liveness/readiness probes
-│       ├── interactions.py      # Agent decision, options, and question state
-│       └── sessions.py          # Session tracking, history chats, and timelines
-├── config/                      # Settings & database lifecycle
-│   ├── database.py              # PyMongo client, connection pool, index schemas
-│   └── settings.py              # Pydantic BaseSettings loading from .env
-├── frontend/                    # Modern React 19 client application
-│   ├── src/
-│   │   ├── components/          # Modular UI components
-│   │   │   ├── chat/            # Chat stream, turn items, diff viewers, approvals
-│   │   │   ├── drawers/         # Navigation, sessions, and viewport drawer
-│   │   │   ├── modals/          # Full-screen ApprovalModal and InteractionModal
-│   │   │   └── PromptComposer.jsx # Multi-modal input bar with clipboard paste
-│   │   ├── constants/           # Lucide icon mappings and filetype definitions
-│   │   ├── hooks/               # useAgentWatch (real-time WebSocket & state)
-│   │   └── services/            # Typed REST API and WebSocket client handlers
-│   ├── package.json             # Frontend dependencies & scripts
-│   └── vite.config.js           # Vite build pipeline outputting to static/dist
-├── integrations/
-│   └── antigravity/             # Antigravity IDE adapter & CDP remote control
-│       ├── adapter.py           # Process monitoring and environment discovery
-│       └── cdp_actions.py       # Chrome DevTools Protocol automation for approvals
-├── models/                      # Pydantic schemas, domain objects, and request models
-├── repositories/                # PyMongo data access objects
-├── scripts/                     # Automated PowerShell maintenance scripts
-├── security/                    # Token redaction engine & authentication middleware
-├── services/                    # Core business logic services
-│   ├── conversation_service.py  # Transcript parsing & step extraction
-│   ├── diff_helper.py           # Unified diff computation for file edits
-│   ├── interaction_service.py   # Question lifecycle and decision state manager
-│   ├── log_buffer.py            # In-memory diagnostic ring buffer
-│   └── websocket_manager.py     # Live bidirectional WebSocket broadcaster
-├── static/                      # Static assets, fallback login, & compiled dist bundle
-├── tests/                       # Automated test suite (pytest)
-│   ├── unit/                    # Unit tests for services and parsers
-│   └── integration/             # End-to-end API and route tests
-└── main.py                      # FastAPI application entry point & lifespan
-```
-
----
-
-## 11. Testing, Diagnostics & Privacy Validation
-
-### Automated Pytest Suite
-Run all unit and integration tests:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest -v
-```
-
-### Privacy & Secret Leakage Scanner
-Verify that your database and logs do not contain unredacted secrets or bearer tokens:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\check_privacy.py
-```
-
-### Frontend Code Quality
-Check frontend linting:
-
-```powershell
-Set-Location frontend
-npm run lint
-Set-Location ..
-```
-
----
-
-## 12. Troubleshooting & FAQ
-
-### 1. I open `http://127.0.0.1:8000` and see "Static frontend not found"
-- **Cause:** The React application has not been compiled yet.
-- **Fix:** Run `Set-Location frontend; npm install; npm run build; Set-Location ..`. Verify that `static/dist/index.html` exists.
-
-### 2. Port 8000 is already in use
-- **Cause:** A previous instance of AgentWatch or another web server is still running.
-- **Fix:** Execute `.\scripts\stop.ps1` to cleanly terminate any process occupying port 8000.
-
-### 3. MongoDB Connection Warning
-- **Symptom:** Server logs show `MongoDB not immediately reachable at startup`.
-- **Fix:** Ensure MongoDB Community Server is installed and running. Start it in PowerShell using `Start-Service MongoDB`.
-
-### 4. Antigravity CDP Port shows Disconnected or Approvals do not click
-- **Cause:** Antigravity was already running when the command was issued, or was launched without `--remote-debugging-port=9000`.
-- **Fix:**
-  1. Close all running Antigravity IDE processes.
-  2. Launch Antigravity using `--remote-debugging-port=9000`.
-  3. Verify the endpoint responds with a valid workbench target:
+#### Option B: Same-Room Local Wi-Fi Access (No Tailscale Needed)
+1. Start Uvicorn bound to `0.0.0.0` instead of `127.0.0.1`:
+   - **Windows PowerShell:**
      ```powershell
-     Invoke-RestMethod "http://127.0.0.1:9000/json/list" | ConvertTo-Json -Depth 5
+     New-NetFirewallRule -DisplayName "AgentWatch LAN 8000" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow -Profile Private -ErrorAction SilentlyContinue
+     .\.venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000
      ```
+   - **macOS / Linux:**
+     ```bash
+     python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+     ```
+2. Find your workstation's local Wi-Fi IP (`ipconfig` on Windows, `ipconfig getifaddr en0` on macOS, `hostname -I` on Linux) and open `http://<WORKSTATION_LAN_IP>:8000` on your phone.
 
-### 5. Mobile browser displays "Cannot connect" or SSL warning over Tailscale
-- **Fix:** Ensure you are using `tailscale serve --bg 8000` (which assigns a valid TLS certificate for your Tailnet name) and verify both your phone and workstation are connected to the same Tailscale network.
+## Edge Cases & Device-Specific Troubleshooting Matrix
 
----
+| Symptom / Edge Case | Why It Happens | Exact Copy-Paste Solution |
+| :--- | :--- | :--- |
+| **Antigravity was started with `--remote-debugging-port=9000`, but port 9000 is still closed** | Electron single-instance lock: an existing Antigravity window or tray process was already running without the flag, so the new launch just focused the old process and ignored `--remote-debugging-port=9000`. | **Windows:** `Stop-Process -Name "Antigravity*" -Force; Start-Process "antigravity" -ArgumentList "--remote-debugging-port=9000"`<br>**macOS:** `killall "Antigravity"; open -a "Antigravity" --args --remote-debugging-port=9000`<br>**Linux:** `pkill -f antigravity && nohup antigravity --remote-debugging-port=9000 &` |
+| **Opening `http://127.0.0.1:8000` shows `"Static frontend not found"`** | The Vite production bundle (`static/dist/index.html`) hasn't been compiled yet. | Run `cd frontend && npm install && npm run build && cd ..` and refresh the browser. |
+| **Command Approval or Question Popup used to disappear after 7 seconds** | Previously, `is_stale_inactivity` marked the turn done after 7s of idle transcript time. | **Fixed in this build:** `ConversationService` now exempts pending command approvals and unanswered agent questions from the 7-second inactivity timer until resolved. |
+| **Clicking "Allow" vs "Always Allow" clicked the wrong button or missed split-dropdowns** | Both terms shared a flat substring matcher, and split-button dropdown chevrons were not expanded. | **Fixed in this build:** `dispatch_forward_approval()` scores exact labels separately and automatically expands split-button dropdown menus when `Always Allow` is nested. |
+| **Want to reject a command and tell the agent what to do instead** | Binary Allow/Deny didn't pass follow-up context to the agent. | **Fixed in this build:** Tap **"Type something else / Deny with instructions…"** inside `ApprovalModal` or `ApprovalCard`, type your guidance, and tap **Deny & Send Instructions** (or **Allow + Send Note**). |
+| **Scrolling up in a long session used to lag or jump the scroll position** | All 50 turns were rendered at once without memoization or scroll anchoring. | **Fixed in this build:** Only 15 turns load initially. Scrolling near the top fetches the next 15-turn block via `?before=<oldest_index>`, anchors `scrollTop`, and keeps loaded blocks in memory. |
+| **MongoDB is not installed or stopped on my laptop** | `127.0.0.1:27017` is unreachable. | `InteractionRepository` automatically falls back to its built-in in-memory store (`_fallback_store`), so live chat streaming, command approvals, and question popups work even without MongoDB running. |
+| **Phone screen locks and WebSocket disconnects** | Mobile OS suspends background tab sockets to save battery. | **Fixed in this build:** All background timers pause while `document.hidden` is true (saving battery and data) and immediately resync chat, approvals, and interactions the moment you unlock your phone. |
 
-## 📄 License & Integrity
+## Verification & Testing Commands
 
-This project is licensed under the MIT License with Patent & Contribution Addendum. See the [LICENSE](LICENSE) file for complete details.
+```bash
+# Compile-check all Python modules
+python3 -m py_compile main.py api/routes/controls.py services/conversation_service.py services/interaction_service.py services/diff_helper.py integrations/antigravity/cdp_actions.py integrations/antigravity/adapter.py
+
+# Run pytest suite
+pytest -v
+
+# Trigger a live test Command Approval Popup in your connected phone browser
+curl -X POST "http://127.0.0.1:8000/api/v1/approvals/test-popup"
+```

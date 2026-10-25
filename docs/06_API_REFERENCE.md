@@ -1,178 +1,117 @@
 # 06 — API Reference & Data Contracts
 
 **Document ID:** CW-DOC-006  
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Project:** AgentWatch  
-**Classification:** REST API Specification  
+**Classification:** REST & WebSocket API Specification  
 
 ---
 
-## 1. Authentication & Session Headers
+## 1. Conversation & Upward Lazy-Loading API
 
-All endpoints except `/health`, `/ready`, and `/api/v1/auth/login` require authentication via a cryptographically signed HTTP cookie (`cw2_auth_session` or configured name). Unauthenticated requests return `401 Unauthorized` or redirect to `/login.html`.
+### 1.1 Get Paginated Chat Messages
+Returns a cursor-paginated slice of conversation turns extracted from the active Antigravity transcript.
 
----
-
-## 2. Dynamic Interactions API (`/api/v1/interactions`)
-
-### 2.1 Get Capabilities Registry
-Returns the real-time capability registry indicating supported, disconnected, or native-only features.
-
-- **Route:** `GET /api/v1/interactions/capabilities`
-- **Response:** `200 OK`
-```json
-[
-  {
-    "name": "answer_choice_question",
-    "category": "interaction",
-    "status": "available",
-    "verified": true,
-    "description": "Answer single-choice or multi-choice questions requested by agent."
-  },
-  {
-    "name": "send_prompt",
-    "category": "conversation",
-    "status": "available",
-    "verified": true,
-    "description": "Submit a prompt or follow-up instruction to active session."
-  },
-  {
-    "name": "remote_permission_bypass",
-    "category": "permission",
-    "status": "requires_native_ide",
-    "verified": false,
-    "description": "Resolve native IDE permission popups directly from mobile.",
-    "reason": "Native Antigravity permission dialogs require local confirmation in IDE for security."
-  }
-]
-```
-
-### 2.2 List Pending Interactions
-Retrieves all dynamic agent interaction requests currently awaiting mobile response.
-
-- **Route:** `GET /api/v1/interactions/pending`
-- **Query Parameters:** `session_id` (optional string)
-- **Response:** `200 OK`
+- **Route:** `GET /api/v1/chat/messages`
+- **Query Parameters:**
+  - `limit` (optional `int`, default `15`, max `200`): Number of turns to fetch in this block.
+  - `before` (optional `int`): Turn index cursor (`oldest_index` from the previous response). When omitted, returns the latest `limit` turns. When provided, returns up to `limit` turns immediately preceding `before`.
+- **Response (`200 OK`):**
 ```json
 {
-  "count": 1,
-  "interactions": [
+  "messages": [
     {
-      "interaction_id": "int-789a",
-      "session_id": "sess-456b",
-      "kind": "single_choice",
-      "title": "Select Database Engine",
-      "description": "Choose between MongoDB and PostgreSQL",
-      "options": [
-        {
-          "id": "opt-mongo",
-          "label": "MongoDB Community Server",
-          "description": "Local document database (Recommended)",
-          "is_recommended": true
-        },
-        {
-          "id": "opt-postgres",
-          "label": "PostgreSQL",
-          "description": "Relational SQL database",
-          "is_recommended": false
-        }
-      ],
-      "allow_custom_response": true,
-      "custom_response_label": "Other Engine",
-      "status": "pending",
-      "created_at": "2026-10-20T14:30:00Z"
+      "id": "turn-12",
+      "turn_index": 12,
+      "role": "user",
+      "text": "Run the database migration",
+      "timestamp": "2026-10-23T10:00:00Z"
     }
-  ]
-]
-```
-
-### 2.3 Submit Response to Interaction
-Resolves an interaction by submitting selected choices and/or custom text.
-
-- **Route:** `POST /api/v1/interactions/{interaction_id}/respond`
-- **Request Body (`SubmitInteractionRequest`):**
-```json
-{
-  "selected_option_ids": ["opt-mongo"],
-  "custom_response": null,
-  "idempotency_key": "resp-int-789a-1729440000"
+  ],
+  "total": 27,
+  "oldest_index": 12,
+  "has_more": true
 }
 ```
-- **Responses:**
-  - `200 OK`: `{"success": true, "interaction_id": "int-789a", "status": "submitted"}`
-  - `400 Bad Request`: `{"detail": "Custom text responses are not permitted for this question"}`
-  - `409 Conflict`: `{"detail": "Interaction is already submitted"}`
 
 ---
 
-## 3. Controls & Action Dispatch API
+## 2. Command & Tool Approvals API (`/api/v1/approvals`)
 
-### 3.1 Send Prompt
-Dispatches a user instruction to the active Antigravity session with idempotency tracking.
+### 2.1 Get Pending Approval
+Returns any active command or tool approval awaiting user confirmation.
 
-- **Route:** `POST /send` or `POST /api/v1/send`
-- **Request Body (`PromptSubmissionRequest`):**
+- **Route:** `GET /api/v1/approvals/pending`
+- **Response (`200 OK`):**
 ```json
 {
-  "message": "Refactor the authentication module to support rate limiting.",
-  "session_id": "optional-session-uuid",
-  "idempotency_key": "prompt-1729440123-abc"
-}
-```
-- **Response:** `200 OK`
-```json
-{
-  "status": "submitted",
-  "action_lifecycle": "acknowledged",
-  "antigravity_connected": true,
-  "message_length": 66,
-  "target_session_id": null,
-  "confirmed_execution": false
-}
-```
-
-### 3.2 Stop Generation
-Dispatches a halt signal to currently executing agent tasks.
-
-- **Route:** `POST /stop` or `POST /api/v1/stop`
-- **Response:** `200 OK`
-```json
-{
-  "status": "stop_signal_dispatched",
-  "action_lifecycle": "dispatched",
-  "antigravity_connected": true,
-  "confirmed_termination": false,
-  "note": "Stop signal dispatched. Awaiting Antigravity event stream confirmation."
-}
-```
-
-### 3.3 Remote Scroll & Remote Click
-- **Remote Scroll (`POST /remote-scroll`):**
-  - Payload: `{"scrollPercent": 0.85}`
-  - Synchronizes mobile touch scroll with desktop viewport.
-- **Remote Click (`POST /remote-click`):**
-  - Payload: `{"text": "Thought for 12 seconds"}`
-  - Expands/collapses UI toggle blocks. Strictly rejects permission keywords.
-
----
-
-## 4. Diagnostics & Probes
-
-### 4.1 Liveness Probe
-- **Route:** `GET /health`
-- **Response:** `200 OK`
-  ```json
-  {"status": "healthy", "service": "AgentWatch", "timestamp": "2026-10-20T14:45:00Z"}
-  ```
-
-### 4.2 Readiness Probe
-- **Route:** `GET /ready`
-- **Response:** `200 OK`
-  ```json
-  {
-    "status": "ready",
-    "database": "connected",
-    "tailscale_funnel_safe": true,
-    "antigravity_adapter": "initialized"
+  "has_pending": true,
+  "approval": {
+    "step_id": "turn-13-item-0",
+    "request_type": "command",
+    "target": "alembic upgrade head",
+    "title": "Command Approval Required",
+    "description": "Antigravity is waiting for your permission to execute this terminal command.",
+    "command": "alembic upgrade head",
+    "cwd": "/workspace/app",
+    "options": [
+      { "id": "allow", "label": "Allow", "description": "Run this command once" },
+      { "id": "always_allow", "label": "Always Allow", "description": "Allow similar commands in this session" },
+      { "id": "deny", "label": "Deny", "description": "Reject command or provide custom instructions" }
+    ],
+    "allow_custom_response": true
   }
-  ```
+}
+```
+
+### 2.2 Respond to Approval
+Forwards the user's decision (**Allow**, **Always Allow**, **Deny**, or a dynamic IDE popup option) and optional custom instructions (`custom_response`) to Antigravity via CDP.
+
+- **Route:** `POST /api/v1/approvals/respond`
+- **Request Body (`ApprovalDecisionRequest`):**
+```json
+{
+  "request_type": "command",
+  "target": "alembic upgrade head",
+  "decision": "deny",
+  "step_id": "turn-13-item-0",
+  "option_label": "Deny",
+  "custom_response": "Generate the migration script with --autogenerate first before running upgrade."
+}
+```
+
+---
+
+## 3. Dynamic Agent Questions API (`/api/v1/interactions`)
+
+### 3.1 List Pending Interactions
+- **Route:** `GET /api/v1/interactions/pending`
+- **Response (`200 OK`):** Returns `{"count": 1, "interactions": [...], "interaction": {...}}`.
+
+### 3.2 Respond to Interaction
+- **Route:** `POST /api/v1/interactions/respond` or `POST /api/v1/interactions/{interaction_id}/respond`
+- **Request Body:**
+```json
+{
+  "interaction_id": "q-1a2b3c4d5e6f",
+  "selected_options": ["opt_1"],
+  "custom_response": "Also add unit tests for the new store."
+}
+```
+
+---
+
+## 4. Viewport Snapshot & Controls API
+
+### 4.1 Get Viewport Snapshot (with Hash Deduplication)
+- **Route:** `GET /snapshot` or `GET /api/v1/snapshot`
+- **Query Parameters:** `last_hash` (optional `str`): MD5 hash from the previous snapshot frame.
+- **Response (`200 OK`):**
+  - When screen is unchanged: `{"status": "unchanged", "has_screenshot": true, "hash": "a1b2c3d4e5f60718"}`
+  - When screen changed: `{"status": "active", "screenshot": "data:image/jpeg;base64,...", "has_screenshot": true, "hash": "a1b2c3d4e5f60718"}`
+
+### 4.2 Send Prompt, Stop, Mode & Model Switching
+- `POST /api/v1/prompt` (or `/send`): Dispatch a prompt with optional file/image attachments.
+- `POST /api/v1/stop` (or `/api/v1/controls/stop`): Dispatch emergency stop (`Cancel` button + `Ctrl+D` + `Escape`).
+- `POST /api/v1/set-mode` (or `/api/v1/controls/mode`): Switch between `"Fast"` and `"Planning"`.
+- `POST /api/v1/set-model` (or `/api/v1/controls/model`): Switch the active AI model in Antigravity IDE.

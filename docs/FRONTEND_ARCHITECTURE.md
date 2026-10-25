@@ -2,59 +2,66 @@
 
 ## 1. Technology Selection & Rationale
 
-For AgentWatch, the frontend architecture was upgraded to a professional, responsive **React 19 + Vite + Tailwind CSS** application:
+AgentWatch uses a high-performance, low-memory **React 19 + Vite + Tailwind CSS 4** Single-Page Application (SPA) served directly by FastAPI:
 
-1. **Framework SPA (React 19 + Vite - Selected):**
-   - *Strengths:* Robust component modularity, predictable reactive state hooks (`useState`, `useEffect`, `useRef`), declarative UI rendering, and sub-second Hot Module Replacement (HMR).
-   - *Styling Engine:* **Tailwind CSS** integrated via `@tailwindcss/vite` provides utility-first, responsive design tokens with zero custom CSS drift.
-   - *Build Pipeline:* Fast, lightweight compilation via `npm run build` directly outputs optimized, minified bundles into `static/dist/` (`index.html`, `assets/index-*.js`, `assets/index-*.css`).
-   - *FastAPI Integration:* FastAPI serves the production build directly from `static/dist/index.html` at `/` and mounts static asset chunks at `/assets`.
-
-2. **Previous Architectures Discarded:**
-   - *Legacy Vanilla JavaScript (`static/js/app.js`)*: Lacked state predictability and broke under complex dynamic question layouts; completely removed.
-   - *Ad-hoc Component Bundles*: Removed in favor of standardized JSX components and automated Vite packaging.
+1. **Framework SPA (React 19 + Vite):**
+   - *Strengths:* Strict component modularity, memoized rendering (`React.memo` on `ChatTurn` and `StreamItem`), CSS `content-visibility: auto` for off-screen turns, and scroll-anchored upward lazy-loading.
+   - *Styling Engine:* **Tailwind CSS 4** integrated via `@tailwindcss/vite` provides mobile-first glassmorphism surfaces, safe-area padding (`pb-safe`), and responsive layout tokens.
+   - *Build Pipeline:* `npm run build` outputs minified production assets directly into `static/dist/` (`index.html` and hashed `assets/`).
 
 ---
 
 ## 2. Component Hierarchy & Directory Layout
 
 ```
-AgentWatchV2/
-├── frontend/                     # Modern React + Vite application
+AgentWatch/
+├── frontend/
 │   ├── src/
-│   │   ├── components/           # Single-responsibility modular components
-│   │   │   ├── Header.jsx        # AgentWatch title, status badge, STOP, Refresh, New Chat
-│   │   │   ├── SettingsBar.jsx   # Fast/Planning mode selector, model picker, DOM/KB counters
-│   │   │   ├── Viewport.jsx      # Sanitized timeline viewport & empty state
-│   │   │   ├── InteractionDrawer.jsx # Dynamic single/multi-choice cards & custom response
-│   │   │   ├── PromptComposer.jsx    # Message composer with quick action chips
-│   │   │   ├── HistoryDrawer.jsx     # Slide-out drawer for past sessions
-│   │   │   └── SelectionModal.jsx    # Mode & model picker modal
-│   │   ├── App.jsx               # Central state orchestrator with polling & idempotency
-│   │   ├── main.jsx              # React 19 root mount with StrictMode
-│   │   └── index.css             # Tailwind CSS imports & theme tokens
-│   ├── index.html                # Vite template with Inter & JetBrains Mono typography
-│   ├── package.json              # Vite, React, and Tailwind CSS dependencies
-│   └── vite.config.js            # Build output configuration (../static/dist) & API proxy
-├── static/
-│   ├── dist/                     # Optimized, minified production assets
-│   │   ├── assets/               # Bundled JavaScript and CSS chunks
-│   │   └── index.html            # Production dashboard served by FastAPI at '/'
-│   └── login.html                # Standalone authentication entrypoint
-└── main.py                       # Serves production bundle and API routes
+│   │   ├── components/
+│   │   │   ├── chat/
+│   │   │   │   ├── ChatStream.jsx               # Scroll-anchored container + upward lazy-load trigger
+│   │   │   │   ├── ChatTurn.jsx                 # Memoized user/agent turn card
+│   │   │   │   ├── StreamItem.jsx               # Memoized thought/tool/diff/question step row
+│   │   │   │   ├── ApprovalCard.jsx             # Inline Allow / Always Allow / Deny + Custom input
+│   │   │   │   ├── DiffViewer.jsx               # Unified red/green code diff viewer
+│   │   │   │   ├── PendingInteractionBanner.jsx # Sticky banner for minimized popups
+│   │   │   │   └── AttachmentPreview.jsx        # Uploaded image/file chips
+│   │   │   ├── modals/
+│   │   │   │   ├── ApprovalModal.jsx            # Full-screen command/tool approval + custom instructions
+│   │   │   │   ├── InteractionModal.jsx         # Full-screen multi-option question + "Type something else"
+│   │   │   │   ├── ModelModal.jsx               # Live IDE model switcher
+│   │   │   │   ├── ModeModal.jsx                # Fast / Planning mode switcher
+│   │   │   │   └── LightboxModal.jsx            # Zoomable full-screen image/viewport viewer
+│   │   │   ├── Navbar.jsx                       # Connection status, Chat/Screen toggle, drawers
+│   │   │   ├── PromptComposer.jsx               # Multiline composer with file/clipboard upload
+│   │   │   ├── ActivityTimelineDrawer.jsx       # Audited event timeline drawer
+│   │   │   ├── SystemLogsDrawer.jsx             # Live backend ring-buffer log viewer
+│   │   │   ├── HistoryDrawer.jsx                # Past conversation selector
+│   │   │   ├── ReviewChangesModal.jsx           # Git working-tree diff inspector
+│   │   │   └── RecoveryCenterModal.jsx          # Idempotency & crash recovery center
+│   │   ├── hooks/
+│   │   │   └── useAgentWatch.js                 # Central WebSocket + upward pagination + adaptive polling
+│   │   ├── services/
+│   │   │   ├── api.js                           # Typed REST client with cursor & hash support
+│   │   │   ├── websocket.js                     # Auto-reconnecting WebSocket client
+│   │   │   └── toastService.js                  # Non-blocking toast notification bus
+│   │   ├── App.jsx                              # Root view orchestrator
+│   │   ├── main.jsx                             # React 19 root mount
+│   │   └── index.css                            # Tailwind CSS + content-visibility rules
+│   ├── package.json
+│   └── vite.config.js
+└── static/dist/                                 # Production bundle mounted by FastAPI
 ```
 
 ---
 
-## 3. Data Flow and State Synchronization
+## 3. Request-Based Upward Scroll Lazy-Loading & Memory Architecture
 
-- **Capabilities & State Discovery:** On mount, `App.jsx` polls `/app-state` and `/api/v1/interactions/capabilities` to discover available agent features and live CDP connection status.
-- **Truthful Status Display:** Unavailable or native-only operations (e.g. `remote_permission_bypass`) are explicitly marked as requiring native IDE resolution rather than presenting non-functional buttons.
-- **Dynamic Interaction Polling:** `App.jsx` polls `/api/v1/interactions/pending` every 3 seconds while active.
-- **Card Lifecycle:**
-  1. An interaction is received (e.g., choice question from agent).
-  2. `InteractionDrawer.jsx` renders option pills with single/multi-selection radio/checkbox badges and recommended labels.
-  3. If `allow_custom_response` is enabled, an "Other / Custom Text" input is presented.
-  4. On submit, duplicate clicks are prevented, a persistent idempotency key is generated, and a payload is sent to `/api/v1/interactions/{id}/respond`.
-  5. Upon confirmation, a green success banner is displayed, and the card dismisses cleanly.
-- **Draft Preservation:** If network connectivity fails during prompt submission, the typed message is restored into the composer textarea.
+1. **Initial Window (`limit=15`):** On startup, `useAgentWatch.js` fetches only the latest 15 conversation turns (`GET /api/v1/chat/messages?limit=15`), recording `oldest_index` and `has_more`.
+2. **Upward Scroll Trigger:** When the user scrolls within `75px` of the top of `ChatStream.jsx` (or taps *"Scroll up or tap to load earlier messages"*), `loadOlderMessages()` requests `GET /api/v1/chat/messages?limit=15&before=<oldest_index>`.
+3. **Scroll Anchoring & Persistent Blocks:**
+   - The newly fetched older block is prepended to `chatMessages` and **remains in state** so the user can freely scroll back and forth.
+   - `ChatStream.jsx` uses a `useLayoutEffect` scroll-height delta calculation (`el.scrollTop = prevScrollTop + (el.scrollHeight - prevScrollHeight)`) so prepending older messages never causes the viewport to jump.
+   - Scrolling to the top of the newly loaded block triggers the next older batch (`before=<new_oldest_index>`) repeatedly until `oldest_index === 0` (`has_more: false`).
+4. **Live WebSocket Merge (`mergeTurnsPreservingHistory`):** When real-time `chat_update` frames arrive over WebSocket, `useAgentWatch.js` updates the active recent window at the bottom while preserving all older blocks the user has lazy-loaded at the top.
+5. **Screen-Only Snapshot Polling with Hash Deduplication:** `/snapshot` is only polled when the user switches to the **Screen** view (`viewMode === 'screen'` or `lightboxOpen`), passing `?last_hash=<md5>` so unchanged frames return a 50-byte `"unchanged"` status instead of a 250 KB Base64 image.

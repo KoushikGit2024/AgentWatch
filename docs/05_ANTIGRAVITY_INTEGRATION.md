@@ -60,15 +60,14 @@ To enable the live visual viewport snapshot and remote scroll synchronization, l
 
 ### Method A: From Windows PowerShell or Command Prompt
 ```powershell
-# Using environment variable placeholder
-& "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
+& "C:\Users\koush\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
 ```
 
 ### Method B: Desktop Shortcut Configuration
 1. Right-click your desktop shortcut for **Antigravity IDE** and select **Properties**.
 2. In the **Target** field, append `--remote-debugging-port=9000` to the end of the executable path:
-   ```text
-   "%LOCALAPPDATA%\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
+   ```
+   "C:\Users\koush\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
    ```
 3. Click **Apply** and **OK**.
 
