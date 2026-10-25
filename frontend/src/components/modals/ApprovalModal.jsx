@@ -52,7 +52,14 @@ export default function ApprovalModal({
         if (isSubmitting || localDecision) return;
         const textToUse = (customText || customInstructions).trim();
         setLocalDecision(decision);
-        await onDecide(requestType, target, decision, stepId, textToUse, optionLabel);
+        try {
+            const res = await onDecide(requestType, target, decision, stepId, textToUse, optionLabel);
+            if (res && res.success === false) {
+                setLocalDecision(null);
+            }
+        } catch {
+            setLocalDecision(null);
+        }
     };
 
     const handleSendCustomDeny = async () => {

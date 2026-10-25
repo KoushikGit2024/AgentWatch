@@ -14,10 +14,11 @@
 // Extensions known to be readable files
 const VALID_FILE_EXTENSIONS = new Set([
     'py', 'pyw', 'ipynb', 'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs',
-    'html', 'htm', 'css', 'scss', 'sass', 'less', 'json', 'yaml', 'yml',
+    'html', 'htm', 'css', 'scss', 'sass', 'less', 'json', 'jsonc', 'json5', 'yaml', 'yml',
     'md', 'markdown', 'txt', 'log', 'sh', 'bash', 'zsh', 'ps1', 'bat', 'cmd',
     'toml', 'xml', 'svg', 'ini', 'cfg', 'conf', 'env', 'sql', 'graphql',
-    'rs', 'go', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'php', 'rb', 'dockerfile'
+    'rs', 'go', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'php', 'rb', 'dockerfile',
+    'lock', 'lockb', 'mod', 'sum', 'gradle', 'properties', 'rst'
 ]);
 
 // Special dotfiles and exact basenames that are files
@@ -33,7 +34,7 @@ const VALID_EXACT_FILES = new Set([
  */
 export function isValidFilePath(candidate) {
     if (!candidate || typeof candidate !== 'string') return false;
-    const str = candidate.trim();
+    let str = candidate.trim();
     if (str.length < 2 || str.length > 500) return false;
 
     // Filter out commands or spaces-separated phrases (unless Windows path with spaces)
@@ -51,8 +52,19 @@ export function isValidFilePath(candidate) {
         return false;
     }
 
-    const clean = str.split(/[#?:]/)[0].replace(/[/\\]+$/, '').trim();
-    const parts = clean.split(/[/\\]/);
+    // If it starts with file://, strip it
+    str = str.replace(/^file:\/\/\/?/i, '');
+
+    // Strip leading slash if Windows drive letter (e.g. /d:/ or /D:/)
+    if (/^\/[a-zA-Z]:/.test(str)) {
+        str = str.slice(1);
+    }
+
+    const clean = str.split(/[#?]/)[0].replace(/[/\\]+$/, '').trim();
+    // Remove trailing line number if present like :L123 or :123 (preserving drive letter D:)
+    const pathWithoutLine = clean.replace(/:(?:L)?\d+(?:[-–](?:L)?\d+)?(?::\d+)?$/i, '').trim();
+
+    const parts = pathWithoutLine.split(/[/\\]/);
     const basename = (parts[parts.length - 1] || '').toLowerCase();
 
     if (VALID_EXACT_FILES.has(basename)) {
@@ -98,6 +110,11 @@ export function parseFileLink(rawLink) {
         str = decodeURIComponent(str.slice(6));
     }
 
+    // Strip leading slash before drive letter if present (/d:/ -> d:/)
+    if (/^\/[a-zA-Z]:/.test(str)) {
+        str = str.slice(1);
+    }
+
     let cleanPath = str;
     let startLine = null;
     let endLine = null;
@@ -114,20 +131,30 @@ export function parseFileLink(rawLink) {
             }
         }
     }
-    // 2. Check for colon or space line specifier (App.jsx:L187-195 or App.jsx:187 or App.jsx:187:10)
+    // 2. Check for colon or space line specifier at the END of the string
+    // Ensuring we do not match the drive letter colon (e.g. "D:/...")
     else {
-        const colonMatch = cleanPath.match(/^(.*?)(?::|\s+)L?(\d+)(?:[-–]L?(\d+))?(?::\d+)?$/i);
-        if (colonMatch) {
-            cleanPath = colonMatch[1].trim();
-            startLine = parseInt(colonMatch[2], 10);
-            if (colonMatch[3]) {
-                endLine = parseInt(colonMatch[3], 10);
+        const lineMatch = cleanPath.match(/^(.*?)(?::|\s+)L?(\d+)(?:[-–]L?(\d+))?(?::\d+)?$/i);
+        if (lineMatch && lineMatch[1] && lineMatch[2]) {
+            // Avoid misidentifying a bare drive letter like "D" as lineMatch[1]
+            const candidatePath = lineMatch[1].trim();
+            if (candidatePath.length > 1) {
+                cleanPath = candidatePath;
+                startLine = parseInt(lineMatch[2], 10);
+                if (lineMatch[3]) {
+                    endLine = parseInt(lineMatch[3], 10);
+                }
             }
         }
     }
 
     // Normalize forward slashes
     cleanPath = cleanPath.replace(/\\/g, '/');
+
+    // Strip leading slash before drive letter once more after slash normalization
+    if (/^\/[a-zA-Z]:/.test(cleanPath)) {
+        cleanPath = cleanPath.slice(1);
+    }
 
     // Extract basename
     const parts = cleanPath.split('/');

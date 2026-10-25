@@ -36,16 +36,39 @@ def get_file_content(path: str = Query(..., description="File path to read")):
     if "#" in clean_path:
         clean_path = clean_path.split("#")[0]
 
+    # Strip leading slash if followed by Windows drive letter (e.g. /d:/ or /D:/)
+    import re
+    if re.match(r"^/[a-zA-Z]:", clean_path):
+        clean_path = clean_path.lstrip("/")
+
     # Resolve target file path
     target = Path(clean_path)
-    if not target.is_absolute():
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        target = repo_root / target
+    repo_root = Path(__file__).resolve().parent.parent.parent
 
-    target = target.resolve()
+    if not target.is_absolute():
+        target = (repo_root / target).resolve()
+    else:
+        target = target.resolve()
+
+    # If direct path does not exist, attempt searching relative to repo root or workspace
+    if not target.exists():
+        fallback = (repo_root / clean_path.lstrip("/\\")).resolve()
+        if fallback.exists():
+            target = fallback
+        else:
+            # Check by basename in repo root if it was a plain filename
+            basename = Path(clean_path).name
+            candidates = list(repo_root.glob(f"**/{basename}"))
+            # Filter out .git and venv directories
+            valid_candidates = [
+                c for c in candidates 
+                if ".git" not in c.parts and ".venv" not in c.parts and "node_modules" not in c.parts
+            ]
+            if valid_candidates:
+                target = valid_candidates[0]
 
     if not target.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {target.name}")
+        raise HTTPException(status_code=404, detail=f"File not found: {Path(clean_path).name}")
 
     if not target.is_file():
         raise HTTPException(status_code=400, detail=f"Path is not a regular file: {target.name}")

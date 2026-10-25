@@ -732,13 +732,15 @@ async def dispatch_forward_approval(
 
                     if (targetRadio) {{
                         const input = targetRadio.querySelector('input[type="radio"]') || targetRadio;
-                        input.checked = true;
-                        input.click();
-                        input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                        await new Promise(r => setTimeout(r, 120));
+                        try {{
+                            input.checked = true;
+                            input.click();
+                            input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                            input.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                        }} catch (e) {{}}
+                        await new Promise(r => setTimeout(r, 150));
 
-                        // If user provided custom denial instructions
+                        // If user provided custom denial instructions or alternative commands
                         if (isDeny && custom_response && custom_response.trim()) {{
                             const writeIn = targetRadio.querySelector('textarea, [data-testid="ask-question-writein"]') || card.querySelector('textarea[data-testid="ask-question-writein"]');
                             if (writeIn) {{
@@ -746,6 +748,7 @@ async def dispatch_forward_approval(
                                 writeIn.value = custom_response.trim();
                                 writeIn.dispatchEvent(new Event('input', {{ bubbles: true }}));
                                 writeIn.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                                await new Promise(r => setTimeout(r, 100));
                             }}
                         }}
 
@@ -754,7 +757,23 @@ async def dispatch_forward_approval(
                         if (submitBtn && isVisible(submitBtn)) {{
                             submitBtn.disabled = false;
                             submitBtn.click();
-                            return {{ clicked: true, via: 'native_approval_card', target: (targetRadio.innerText || '').trim().split('\n')[0] }};
+                            
+                            // Handshake receipt: wait up to 600ms to confirm the card disappears or finishes
+                            let receiptConfirmed = false;
+                            for (let poll = 0; poll < 6; poll++) {{
+                                await new Promise(r => setTimeout(r, 100));
+                                if (!isVisible(radioGroup) || !isVisible(submitBtn) || !document.contains(radioGroup)) {{
+                                    receiptConfirmed = true;
+                                    break;
+                                }}
+                            }}
+
+                            return {{
+                                clicked: true,
+                                receipt_confirmed: receiptConfirmed,
+                                via: 'native_approval_card',
+                                target: (targetRadio.innerText || '').trim().split('\n')[0]
+                            }};
                         }}
                     }}
                 }}
@@ -922,9 +941,11 @@ async def dispatch_forward_approval(
             await asyncio.sleep(0.25)
             custom_dispatch = await dispatch_send_prompt(target_url, custom_response.strip())
 
+        receipt_confirmed = bool(res.get("receipt_confirmed", clicked))
         return {
             "success": True,
             "clicked": clicked,
+            "receipt_confirmed": receipt_confirmed,
             "via": res.get("via", "keyboard_fallback" if not clicked else None),
             "target": res.get("target"),
             "found_buttons": res.get("found_buttons", []),
