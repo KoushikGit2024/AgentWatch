@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icon } from '../constants/icons';
+import NotificationMenu from './notifications/NotificationMenu';
 
 export default function Navbar({
     targetTitle,
@@ -186,9 +187,13 @@ export default function Navbar({
                         </div>
                         <span className="hidden xl:inline">History</span>
                     </button>
+
+                    <div className="w-px h-4 bg-[#30343A] mx-0.5" />
+                    <NotificationMenu />
                 </nav>
 
-                <div className="md:hidden">
+                <div className="md:hidden flex items-center gap-1">
+                    <NotificationMenu />
                     <button
                         type="button"
                         aria-label="Open tools menu"

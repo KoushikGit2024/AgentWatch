@@ -236,16 +236,49 @@ if ($mongoService) {
     }
 }
 
-# 6. Launch AgentWatch
+# 6. Check Tailscale Serve HTTPS for Mobile Web Push
+$tailscaleExe = $null
+$tsCandidates = @(
+    "C:\Program Files\Tailscale\tailscale.exe",
+    (Get-Command tailscale -ErrorAction SilentlyContinue).Source
+)
+foreach ($cand in $tsCandidates) {
+    if ($cand -and (Test-Path $cand)) {
+        $tailscaleExe = $cand
+        break
+    }
+}
+
+$mobileUrl = "http://127.0.0.1:8000"
+if ($tailscaleExe) {
+    try {
+        $tsStatus = & $tailscaleExe status --json 2>$null | ConvertFrom-Json
+        if ($tsStatus -and $tsStatus.Self -and $tsStatus.Self.DNSName) {
+            $tsDns = $tsStatus.Self.DNSName.TrimEnd('.')
+            $mobileUrl = "https://$tsDns"
+            Write-Host "[TAILSCALE] Detected Tailscale host: $tsDns" -ForegroundColor Cyan
+            Write-Host "[TAILSCALE] Ensuring background Tailscale HTTPS serve on port 8000..." -ForegroundColor Gray
+            & $tailscaleExe serve --bg https / http://127.0.0.1:8000 2>$null
+            Write-Host "[TAILSCALE] Secure Mobile URL: $mobileUrl" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "[TAILSCALE] Notice: Unable to auto-configure Tailscale HTTPS serve." -ForegroundColor Gray
+    }
+}
+
+# 7. Launch AgentWatch
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "Launching AgentWatch at http://127.0.0.1:8000" -ForegroundColor Green
+if ($mobileUrl -ne "http://127.0.0.1:8000") {
+    Write-Host "Mobile HTTPS Push URL: $mobileUrl" -ForegroundColor Cyan
+}
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 $env:PYTHONPATH = $scriptDir
 
 Start-Process "http://127.0.0.1:8000"
 
-& $venvPython -m uvicorn main:app --host 127.0.0.1 --port 8000
+& $venvPython -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 if ($LASTEXITCODE -ne 0) {
     throw "The AgentWatch server exited with code $LASTEXITCODE."

@@ -49,6 +49,19 @@ export const Icon = {
             <line x1={12} y1={5} x2={12} y2={19}/><line x1={5} y1={12} x2={19} y2={12}/>
         </svg>
     ),
+    bell: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+    ),
+    bellOff: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8.66 8.66A6 6 0 0 1 18 8c0 7-3 9-3 9H9.34"/>
+            <path d="M10.27 21a2 2 0 0 0 3.46 0"/>
+            <line x1="2" y1="2" x2="22" y2="22"/>
+        </svg>
+    ),
     send: (
         <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>

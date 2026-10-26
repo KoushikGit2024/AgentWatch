@@ -12,11 +12,15 @@ Monitor, approve, and steer your local **Google Antigravity** AI coding sessions
    - Captures `ask_question`, `notify_user`, and live IDE QuickInput option menus with single-choice, multi-choice, or free-text schemas.
    - Displays numbered options, descriptions, and `Recommended` badges alongside an explicit **"Type something else / Provide custom instructions…"** option.
    - Keeps popups active for as long as needed (exempt from the 7-second transcript inactivity timer) and supports minimizing to a sticky banner above the prompt composer.
-3. **Request-Based Upward Scroll Lazy-Loading (`ChatStream.jsx` + `/api/v1/chat/messages`)**:
+3. **Web Push & Phone Lock-Screen Notifications (Native Service Worker + VAPID)**:
+   - Receives instant, native push notifications on your phone (Android/iOS) or desktop even when your phone is locked or browser tab is completely closed.
+   - Instant push alerts for critical **Command Approvals** and **Interactive Agent Prompts/Questions** with one-tap redirect to resolve them.
+   - Zero-config automatic HTTPS setup via Tailscale Serve built directly into `run.ps1`.
+4. **Request-Based Upward Scroll Lazy-Loading (`ChatStream.jsx` + `/api/v1/chat/messages`)**:
    - Loads only the latest **15 conversation turns** on startup (`limit=15`) for instant mobile rendering.
    - When you scroll up near the top of the stream, automatically requests the next older block (`GET /api/v1/chat/messages?limit=15&before=<oldest_index>`), prepends it into memory with **scroll anchoring** (zero screen jump), and keeps that block rendered.
    - Scrolling up again to the top of the newly loaded block triggers the next older batch repeatedly until the beginning of the conversation (`oldest_index === 0`) is reached.
-4. **Low-Memory & Low-Bandwidth Architecture**:
+5. **Low-Memory & Low-Bandwidth Architecture**:
    - **Screen-Only Hash-Deduplicated Snapshots:** `/snapshot` is only polled when you switch to the **Screen** tab (`viewMode === 'screen'`), passing `?last_hash=<md5>` so unchanged frames return a 50-byte `"unchanged"` status instead of re-sending 250 KB Base64 JPEGs.
    - **GZip Compression & Memoized Diffs:** FastAPI `GZipMiddleware` compresses all responses, `services/diff_helper.py` caches unified diffs in an `@lru_cache`, `ConversationService` caches parsed turns by `(mtime, size)`, and `ChatTurn` / `StreamItem` use `React.memo` + CSS `content-visibility: auto`.
 
@@ -60,6 +64,22 @@ Monitor, approve, and steer your local **Google Antigravity** AI coding sessions
 |  - Screen-Only Hash-Deduplicated Live IDE Viewport                            |
 +-------------------------------------------------------------------------------+
 ```
+
+## 📋 System Prerequisites (What to Install on Your Machine)
+
+Before launching AgentWatch, make sure your machine has the following tools installed globally:
+
+| Tool | Minimum Version | Required? | Why It's Needed |
+| :--- | :--- | :--- | :--- |
+| **Python** | 3.10+ | **Yes** | Powers the FastAPI backend & WebSocket server. (All libraries install into repo `.venv`). |
+| **Google Antigravity** | Any | **Yes** | The AI IDE you are monitoring with `--remote-debugging-port=9000`. |
+| **Node.js & npm** | 18+ | **Optional** | Pre-compiled bundle is included in `static/dist/`. Only needed if modifying frontend code. |
+| **Tailscale** | Any | **Recommended** | Provides secure, private peer-to-peer HTTPS connection for mobile browser push notifications. |
+| **MongoDB** | 6.0+ | **Optional** | For persistent history logs. If not installed, AgentWatch **automatically uses its built-in in-memory fallback**. |
+
+> **Note on Python Packages:** You do **not** need to install Python libraries globally. When you run `run.bat` or `run.ps1`, all required packages (`fastapi`, `uvicorn`, `pywebpush`, `cryptography`, etc.) are downloaded and kept **strictly inside this repository's isolated `.venv/` directory**.
+
+---
 
 ## 🚀 Getting Started & Launch Guide
 

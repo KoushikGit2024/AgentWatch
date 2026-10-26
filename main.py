@@ -16,7 +16,7 @@ from typing import Optional
 
 from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
-from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics, attachments, files, queue_routes
+from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics, attachments, files, queue_routes, push
 from security.authentication import check_auth_required
 from services.log_buffer import attach_to_all_loggers, log_buffer_handler
 from services.conversation_service import conversation_service
@@ -204,6 +204,19 @@ async def watch_transcript_loop():
                             "type": "pending_approval",
                             "approval": pending_approval,
                         })
+                        try:
+                            from services.web_push_service import web_push_service
+                            cmd_title = pending_approval.get("title") or "Approval Needed"
+                            cmd_target = pending_approval.get("command") or pending_approval.get("target") or "Action"
+                            web_push_service.send_notification(
+                                title=f"⚠️ {cmd_title}",
+                                body=f"Agent requesting approval: {cmd_target[:120]}",
+                                tag=f"approval-{cur_approval_key}",
+                                url="/",
+                                data={"type": "approval", "step_id": cur_approval_key}
+                            )
+                        except Exception as push_err:
+                            logger.debug("Failed to dispatch approval web push: %s", str(push_err))
                 else:
                     if not cur_approval_key:
                         approval_candidate_key = None
@@ -222,6 +235,18 @@ async def watch_transcript_loop():
                         "type": "interaction_prompt",
                         "interaction": active_interaction,
                     })
+                    try:
+                        from services.web_push_service import web_push_service
+                        prompt_msg = active_interaction.get("prompt") or "Agent has a question for you"
+                        web_push_service.send_notification(
+                            title="❓ Agent Input Required",
+                            body=prompt_msg[:120],
+                            tag=f"interaction-{cur_int_id}",
+                            url="/",
+                            data={"type": "interaction", "interaction_id": cur_int_id}
+                        )
+                    except Exception as push_err:
+                        logger.debug("Failed to dispatch interaction web push: %s", str(push_err))
                 elif not cur_int_id and last_interaction_id is not None:
                     prev_id = last_interaction_id
                     last_interaction_id = None
@@ -302,6 +327,7 @@ app.include_router(diagnostics.router)
 app.include_router(attachments.router)
 app.include_router(files.router)
 app.include_router(queue_routes.router)
+app.include_router(push.router)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -320,11 +346,14 @@ async def auth_middleware(request: Request, call_next):
         "/static",
         "/uploads",
         "/favicon.ico",
+        "/favicon.svg",
+        "/sw.js",
+        "/manifest.json",
         "/docs",
         "/openapi.json",
     ]
     path = request.url.path
-    if any(path.startswith(p) for p in public_paths):
+    if any(path.startswith(p) for p in public_paths) or path in ("/sw.js", "/manifest.json", "/favicon.svg", "/favicon.ico"):
         return await call_next(request)
 
     if check_auth_required(request):
@@ -344,6 +373,33 @@ if STATIC_DIR.exists():
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+
+@app.get("/sw.js")
+async def serve_sw():
+    """Serve the root service worker file for Web Push notifications."""
+    sw_file = STATIC_DIR / "dist" / "sw.js"
+    if sw_file.exists():
+        return FileResponse(str(sw_file), media_type="application/javascript")
+    return JSONResponse(status_code=404, content={"detail": "Service Worker not found"})
+
+
+@app.get("/manifest.json")
+async def serve_manifest():
+    """Serve Web App Manifest for mobile PWA installation."""
+    manifest_file = STATIC_DIR / "dist" / "manifest.json"
+    if manifest_file.exists():
+        return FileResponse(str(manifest_file), media_type="application/manifest+json")
+    return JSONResponse(status_code=404, content={"detail": "Manifest not found"})
+
+
+@app.get("/favicon.svg")
+async def serve_favicon_svg():
+    """Serve SVG favicon."""
+    fav_file = STATIC_DIR / "dist" / "favicon.svg"
+    if fav_file.exists():
+        return FileResponse(str(fav_file), media_type="image/svg+xml")
+    return JSONResponse(status_code=404, content={"detail": "Favicon not found"})
 
 
 @app.get("/")
