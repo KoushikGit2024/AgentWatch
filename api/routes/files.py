@@ -17,6 +17,55 @@ router = APIRouter(tags=["Files"])
 MAX_VIEW_SIZE_BYTES = 3 * 1024 * 1024
 
 
+def _resolve_target_path(clean_path: str) -> Path:
+    """Safely resolve a raw or URI file path to a valid Path on disk."""
+    if clean_path.startswith("file:///"):
+        clean_path = clean_path[8:]
+    elif clean_path.startswith("file://"):
+        clean_path = clean_path[7:]
+    elif clean_path.startswith("file:/"):
+        clean_path = clean_path[6:]
+
+    if "#" in clean_path:
+        clean_path = clean_path.split("#")[0]
+
+    import re
+    if re.match(r"^/[a-zA-Z]:", clean_path):
+        clean_path = clean_path.lstrip("/")
+
+    target = Path(clean_path)
+    repo_root = Path(__file__).resolve().parent.parent.parent
+
+    if not target.is_absolute():
+        target = (repo_root / target).resolve()
+    else:
+        target = target.resolve()
+
+    if not target.exists():
+        fallback = (repo_root / clean_path.lstrip("/\\")).resolve()
+        if fallback.exists():
+            target = fallback
+        else:
+            basename = Path(clean_path).name
+            brain_base = Path.home() / ".gemini" / "antigravity-ide" / "brain"
+            if brain_base.exists():
+                brain_candidates = list(brain_base.glob(f"**/{basename}"))
+                if brain_candidates:
+                    brain_candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                    target = brain_candidates[0]
+
+            if not target.exists():
+                candidates = list(repo_root.glob(f"**/{basename}"))
+                valid_candidates = [
+                    c for c in candidates 
+                    if ".git" not in c.parts and ".venv" not in c.parts and "node_modules" not in c.parts
+                ]
+                if valid_candidates:
+                    target = valid_candidates[0]
+
+    return target
+
+
 @router.get("/api/v1/files/content")
 def get_file_content(path: str = Query(..., description="File path to read")):
     """
@@ -27,56 +76,7 @@ def get_file_content(path: str = Query(..., description="File path to read")):
         raise HTTPException(status_code=400, detail="Path parameter is required")
 
     clean_path = path.strip()
-    if clean_path.startswith("file:///"):
-        clean_path = clean_path[8:]
-    elif clean_path.startswith("file://"):
-        clean_path = clean_path[7:]
-    elif clean_path.startswith("file:/"):
-        clean_path = clean_path[6:]
-
-    # Remove URL hash if present (e.g. #L10-L20)
-    if "#" in clean_path:
-        clean_path = clean_path.split("#")[0]
-
-    # Strip leading slash if followed by Windows drive letter (e.g. /d:/ or /D:/)
-    import re
-    if re.match(r"^/[a-zA-Z]:", clean_path):
-        clean_path = clean_path.lstrip("/")
-
-    # Resolve target file path
-    target = Path(clean_path)
-    repo_root = Path(__file__).resolve().parent.parent.parent
-
-    if not target.is_absolute():
-        target = (repo_root / target).resolve()
-    else:
-        target = target.resolve()
-
-    # If direct path does not exist, attempt searching relative to repo root, brain directory, or workspace
-    if not target.exists():
-        fallback = (repo_root / clean_path.lstrip("/\\")).resolve()
-        if fallback.exists():
-            target = fallback
-        else:
-            basename = Path(clean_path).name
-            # Check in active brain session directory first
-            brain_base = Path.home() / ".gemini" / "antigravity-ide" / "brain"
-            if brain_base.exists():
-                brain_candidates = list(brain_base.glob(f"**/{basename}"))
-                if brain_candidates:
-                    brain_candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-                    target = brain_candidates[0]
-
-            if not target.exists():
-                # Check by basename in repo root if it was a plain filename
-                candidates = list(repo_root.glob(f"**/{basename}"))
-                # Filter out .git and venv directories
-                valid_candidates = [
-                    c for c in candidates 
-                    if ".git" not in c.parts and ".venv" not in c.parts and "node_modules" not in c.parts
-                ]
-                if valid_candidates:
-                    target = valid_candidates[0]
+    target = _resolve_target_path(clean_path)
 
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {Path(clean_path).name}")
@@ -103,6 +103,15 @@ def get_file_content(path: str = Query(..., description="File path to read")):
         raw_url = f"/api/v1/files/raw?path={target.as_posix()}"
 
         if is_media:
+            svg_content = ""
+            svg_lines = []
+            if ext == "svg" and size_bytes <= MAX_VIEW_SIZE_BYTES:
+                try:
+                    svg_content = target.read_text(encoding="utf-8")
+                    svg_lines = svg_content.splitlines()
+                except Exception:
+                    pass
+
             return {
                 "path": encoded_path,
                 "filename": target.name,
@@ -111,9 +120,9 @@ def get_file_content(path: str = Query(..., description="File path to read")):
                 "media_type": "image" if is_image else ("video" if is_video else "audio"),
                 "raw_url": raw_url,
                 "size_bytes": size_bytes,
-                "total_lines": 0,
-                "content": "",
-                "lines": []
+                "total_lines": len(svg_lines),
+                "content": svg_content,
+                "lines": svg_lines
             }
 
         if size_bytes > MAX_VIEW_SIZE_BYTES:
@@ -122,14 +131,52 @@ def get_file_content(path: str = Query(..., description="File path to read")):
                 detail=f"File is too large to preview ({round(size_bytes / (1024 * 1024), 2)} MB). Max limit is 3 MB."
             )
 
-        # Attempt reading text with utf-8, fallback to latin-1
+        binary_exts = {
+            "exe", "dll", "so", "dylib", "bin", "dat", "iso", "tar", "gz", "zip",
+            "7z", "rar", "pdf", "docx", "xlsx", "pptx", "pyc", "pyd", "db", "sqlite"
+        }
+        if ext in binary_exts:
+            return {
+                "path": encoded_path,
+                "filename": target.name,
+                "extension": ext or "bin",
+                "is_media": False,
+                "is_binary": True,
+                "raw_url": raw_url,
+                "total_lines": 0,
+                "size_bytes": size_bytes,
+                "content": "",
+                "lines": [],
+            }
+
+        # Check for null bytes in initial chunk to detect binary files safely
+        with target.open("rb") as f:
+            chunk = f.read(8192)
+            if b"\x00" in chunk:
+                return {
+                    "path": encoded_path,
+                    "filename": target.name,
+                    "extension": ext or "bin",
+                    "is_media": False,
+                    "is_binary": True,
+                    "raw_url": raw_url,
+                    "total_lines": 0,
+                    "size_bytes": size_bytes,
+                    "content": "",
+                    "lines": [],
+                }
+
+        # Attempt reading text with utf-8, fallback to utf-8-sig
         try:
             content = target.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             try:
                 content = target.read_text(encoding="utf-8-sig")
             except UnicodeDecodeError:
-                content = target.read_text(encoding="latin-1")
+                raise HTTPException(
+                    status_code=415,
+                    detail=f"This binary or non-UTF-8 encoded file cannot be displayed as text. Use 'Download Raw' to view it."
+                )
 
         lines = content.splitlines()
 
@@ -163,28 +210,22 @@ def get_raw_file(path: str = Query(..., description="File path to stream directl
         raise HTTPException(status_code=400, detail="Path parameter is required")
 
     clean_path = path.strip()
-    if clean_path.startswith("file:///"):
-        clean_path = clean_path[8:]
-    elif clean_path.startswith("file://"):
-        clean_path = clean_path[7:]
-
-    import re
-    if re.match(r"^/[a-zA-Z]:", clean_path):
-        clean_path = clean_path.lstrip("/")
-
-    target = Path(clean_path).resolve()
+    target = _resolve_target_path(clean_path)
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    mime_type, _ = mimetypes.guess_type(str(target))
-    if not mime_type:
-        ext = target.suffix.lower()
-        if ext in [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]:
-            mime_type = f"image/{ext.lstrip('.')}"
-        elif ext in [".mp4", ".webm", ".mov"]:
-            mime_type = f"video/{ext.lstrip('.')}"
-        else:
-            mime_type = "application/octet-stream"
+    ext = target.suffix.lower()
+    if ext == ".svg":
+        mime_type = "image/svg+xml"
+    else:
+        mime_type, _ = mimetypes.guess_type(str(target))
+        if not mime_type:
+            if ext in [".png", ".jpg", ".jpeg", ".webp", ".gif"]:
+                mime_type = f"image/{ext.lstrip('.')}"
+            elif ext in [".mp4", ".webm", ".mov"]:
+                mime_type = f"video/{ext.lstrip('.')}"
+            else:
+                mime_type = "application/octet-stream"
 
     return FileResponse(path=str(target), media_type=mime_type, filename=target.name)
 

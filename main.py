@@ -347,13 +347,14 @@ async def auth_middleware(request: Request, call_next):
         "/uploads",
         "/favicon.ico",
         "/favicon.svg",
+        "/logo.svg",
         "/sw.js",
         "/manifest.json",
         "/docs",
         "/openapi.json",
     ]
     path = request.url.path
-    if any(path.startswith(p) for p in public_paths) or path in ("/sw.js", "/manifest.json", "/favicon.svg", "/favicon.ico"):
+    if any(path.startswith(p) for p in public_paths) or path in ("/sw.js", "/manifest.json", "/favicon.svg", "/favicon.ico", "/logo.svg"):
         return await call_next(request)
 
     if check_auth_required(request):
@@ -400,6 +401,15 @@ async def serve_favicon_svg():
     if fav_file.exists():
         return FileResponse(str(fav_file), media_type="image/svg+xml")
     return JSONResponse(status_code=404, content={"detail": "Favicon not found"})
+
+
+@app.get("/logo.svg")
+async def serve_logo_svg():
+    """Serve standalone AgentWatch SVG brand logo."""
+    logo_file = STATIC_DIR / "dist" / "logo.svg"
+    if logo_file.exists():
+        return FileResponse(str(logo_file), media_type="image/svg+xml")
+    return JSONResponse(status_code=404, content={"detail": "Logo not found"})
 
 
 @app.get("/")

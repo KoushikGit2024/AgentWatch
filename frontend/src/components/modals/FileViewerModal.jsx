@@ -5,6 +5,7 @@ import { FileIcon, getFileInfo } from '../../constants/fileIcons';
 import { api } from '../../services/api';
 import { toast } from '../../services/toastService';
 import { getMonacoLanguage, MediaPreviewViewport, MarkdownPreviewViewport } from './FileViewerHelpers';
+import { BinaryFileViewport } from './BinaryFileViewport';
 
 export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawer }) {
     const [tabs, setTabs] = useState([]);
@@ -218,8 +219,10 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
     const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext) || fileData?.media_type === 'image';
     const isVideo = ['mp4', 'webm', 'mov', 'm4v', 'ogg'].includes(ext) || fileData?.media_type === 'video';
     const isAudio = ['mp3', 'wav', 'm4a', 'flac'].includes(ext) || fileData?.media_type === 'audio';
+    const isSvg = ext === 'svg';
     const isMedia = isImage || isVideo || isAudio || fileData?.is_media;
     const isMarkdown = Boolean(!isMedia && (activePath.endsWith('.md') || activePath.endsWith('.markdown') || fileData?.extension === 'md'));
+    const canTogglePreview = isMarkdown || isSvg;
     const fileInfo = getFileInfo(activePath);
 
     const handleCopyPath = async () => {
@@ -312,7 +315,7 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
 
                 {/* Window Controls */}
                 <div className="flex items-center gap-1 shrink-0 px-2">
-                    {isMarkdown && (
+                    {canTogglePreview && (
                         <div className="flex items-center rounded bg-[#101113] border border-[#30343A] p-0.5 text-xs mr-1">
                             <button
                                 type="button"
@@ -457,7 +460,9 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
                             </a>
                         </div>
                     </div>
-                ) : isMedia ? (
+                ) : fileData?.is_binary ? (
+                    <BinaryFileViewport fileData={fileData} activePath={activePath} />
+                ) : (isMedia && (!isSvg || viewMode === 'preview')) ? (
                     <MediaPreviewViewport isImage={isImage} isVideo={isVideo} isAudio={isAudio} fileData={fileData} filePath={activePath} />
                 ) : viewMode === 'preview' && isMarkdown ? (
                     <MarkdownPreviewViewport content={fileData?.content} />

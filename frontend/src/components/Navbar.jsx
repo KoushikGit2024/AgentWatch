@@ -44,8 +44,12 @@ export default function Navbar({
     return (
         <header className="aw-landscape-compact-header relative w-full px-2.5 sm:px-4 lg:px-6 py-2 bg-[#17191C] border-b border-[#30343A] flex items-center justify-between gap-2 shrink-0 select-none z-30">
             <div className="flex items-center gap-2.5 min-w-0 shrink">
-                <div className="w-7 h-7 rounded-md bg-[#1D2024] border border-[#30343A] flex items-center justify-center text-[#E8EAED] text-[11px] font-mono font-semibold shrink-0">
-                    AW
+                <div className="w-8 h-8 rounded-lg bg-[#14181E] border border-[#30343A] flex items-center justify-center p-1 shrink-0 shadow-inner group hover:border-cyan-500/50 transition-colors overflow-hidden">
+                    <img 
+                        src="/logo.svg" 
+                        alt="AgentWatch Logo" 
+                        className="w-full h-full object-contain pointer-events-none select-none"
+                    />
                 </div>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">

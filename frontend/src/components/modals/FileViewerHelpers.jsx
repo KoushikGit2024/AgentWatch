@@ -139,23 +139,37 @@ export function MediaPreviewViewport({ isImage, isVideo, isAudio, fileData, file
                         }`}
                     >
                         <div
-                            className="transition-transform duration-100 ease-out origin-top-left m-auto"
+                            className="transition-transform duration-100 ease-out origin-top-left m-auto flex items-center justify-center"
                             style={{
                                 transform: `scale(${zoom})`,
                                 transformOrigin: zoom > 1 ? 'top left' : 'center center'
                             }}
                         >
-                            <img
-                                src={rawUrl}
-                                alt={fileData?.filename || 'Image Preview'}
-                                draggable={false}
-                                className={`rounded-md border border-[#30343A] bg-[#17191C] shadow-lg ${
-                                    zoom === 1
-                                        ? 'max-w-full max-h-[75dvh] object-contain'
-                                        : 'max-w-none'
-                                }`}
-                                loading="lazy"
-                            />
+                            {((filePath.endsWith('.svg') || fileData?.extension === 'svg') && fileData?.content) ? (
+                                <div
+                                    className="p-4 rounded-md border border-[#30343A] bg-[#17191C] shadow-lg max-w-[85vw] max-h-[75dvh] flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-[65dvh] [&>svg]:w-auto [&>svg]:h-auto [&>svg]:min-w-[120px] [&>svg]:min-h-[120px]"
+                                    dangerouslySetInnerHTML={{ __html: fileData.content }}
+                                />
+                            ) : (
+                                <img
+                                    src={rawUrl}
+                                    alt={fileData?.filename || 'Image Preview'}
+                                    draggable={false}
+                                    onError={(e) => {
+                                        if (fileData?.content && (filePath.endsWith('.svg') || fileData?.extension === 'svg')) {
+                                            try {
+                                                e.currentTarget.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fileData.content)}`;
+                                            } catch (_) {}
+                                        }
+                                    }}
+                                    className={`rounded-md border border-[#30343A] bg-[#17191C] shadow-lg ${
+                                        zoom === 1
+                                            ? 'max-w-full max-h-[75dvh] object-contain'
+                                            : 'max-w-none'
+                                    }`}
+                                    loading="lazy"
+                                />
+                            )}
                         </div>
                     </div>
                 </>
