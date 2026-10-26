@@ -42,7 +42,10 @@ class EventRepository:
                 existing_id = None
             return existing_id, True
         except (PyMongoError, Exception) as exc:
-            logger.warning("MongoDB unavailable during event insertion (%s). Using in-memory fallback.", str(exc))
+            logger.warning(
+                "MongoDB unavailable during event insertion (%s). Using in-memory fallback.",
+                str(exc),
+            )
             # Check duplicate in fallback
             for item in self._fallback_events:
                 if item.get("source_event_id") == event.source_event_id:
@@ -59,7 +62,7 @@ class EventRepository:
         search: Optional[str] = None,
         correlation_id: Optional[str] = None,
         limit: int = 50,
-        skip: int = 0
+        skip: int = 0,
     ) -> List[Dict[str, Any]]:
         """Retrieve paginated events ordered chronologically descending."""
         query: Dict[str, Any] = {}
@@ -78,14 +81,21 @@ class EventRepository:
             ]
 
         try:
-            cursor = self.collection.find(query).sort([("timestamp", -1), ("_id", -1)]).skip(skip).limit(limit)
+            cursor = (
+                self.collection.find(query)
+                .sort([("timestamp", -1), ("_id", -1)])
+                .skip(skip)
+                .limit(limit)
+            )
             events = []
             for doc in cursor:
                 doc["_id"] = str(doc["_id"])
                 events.append(doc)
             return events
         except (PyMongoError, Exception) as exc:
-            logger.warning("MongoDB unavailable during get_events (%s). Returning in-memory events.", str(exc))
+            logger.warning(
+                "MongoDB unavailable during get_events (%s). Returning in-memory events.", str(exc)
+            )
             filtered = self._fallback_events
             if session_id:
                 filtered = [e for e in filtered if e.get("session_id") == session_id]
@@ -98,8 +108,10 @@ class EventRepository:
             if search:
                 s_lower = search.lower()
                 filtered = [
-                    e for e in filtered
-                    if s_lower in (e.get("summary") or "").lower() or s_lower in (e.get("event_type") or "").lower()
+                    e
+                    for e in filtered
+                    if s_lower in (e.get("summary") or "").lower()
+                    or s_lower in (e.get("event_type") or "").lower()
                 ]
             return filtered[skip : skip + limit]
 
@@ -108,7 +120,7 @@ class EventRepository:
         session_id: Optional[str] = None,
         event_type: Optional[str] = None,
         category: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
     ) -> int:
         """Count total events matching filter."""
         query: Dict[str, Any] = {}
@@ -126,4 +138,12 @@ class EventRepository:
         try:
             return self.collection.count_documents(query)
         except (PyMongoError, Exception):
-            return len(self.get_events(session_id=session_id, event_type=event_type, category=category, search=search, limit=10000))
+            return len(
+                self.get_events(
+                    session_id=session_id,
+                    event_type=event_type,
+                    category=category,
+                    search=search,
+                    limit=10000,
+                )
+            )

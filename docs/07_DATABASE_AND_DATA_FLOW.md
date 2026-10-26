@@ -82,16 +82,22 @@ To guarantee sub-millisecond query latency and absolute data integrity, AgentWat
 events.create_index([("source_event_id", ASCENDING)], unique=True, name="uniq_source_event_id")
 
 # 2. Events Session Timeline Query Index
-events.create_index([("session_id", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_session_time")
+events.create_index(
+    [("session_id", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_session_time"
+)
 
 # 3. Interactions Unique ID Index
 interactions.create_index([("interaction_id", ASCENDING)], unique=True, name="uniq_interaction_id")
 
 # 4. Interactions Status & Polling Index
-interactions.create_index([("status", ASCENDING), ("created_at", DESCENDING)], name="idx_interactions_status_time")
+interactions.create_index(
+    [("status", ASCENDING), ("created_at", DESCENDING)], name="idx_interactions_status_time"
+)
 
 # 5. Interactions Session Filter Index
-interactions.create_index([("session_id", ASCENDING), ("status", ASCENDING)], name="idx_interactions_session_status")
+interactions.create_index(
+    [("session_id", ASCENDING), ("status", ASCENDING)], name="idx_interactions_session_status"
+)
 ```
 
 ---

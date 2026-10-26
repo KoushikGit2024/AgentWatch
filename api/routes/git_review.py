@@ -93,7 +93,7 @@ def get_git_review():
             cwd=str(workspace_root),
             capture_output=True,
             text=True,
-            timeout=4.0
+            timeout=4.0,
         )
         status_output = status_proc.stdout.strip()
 
@@ -101,21 +101,17 @@ def get_git_review():
         # If clean, diff the most recent commit HEAD~1..HEAD
         diff_cmd = ["git", "diff", "HEAD"] if status_output else ["git", "diff", "HEAD~1", "HEAD"]
         diff_proc = subprocess.run(
-            diff_cmd,
-            cwd=str(workspace_root),
-            capture_output=True,
-            text=True,
-            timeout=4.0
+            diff_cmd, cwd=str(workspace_root), capture_output=True, text=True, timeout=4.0
         )
         git_diff_text = diff_proc.stdout or ""
 
-        stat_cmd = ["git", "diff", "--stat", "HEAD"] if status_output else ["git", "diff", "--stat", "HEAD~1", "HEAD"]
+        stat_cmd = (
+            ["git", "diff", "--stat", "HEAD"]
+            if status_output
+            else ["git", "diff", "--stat", "HEAD~1", "HEAD"]
+        )
         stat_proc = subprocess.run(
-            stat_cmd,
-            cwd=str(workspace_root),
-            capture_output=True,
-            text=True,
-            timeout=4.0
+            stat_cmd, cwd=str(workspace_root), capture_output=True, text=True, timeout=4.0
         )
         stat_output = stat_proc.stdout.strip()
 
@@ -160,13 +156,15 @@ def get_git_review():
                 total_add += add_cnt
                 total_del += del_cnt
 
-                files_list.append({
-                    "file": norm_path,
-                    "status": status_code,
-                    "additions": add_cnt,
-                    "deletions": del_cnt,
-                    "diff": file_diff[:12000] if file_diff else None
-                })
+                files_list.append(
+                    {
+                        "file": norm_path,
+                        "status": status_code,
+                        "additions": add_cnt,
+                        "deletions": del_cnt,
+                        "diff": file_diff[:12000] if file_diff else None,
+                    }
+                )
 
                 if file_diff:
                     all_diff_parts.append(file_diff)
@@ -178,13 +176,15 @@ def get_git_review():
                 counts = _count_diff_lines(fdiff)
                 total_add += counts["additions"]
                 total_del += counts["deletions"]
-                files_list.append({
-                    "file": fpath,
-                    "status": "C",  # Committed
-                    "additions": counts["additions"],
-                    "deletions": counts["deletions"],
-                    "diff": fdiff[:12000]
-                })
+                files_list.append(
+                    {
+                        "file": fpath,
+                        "status": "C",  # Committed
+                        "additions": counts["additions"],
+                        "deletions": counts["deletions"],
+                        "diff": fdiff[:12000],
+                    }
+                )
             combined_diff = git_diff_text
 
         has_changes = bool(status_output) or bool(git_diff_text.strip())
@@ -198,8 +198,13 @@ def get_git_review():
                 "total_deletions": total_del,
             },
             "files": files_list,
-            "stat": stat_output or (f"{len(files_list)} file(s) changed, +{total_add}, -{total_del}" if files_list else "Clean"),
-            "diff": combined_diff[:25000] if combined_diff else "No changes detected."
+            "stat": stat_output
+            or (
+                f"{len(files_list)} file(s) changed, +{total_add}, -{total_del}"
+                if files_list
+                else "Clean"
+            ),
+            "diff": combined_diff[:25000] if combined_diff else "No changes detected.",
         }
 
     except Exception as exc:
@@ -209,5 +214,5 @@ def get_git_review():
             "summary": {"total_files": 0, "total_additions": 0, "total_deletions": 0},
             "files": [],
             "stat": "",
-            "diff": f"Git review unavailable: {str(exc)}"
+            "diff": f"Git review unavailable: {str(exc)}",
         }

@@ -9,12 +9,14 @@ def test_parse_valid_environment_metadata():
     env = {
         "ANTIGRAVITY_CONVERSATION_ID": "conv-uuid-1234-5678",
         "ANTIGRAVITY_TRAJECTORY_ID": "traj-uuid-9999",
-        "ANTIGRAVITY_SOURCE_METADATA": json.dumps({
-            "conversationId": "conv-uuid-1234-5678",
-            "stepIndex": 42,
-            "toolName": "run_command",
-            "argumentsJson": json.dumps({"command": "git status", "apiKey": "secret_key_123"}),
-        })
+        "ANTIGRAVITY_SOURCE_METADATA": json.dumps(
+            {
+                "conversationId": "conv-uuid-1234-5678",
+                "stepIndex": 42,
+                "toolName": "run_command",
+                "argumentsJson": json.dumps({"command": "git status", "apiKey": "secret_key_123"}),
+            }
+        ),
     }
     event = parse_environment_metadata(env)
     assert event is not None

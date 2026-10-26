@@ -8,11 +8,7 @@ def test_sandboxed_command_does_not_require_approval():
     """Commands executed in standard sandbox must never require user approval."""
     cs = ConversationService()
     # Mock line from Antigravity transcript representing standard sandboxed run_command
-    args = {
-        "CommandLine": "git status",
-        "Cwd": "D:/workspace",
-        "BypassSandbox": False
-    }
+    args = {"CommandLine": "git status", "Cwd": "D:/workspace", "BypassSandbox": False}
     # Verify classification logic
     bypass = bool(args.get("BypassSandbox", False))
     assert bypass is False
@@ -21,11 +17,7 @@ def test_sandboxed_command_does_not_require_approval():
 def test_elevated_command_requires_native_ide_confirmation():
     """Commands requesting BypassSandbox=True require native desktop confirmation."""
     cs = ConversationService()
-    args = {
-        "CommandLine": "pip install something",
-        "Cwd": "D:/workspace",
-        "BypassSandbox": True
-    }
+    args = {"CommandLine": "pip install something", "Cwd": "D:/workspace", "BypassSandbox": True}
     bypass = bool(args.get("BypassSandbox", False))
     assert bypass is True
 
@@ -54,7 +46,7 @@ def test_agent_question_classified_as_question_not_approval():
             {
                 "question": "Which database would you prefer?",
                 "options": ["MongoDB", "PostgreSQL", "SQLite"],
-                "is_multi_select": False
+                "is_multi_select": False,
             }
         ]
     }

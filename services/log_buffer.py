@@ -5,6 +5,7 @@ from collections import deque
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
+
 class RingBufferLogHandler(logging.Handler):
     """Thread-safe circular log buffer for live frontend streaming and diagnostics."""
 
@@ -46,7 +47,7 @@ def attach_to_all_loggers():
         "integrations.antigravity.adapter",
         "api",
         "repositories",
-        "services"
+        "services",
     ]
     for name in loggers_to_attach:
         l = logging.getLogger(name)

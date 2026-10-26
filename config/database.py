@@ -78,18 +78,46 @@ def init_db_indexes(db=None):
         try:
             col.create_index(keys, **kwargs)
         except Exception as e:
-            logger.warning("Failed to create index %s on %s: %s", kwargs.get("name"), col.name, str(e))
+            logger.warning(
+                "Failed to create index %s on %s: %s", kwargs.get("name"), col.name, str(e)
+            )
 
     # Events collection
-    _safe_create(database.events, [("source_event_id", ASCENDING)], unique=True, name="uniq_source_event_id", sparse=True)
-    _safe_create(database.events, [("timestamp", DESCENDING), ("_id", DESCENDING)], name="idx_events_timeline")
-    _safe_create(database.events, [("session_id", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_session_timeline")
-    _safe_create(database.events, [("event_type", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_type_timeline")
-    _safe_create(database.events, [("category", ASCENDING), ("timestamp", DESCENDING)], name="idx_events_category_timeline")
-    _safe_create(database.events, [("correlation_id", ASCENDING)], sparse=True, name="idx_events_correlation")
+    _safe_create(
+        database.events,
+        [("source_event_id", ASCENDING)],
+        unique=True,
+        name="uniq_source_event_id",
+        sparse=True,
+    )
+    _safe_create(
+        database.events,
+        [("timestamp", DESCENDING), ("_id", DESCENDING)],
+        name="idx_events_timeline",
+    )
+    _safe_create(
+        database.events,
+        [("session_id", ASCENDING), ("timestamp", DESCENDING)],
+        name="idx_events_session_timeline",
+    )
+    _safe_create(
+        database.events,
+        [("event_type", ASCENDING), ("timestamp", DESCENDING)],
+        name="idx_events_type_timeline",
+    )
+    _safe_create(
+        database.events,
+        [("category", ASCENDING), ("timestamp", DESCENDING)],
+        name="idx_events_category_timeline",
+    )
+    _safe_create(
+        database.events, [("correlation_id", ASCENDING)], sparse=True, name="idx_events_correlation"
+    )
 
     # Sessions collection
-    _safe_create(database.sessions, [("session_id", ASCENDING)], unique=True, name="uniq_session_id")
+    _safe_create(
+        database.sessions, [("session_id", ASCENDING)], unique=True, name="uniq_session_id"
+    )
     _safe_create(database.sessions, [("updated_at", DESCENDING)], name="idx_sessions_updated_at")
 
     # Agents collection
@@ -97,15 +125,42 @@ def init_db_indexes(db=None):
 
     # Tasks collection
     _safe_create(database.tasks, [("task_id", ASCENDING)], unique=True, name="uniq_task_id")
-    _safe_create(database.tasks, [("session_id", ASCENDING), ("updated_at", DESCENDING)], name="idx_tasks_session")
+    _safe_create(
+        database.tasks,
+        [("session_id", ASCENDING), ("updated_at", DESCENDING)],
+        name="idx_tasks_session",
+    )
 
     # Interactions collection
-    _safe_create(database.interactions, [("interaction_id", ASCENDING)], unique=True, name="uniq_interaction_id")
-    _safe_create(database.interactions, [("status", ASCENDING), ("created_at", DESCENDING)], name="idx_interactions_status_time")
-    _safe_create(database.interactions, [("session_id", ASCENDING), ("status", ASCENDING)], name="idx_interactions_session_status")
+    _safe_create(
+        database.interactions,
+        [("interaction_id", ASCENDING)],
+        unique=True,
+        name="uniq_interaction_id",
+    )
+    _safe_create(
+        database.interactions,
+        [("status", ASCENDING), ("created_at", DESCENDING)],
+        name="idx_interactions_status_time",
+    )
+    _safe_create(
+        database.interactions,
+        [("session_id", ASCENDING), ("status", ASCENDING)],
+        name="idx_interactions_session_status",
+    )
 
     # Idempotency collection
-    _safe_create(database.idempotency_keys, [("scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uniq_scope_idempotency_key")
-    _safe_create(database.idempotency_keys, [("expires_at", ASCENDING)], expireAfterSeconds=0, name="ttl_idempotency_expires")
+    _safe_create(
+        database.idempotency_keys,
+        [("scope", ASCENDING), ("idempotency_key", ASCENDING)],
+        unique=True,
+        name="uniq_scope_idempotency_key",
+    )
+    _safe_create(
+        database.idempotency_keys,
+        [("expires_at", ASCENDING)],
+        expireAfterSeconds=0,
+        name="ttl_idempotency_expires",
+    )
 
     logger.info("MongoDB indexes verified on database '%s'", database.name)

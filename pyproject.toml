@@ -1,26 +1,14 @@
-[project]
-name = "cloudwatch_v2"
-version = "2.0.0"
-description = "Service-Oriented Local-First Antigravity Observer and Mobile Monitor with MongoDB and Tailscale Private Access"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn>=0.30.0",
-    "pymongo>=4.9.0",
-    "pydantic>=2.9.0",
-    "pydantic-settings>=2.5.0",
-    "python-dotenv>=1.0.0",
-    "qrcode>=8.0",
-    "httpx>=0.27.0",
-]
+# pyproject.toml - Global Python tool configuration
+[tool.ruff]
+line-length = 100
+target-version = "py312"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.24.0",
-]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

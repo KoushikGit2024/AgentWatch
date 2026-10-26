@@ -40,11 +40,13 @@ def get_readiness():
 
     return JSONResponse(
         status_code=http_code,
-        content=jsonable_encoder({
-            "ready": is_ready,
-            "database": mongo_status,
-            "antigravity": ag_status,
-            "tailscale": tailscale_status,
-            "capabilities": capabilities,
-        })
+        content=jsonable_encoder(
+            {
+                "ready": is_ready,
+                "database": mongo_status,
+                "antigravity": ag_status,
+                "tailscale": tailscale_status,
+                "capabilities": capabilities,
+            }
+        ),
     )

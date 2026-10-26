@@ -48,48 +48,88 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
                 return { found: true, tag: el.tagName };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 201,
-                "method": "Runtime.evaluate",
-                "params": {"expression": focus_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 201,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": focus_js, "returnByValue": True},
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.5))
             prep_res = reply.get("result", {}).get("result", {}).get("value", {}) or {}
             if not prep_res.get("found"):
                 return {"success": False, "error": "Antigravity prompt input not located in DOM"}
 
             # 2. Clear any existing text via Ctrl+A and Backspace
-            await ws.send(json.dumps({
-                "id": 202,
-                "method": "Input.dispatchKeyEvent",
-                "params": {"type": "rawKeyDown", "key": "a", "code": "KeyA", "modifiers": 2, "windowsVirtualKeyCode": 65}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 202,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "rawKeyDown",
+                            "key": "a",
+                            "code": "KeyA",
+                            "modifiers": 2,
+                            "windowsVirtualKeyCode": 65,
+                        },
+                    }
+                )
+            )
             await ws.recv()
-            await ws.send(json.dumps({
-                "id": 203,
-                "method": "Input.dispatchKeyEvent",
-                "params": {"type": "keyUp", "key": "a", "code": "KeyA", "modifiers": 2, "windowsVirtualKeyCode": 65}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 203,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "keyUp",
+                            "key": "a",
+                            "code": "KeyA",
+                            "modifiers": 2,
+                            "windowsVirtualKeyCode": 65,
+                        },
+                    }
+                )
+            )
             await ws.recv()
-            await ws.send(json.dumps({
-                "id": 204,
-                "method": "Input.dispatchKeyEvent",
-                "params": {"type": "rawKeyDown", "key": "Backspace", "code": "Backspace", "windowsVirtualKeyCode": 8}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 204,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "rawKeyDown",
+                            "key": "Backspace",
+                            "code": "Backspace",
+                            "windowsVirtualKeyCode": 8,
+                        },
+                    }
+                )
+            )
             await ws.recv()
-            await ws.send(json.dumps({
-                "id": 205,
-                "method": "Input.dispatchKeyEvent",
-                "params": {"type": "keyUp", "key": "Backspace", "code": "Backspace", "windowsVirtualKeyCode": 8}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 205,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "keyUp",
+                            "key": "Backspace",
+                            "code": "Backspace",
+                            "windowsVirtualKeyCode": 8,
+                        },
+                    }
+                )
+            )
             await ws.recv()
 
             # 3. Native CDP Text Insertion into focused editor
-            await ws.send(json.dumps({
-                "id": 206,
-                "method": "Input.insertText",
-                "params": {"text": message}
-            }))
+            await ws.send(
+                json.dumps({"id": 206, "method": "Input.insertText", "params": {"text": message}})
+            )
             await asyncio.wait_for(ws.recv(), timeout=2.0)
 
             # Give DOM a small moment to mount/enable the Send button
@@ -131,39 +171,51 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
                 return { submitted: false };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 207,
-                "method": "Runtime.evaluate",
-                "params": {"expression": submit_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 207,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": submit_js, "returnByValue": True},
+                    }
+                )
+            )
             sub_reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
             sub_res = sub_reply.get("result", {}).get("result", {}).get("value", {}) or {}
 
             # 5. If button wasn't clicked, dispatch Enter key event
             if not sub_res.get("submitted"):
-                await ws.send(json.dumps({
-                    "id": 208,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {
-                        "type": "rawKeyDown",
-                        "key": "Enter",
-                        "code": "Enter",
-                        "windowsVirtualKeyCode": 13,
-                        "nativeVirtualKeyCode": 13
-                    }
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 208,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "rawKeyDown",
+                                "key": "Enter",
+                                "code": "Enter",
+                                "windowsVirtualKeyCode": 13,
+                                "nativeVirtualKeyCode": 13,
+                            },
+                        }
+                    )
+                )
                 await asyncio.wait_for(ws.recv(), timeout=2.0)
-                await ws.send(json.dumps({
-                    "id": 209,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {
-                        "type": "keyUp",
-                        "key": "Enter",
-                        "code": "Enter",
-                        "windowsVirtualKeyCode": 13,
-                        "nativeVirtualKeyCode": 13
-                    }
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 209,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "keyUp",
+                                "key": "Enter",
+                                "code": "Enter",
+                                "windowsVirtualKeyCode": 13,
+                                "nativeVirtualKeyCode": 13,
+                            },
+                        }
+                    )
+                )
                 await asyncio.wait_for(ws.recv(), timeout=2.0)
 
             # 6. Immediate check: if Antigravity queued the message while generating, trigger 'Send Now' immediately
@@ -181,14 +233,22 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
                 return { auto_sent: false };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 210,
-                "method": "Runtime.evaluate",
-                "params": {"expression": send_now_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 210,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": send_now_js, "returnByValue": True},
+                    }
+                )
+            )
             await asyncio.sleep(0.05)
 
-            return {"success": True, "message_length": len(message), "submitted_via": sub_res.get("via", "enter_key")}
+            return {
+                "success": True,
+                "message_length": len(message),
+                "submitted_via": sub_res.get("via", "enter_key"),
+            }
     except Exception as exc:
         logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
         return {"success": False, "error": str(exc)}
@@ -235,54 +295,84 @@ async def dispatch_stop_generation(target_url: str) -> Dict[str, Any]:
                 return { clicked: false };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 210,
-                "method": "Runtime.evaluate",
-                "params": {"expression": stop_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 210,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": stop_js, "returnByValue": True},
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.5))
             val = reply.get("result", {}).get("result", {}).get("value", {})
 
             # Also dispatch Ctrl+D key combination
-            await ws.send(json.dumps({
-                "id": 211,
-                "method": "Input.dispatchKeyEvent",
-                "params": {
-                    "type": "rawKeyDown",
-                    "key": "d",
-                    "code": "KeyD",
-                    "modifiers": 2,
-                    "windowsVirtualKeyCode": 68,
-                    "nativeVirtualKeyCode": 68
-                }
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 211,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "rawKeyDown",
+                            "key": "d",
+                            "code": "KeyD",
+                            "modifiers": 2,
+                            "windowsVirtualKeyCode": 68,
+                            "nativeVirtualKeyCode": 68,
+                        },
+                    }
+                )
+            )
             await asyncio.wait_for(ws.recv(), timeout=1.5)
-            await ws.send(json.dumps({
-                "id": 212,
-                "method": "Input.dispatchKeyEvent",
-                "params": {
-                    "type": "keyUp",
-                    "key": "d",
-                    "code": "KeyD",
-                    "modifiers": 2,
-                    "windowsVirtualKeyCode": 68,
-                    "nativeVirtualKeyCode": 68
-                }
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 212,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "keyUp",
+                            "key": "d",
+                            "code": "KeyD",
+                            "modifiers": 2,
+                            "windowsVirtualKeyCode": 68,
+                            "nativeVirtualKeyCode": 68,
+                        },
+                    }
+                )
+            )
             await asyncio.wait_for(ws.recv(), timeout=1.5)
 
             # Dispatch Escape key
-            await ws.send(json.dumps({
-                "id": 213,
-                "method": "Input.dispatchKeyEvent",
-                "params": {"type": "rawKeyDown", "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 213,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "rawKeyDown",
+                            "key": "Escape",
+                            "code": "Escape",
+                            "windowsVirtualKeyCode": 27,
+                        },
+                    }
+                )
+            )
             await asyncio.wait_for(ws.recv(), timeout=1.5)
-            await ws.send(json.dumps({
-                "id": 214,
-                "method": "Input.dispatchKeyEvent",
-                "params": {"type": "keyUp", "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 214,
+                        "method": "Input.dispatchKeyEvent",
+                        "params": {
+                            "type": "keyUp",
+                            "key": "Escape",
+                            "code": "Escape",
+                            "windowsVirtualKeyCode": 27,
+                        },
+                    }
+                )
+            )
             await asyncio.wait_for(ws.recv(), timeout=1.5)
 
             return {"success": True, "stopped": True, "details": val}
@@ -516,13 +606,19 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                 return { has_popup: false };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 219,
-                "method": "Runtime.evaluate",
-                "params": {"expression": inspect_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 219,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": inspect_js, "returnByValue": True},
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
-            return reply.get("result", {}).get("result", {}).get("value", {}) or {"has_popup": False}
+            return reply.get("result", {}).get("result", {}).get("value", {}) or {
+                "has_popup": False
+            }
     except Exception as exc:
         logger.debug("CDP popup inspection notice: %s", str(exc))
         return {"has_popup": False}
@@ -585,13 +681,20 @@ async def dispatch_inspect_active_banners(target_url: str) -> Dict[str, Any]:
                 };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 218,
-                "method": "Runtime.evaluate",
-                "params": {"expression": inspect_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 218,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": inspect_js, "returnByValue": True},
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
-            return reply.get("result", {}).get("result", {}).get("value", {}) or {"has_banners": False, "banners": []}
+            return reply.get("result", {}).get("result", {}).get("value", {}) or {
+                "has_banners": False,
+                "banners": [],
+            }
     except Exception as exc:
         logger.debug("CDP banner inspection notice: %s", str(exc))
         return {"has_banners": False, "banners": []}
@@ -958,37 +1061,54 @@ async def dispatch_forward_approval(
                 return {{ clicked: false, found_buttons: allLabels }};
             }})()
             """
-            await ws.send(json.dumps({
-                "id": 220,
-                "method": "Runtime.evaluate",
-                "params": {"expression": click_js, "awaitPromise": True, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 220,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": click_js,
+                            "awaitPromise": True,
+                            "returnByValue": True,
+                        },
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.5))
             res = reply.get("result", {}).get("result", {}).get("value", {}) or {}
             clicked = bool(res.get("clicked"))
 
             # Keyboard fallback: Enter = allow/accept, Escape = deny
             if not clicked:
-                is_allow = "allow" in decision.lower() or "accept" in decision.lower() or "run" in decision.lower()
+                is_allow = (
+                    "allow" in decision.lower()
+                    or "accept" in decision.lower()
+                    or "run" in decision.lower()
+                )
                 key = "Enter" if is_allow else "Escape"
                 vk = 13 if is_allow else 27
                 for ev_type in ("rawKeyDown", "keyUp"):
-                    await ws.send(json.dumps({
-                        "id": 221,
-                        "method": "Input.dispatchKeyEvent",
-                        "params": {
-                            "type": ev_type,
-                            "key": key,
-                            "code": "Enter" if is_allow else "Escape",
-                            "windowsVirtualKeyCode": vk,
-                            "nativeVirtualKeyCode": vk
-                        }
-                    }))
+                    await ws.send(
+                        json.dumps(
+                            {
+                                "id": 221,
+                                "method": "Input.dispatchKeyEvent",
+                                "params": {
+                                    "type": ev_type,
+                                    "key": key,
+                                    "code": "Enter" if is_allow else "Escape",
+                                    "windowsVirtualKeyCode": vk,
+                                    "nativeVirtualKeyCode": vk,
+                                },
+                            }
+                        )
+                    )
                     await asyncio.wait_for(ws.recv(), timeout=1.5)
 
                 logger.info(
                     "CDP approval button not found; dispatched keyboard fallback '%s'. Visible buttons: %s",
-                    key, res.get("found_buttons", [])
+                    key,
+                    res.get("found_buttons", []),
                 )
 
         # If the user also provided custom instructions, only fall back to typing in the composer
@@ -1008,7 +1128,7 @@ async def dispatch_forward_approval(
             "found_buttons": res.get("found_buttons", []),
             "custom_response_dispatched": bool(custom_dispatch and custom_dispatch.get("success")),
             "requires_native_ide": False,
-            "message": "Action forwarded to IDE" if clicked else "Sent keyboard fallback to IDE"
+            "message": "Action forwarded to IDE" if clicked else "Sent keyboard fallback to IDE",
         }
     except Exception as exc:
         logger.error("Failed to forward approval via CDP: %s", str(exc))
@@ -1193,22 +1313,41 @@ async def dispatch_answer_question(
                 }};
             }})()
             """
-            await ws.send(json.dumps({
-                "id": 225,
-                "method": "Runtime.evaluate",
-                "params": {"expression": step_js, "awaitPromise": True, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 225,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": step_js,
+                            "awaitPromise": True,
+                            "returnByValue": True,
+                        },
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.5))
             val = reply.get("result", {}).get("result", {}).get("value", {}) or {}
 
             # If dialog wasn't closed and Enter key was needed for confirmation
-            if not val.get("closed_verified") and (val.get("custom_injected") or val.get("clicked_options")):
+            if not val.get("closed_verified") and (
+                val.get("custom_injected") or val.get("clicked_options")
+            ):
                 for ev in ("rawKeyDown", "keyUp"):
-                    await ws.send(json.dumps({
-                        "id": 226,
-                        "method": "Input.dispatchKeyEvent",
-                        "params": {"type": ev, "key": "Enter", "code": "Enter", "windowsVirtualKeyCode": 13}
-                    }))
+                    await ws.send(
+                        json.dumps(
+                            {
+                                "id": 226,
+                                "method": "Input.dispatchKeyEvent",
+                                "params": {
+                                    "type": ev,
+                                    "key": "Enter",
+                                    "code": "Enter",
+                                    "windowsVirtualKeyCode": 13,
+                                },
+                            }
+                        )
+                    )
                     await asyncio.wait_for(ws.recv(), timeout=1.5)
 
             return {
@@ -1218,7 +1357,7 @@ async def dispatch_answer_question(
                 "custom_injected": val.get("custom_injected", False),
                 "closed_verified": val.get("closed_verified", False),
                 "remaining_modal": val.get("remaining_modal", False),
-                "error": val.get("error")
+                "error": val.get("error"),
             }
     except Exception as exc:
         logger.warning("CDP answer_question execution error: %s", str(exc))
@@ -1226,7 +1365,7 @@ async def dispatch_answer_question(
             "success": False,
             "error": str(exc),
             "clicked_options": [],
-            "closed_verified": False
+            "closed_verified": False,
         }
 
 
@@ -1235,7 +1374,7 @@ async def dispatch_switch_model(target_url: str, target_model: str) -> Dict[str,
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             switch_js = f"""
             (async () => {{
                 const target = {json.dumps(target_model.lower())};
@@ -1254,11 +1393,19 @@ async def dispatch_switch_model(target_url: str, target_model: str) -> Dict[str,
                 return {{ success: false, error: 'Model option not in current plan' }};
             }})()
             """
-            await ws.send(json.dumps({
-                "id": 230,
-                "method": "Runtime.evaluate",
-                "params": {"expression": switch_js, "awaitPromise": True, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 230,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": switch_js,
+                            "awaitPromise": True,
+                            "returnByValue": True,
+                        },
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.0))
             return reply.get("result", {}).get("result", {}).get("value", {}) or {"success": False}
     except Exception as exc:
@@ -1271,7 +1418,7 @@ async def dispatch_switch_mode(target_url: str, target_mode: str) -> Dict[str, A
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             mode_js = f"""
             (async () => {{
                 const target = {json.dumps(target_mode.lower())};
@@ -1302,13 +1449,24 @@ async def dispatch_switch_mode(target_url: str, target_mode: str) -> Dict[str, A
                 return {{ success: true, mode: {json.dumps(target_mode)}, note: 'Mode state recorded' }};
             }})()
             """
-            await ws.send(json.dumps({
-                "id": 235,
-                "method": "Runtime.evaluate",
-                "params": {"expression": mode_js, "awaitPromise": True, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 235,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": mode_js,
+                            "awaitPromise": True,
+                            "returnByValue": True,
+                        },
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.0))
-            return reply.get("result", {}).get("result", {}).get("value", {}) or {"success": True, "mode": target_mode}
+            return reply.get("result", {}).get("result", {}).get("value", {}) or {
+                "success": True,
+                "mode": target_mode,
+            }
     except Exception as exc:
         logger.debug("CDP mode switch notice: %s", str(exc))
         return {"success": True, "mode": target_mode}
@@ -1319,7 +1477,7 @@ async def dispatch_read_model(target_url: str, force_full_scan: bool = False) ->
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             passive_js = r"""
             (() => {
                 const btn = Array.from(document.querySelectorAll('*')).find(e => (e.getAttribute('aria-label') || '').includes('Select model'));
@@ -1329,11 +1487,15 @@ async def dispatch_read_model(target_url: str, force_full_scan: bool = False) ->
                 return m ? m[1].trim() : btn.innerText.trim();
             })()
             """
-            await ws.send(json.dumps({
-                "id": 240,
-                "method": "Runtime.evaluate",
-                "params": {"expression": passive_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 240,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": passive_js, "returnByValue": True},
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
             cur = reply.get("result", {}).get("result", {}).get("value")
             return {"model": cur}
@@ -1350,7 +1512,7 @@ async def dispatch_toggle_terminal(target_url: str) -> Dict[str, Any]:
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             toggle_js = r"""
             (async () => {
                 const btn = document.querySelector('[data-tooltip-id="tooltip-terminal"]');
@@ -1382,11 +1544,19 @@ async def dispatch_toggle_terminal(target_url: str) -> Dict[str, Any]:
                 };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 250,
-                "method": "Runtime.evaluate",
-                "params": {"expression": toggle_js, "awaitPromise": True, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 250,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": toggle_js,
+                            "awaitPromise": True,
+                            "returnByValue": True,
+                        },
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.5))
             val = reply.get("result", {}).get("result", {}).get("value")
             return val or {"success": True, "toggled": False, "tasks": []}
@@ -1402,7 +1572,7 @@ async def dispatch_get_terminal_tasks(target_url: str) -> Dict[str, Any]:
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             query_js = r"""
             (() => {
                 const taskNodes = Array.from(document.querySelectorAll('[data-tooltip-id^="terminal-expanded-content"]'));
@@ -1425,11 +1595,15 @@ async def dispatch_get_terminal_tasks(target_url: str) -> Dict[str, Any]:
                 };
             })()
             """
-            await ws.send(json.dumps({
-                "id": 251,
-                "method": "Runtime.evaluate",
-                "params": {"expression": query_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 251,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": query_js, "returnByValue": True},
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.5))
             val = reply.get("result", {}).get("result", {}).get("value")
             return val or {"success": True, "tasks": []}
@@ -1438,14 +1612,16 @@ async def dispatch_get_terminal_tasks(target_url: str) -> Dict[str, Any]:
         return {"success": False, "error": str(exc), "tasks": []}
 
 
-async def dispatch_kill_terminal_task(target_url: str, index: int = 0, tooltip_id: Optional[str] = None) -> Dict[str, Any]:
+async def dispatch_kill_terminal_task(
+    target_url: str, index: int = 0, tooltip_id: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Click the specific close button on a terminal task row in Antigravity IDE workbench.
     """
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             target_tooltip = tooltip_id or f"terminal-expanded-content--{index}"
             kill_js = f"""
             (async () => {{
@@ -1475,15 +1651,22 @@ async def dispatch_kill_terminal_task(target_url: str, index: int = 0, tooltip_i
                 return {{ success: false, error: 'Terminal task close button not found for ' + targetId }};
             }})()
             """
-            await ws.send(json.dumps({
-                "id": 252,
-                "method": "Runtime.evaluate",
-                "params": {"expression": kill_js, "awaitPromise": True, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 252,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": kill_js,
+                            "awaitPromise": True,
+                            "returnByValue": True,
+                        },
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.0))
             val = reply.get("result", {}).get("result", {}).get("value")
             return val or {"success": False, "error": "Evaluation returned null"}
     except Exception as exc:
         logger.warning("CDP kill terminal task failed: %s", str(exc))
         return {"success": False, "error": str(exc)}
-

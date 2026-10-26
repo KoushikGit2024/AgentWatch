@@ -9,12 +9,21 @@ CANCEL_STATUSES = {"CANCELED", "CANCELLED", "ABORTED"}
 HARD_ERROR_TYPES = {"ERROR", "ERROR_MESSAGE", "CANCELED", "CANCELLED"}
 SOFT_ERROR_TYPES = {"SYSTEM", "SYSTEM_MESSAGE", "EPHEMERAL_MESSAGE"}  # only errors if text matches
 TOOL_RESULT_TYPES = (
-    "RUN_COMMAND", "WRITE_TO_FILE", "REPLACE_FILE_CONTENT", "MULTI_REPLACE_FILE_CONTENT",
-    "VIEW_FILE", "GREP_SEARCH", "LIST_DIRECTORY", "GENERIC", "CODE_ACTION",
+    "RUN_COMMAND",
+    "WRITE_TO_FILE",
+    "REPLACE_FILE_CONTENT",
+    "MULTI_REPLACE_FILE_CONTENT",
+    "VIEW_FILE",
+    "GREP_SEARCH",
+    "LIST_DIRECTORY",
+    "GENERIC",
+    "CODE_ACTION",
 )
 TERMINAL_ERROR_TYPES = {"quota_exceeded", "cancelled"}
 
-_QUOTA = re.compile(r"quota|rate[\s_-]?limit|\b429\b|resource[_\s]?exhausted|too many requests", re.I)
+_QUOTA = re.compile(
+    r"quota|rate[\s_-]?limit|\b429\b|resource[_\s]?exhausted|too many requests", re.I
+)
 _CANCEL = re.compile(r"cancel+ed|user cancel|aborted by user|interrupted by user", re.I)
 _TIMEOUT = re.compile(r"timed out|timeout|deadline exceeded", re.I)
 _PERM = re.compile(r"permission denied|access is denied|eacces|not permitted", re.I)

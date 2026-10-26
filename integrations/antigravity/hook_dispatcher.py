@@ -44,7 +44,8 @@ def dispatch_from_stdin(event_type: str = "PreToolUse") -> int:
 
     session_id = payload.get("session_id") or payload.get("conversation_id") or "stdin_session"
     req = IngestEventRequest(
-        source_event_id=payload.get("source_event_id") or f"{session_id}:{event_type}:{datetime.now(timezone.utc).timestamp()}",
+        source_event_id=payload.get("source_event_id")
+        or f"{session_id}:{event_type}:{datetime.now(timezone.utc).timestamp()}",
         agent_id=payload.get("agent_id", "antigravity_agent"),
         session_id=session_id,
         task_id=payload.get("task_id"),
@@ -63,7 +64,11 @@ def dispatch_from_stdin(event_type: str = "PreToolUse") -> int:
 
 def main():
     parser = argparse.ArgumentParser(description="AgentWatch Antigravity Hook Dispatcher")
-    parser.add_argument("--from-env", action="store_true", help="Capture metadata from active subprocess environment")
+    parser.add_argument(
+        "--from-env",
+        action="store_true",
+        help="Capture metadata from active subprocess environment",
+    )
     parser.add_argument("--event-type", default="PreToolUse", help="Lifecycle hook event type")
     args = parser.parse_args()
 

@@ -16,7 +16,20 @@ from typing import Optional
 
 from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
-from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics, attachments, files, queue_routes, push
+from api.routes import (
+    health,
+    events,
+    sessions,
+    controls,
+    auth,
+    interactions,
+    git_review,
+    diagnostics,
+    attachments,
+    files,
+    queue_routes,
+    push,
+)
 from security.authentication import check_auth_required
 from services.log_buffer import attach_to_all_loggers, log_buffer_handler
 from services.conversation_service import conversation_service
@@ -32,15 +45,19 @@ log_dir.mkdir(exist_ok=True)
 # Console handler: strictly errors only
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.ERROR)
-console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] [%(name)s] %(message)s"))
+console_handler.setFormatter(
+    logging.Formatter("%(asctime)s [%(levelname)s] [%(name)s] %(message)s")
+)
 
 from datetime import datetime
+
 
 class DailyDateFileHandler(logging.Handler):
     """
     A robust file handler that writes directly to date-segregated files:
     e.g., logs/agentwatch_2026-10-25.log. Automatically rolls over when date changes.
     """
+
     def __init__(self, directory: Path, prefix: str = "agentwatch_"):
         super().__init__()
         self.directory = directory
@@ -73,11 +90,12 @@ class DailyDateFileHandler(logging.Handler):
             self.file_handler = None
         super().close()
 
+
 daily_file_handler = DailyDateFileHandler(log_dir)
 daily_file_handler.setLevel(logging.DEBUG)
-daily_file_handler.setFormatter(logging.Formatter(
-    "%(asctime)s [%(levelname)s] [%(name)s:%(lineno)d] %(message)s"
-))
+daily_file_handler.setFormatter(
+    logging.Formatter("%(asctime)s [%(levelname)s] [%(name)s:%(lineno)d] %(message)s")
+)
 
 # Apply to root logger
 root_logger = logging.getLogger()
@@ -126,13 +144,15 @@ async def watch_transcript_loop():
             if transcript_changed:
                 paginated = conversation_service.get_paginated_conversation(limit=15)
                 if websocket_manager.active_connections:
-                    await websocket_manager.broadcast({
-                        "type": "chat_update",
-                        "messages": paginated["messages"],
-                        "total": paginated["total"],
-                        "oldest_index": paginated["oldest_index"],
-                        "has_more": paginated["has_more"],
-                    })
+                    await websocket_manager.broadcast(
+                        {
+                            "type": "chat_update",
+                            "messages": paginated["messages"],
+                            "total": paginated["total"],
+                            "oldest_index": paginated["oldest_index"],
+                            "has_more": paginated["has_more"],
+                        }
+                    )
 
             dom_probe_tick = (dom_probe_tick + 1) % 2
             if websocket_manager.active_connections or transcript_changed:
@@ -155,20 +175,32 @@ async def watch_transcript_loop():
                                         "question": dom_popup.get("title") or "Select an option",
                                         "options": dom_popup.get("options") or [],
                                         "is_multi_select": dom_popup.get("is_multi_select", False),
-                                        "allow_custom_response": dom_popup.get("allow_custom_response", True),
+                                        "allow_custom_response": dom_popup.get(
+                                            "allow_custom_response", True
+                                        ),
                                     },
                                     is_active=True,
                                 )
                             elif not pending_approval:
-                                target_str = dom_popup.get("command") or dom_popup.get("target") or dom_popup.get("title") or "action"
-                                step_hash = hashlib.md5(target_str.encode("utf-8", errors="ignore")).hexdigest()[:8]
+                                target_str = (
+                                    dom_popup.get("command")
+                                    or dom_popup.get("target")
+                                    or dom_popup.get("title")
+                                    or "action"
+                                )
+                                step_hash = hashlib.md5(
+                                    target_str.encode("utf-8", errors="ignore")
+                                ).hexdigest()[:8]
                                 step_id = f"dom-{step_hash}"
                                 if step_id not in conversation_service._resolved_approvals:
                                     cached_dom_approval = {
                                         "step_id": step_id,
-                                        "request_type": "command" if dom_popup.get("command") else "decision",
+                                        "request_type": "command"
+                                        if dom_popup.get("command")
+                                        else "decision",
                                         "target": target_str,
-                                        "title": dom_popup.get("title") or "Antigravity Approval Required",
+                                        "title": dom_popup.get("title")
+                                        or "Antigravity Approval Required",
                                         "description": "Detected live confirmation popup in Antigravity IDE.",
                                         "command": dom_popup.get("command"),
                                         "options": dom_popup.get("options"),
@@ -179,11 +211,17 @@ async def watch_transcript_loop():
                             # Require 4 consecutive misses (~2.8s) before dismissing live popup to prevent transient flicker
                             if dom_miss_count >= 4:
                                 cached_dom_approval = None
-                                if conversation_service._latest_pending_approval and conversation_service._latest_pending_approval.get("step_id", "").startswith("dom-"):
+                                if (
+                                    conversation_service._latest_pending_approval
+                                    and conversation_service._latest_pending_approval.get(
+                                        "step_id", ""
+                                    ).startswith("dom-")
+                                ):
                                     conversation_service._latest_pending_approval = None
                                 # Clear stale DOM approvals so future prompts for the same command/URL can pop up again
                                 conversation_service._resolved_approvals = {
-                                    k: v for k, v in conversation_service._resolved_approvals.items()
+                                    k: v
+                                    for k, v in conversation_service._resolved_approvals.items()
                                     if not k.startswith("dom-") and not k.startswith("cmd-")
                                 }
                                 interaction_service.sync_question_from_transcript(
@@ -208,20 +246,27 @@ async def watch_transcript_loop():
                     elif (now - approval_candidate_time) >= 0.5:
                         last_approval_key = cur_approval_key
                         approval_candidate_key = None
-                        await websocket_manager.broadcast({
-                            "type": "pending_approval",
-                            "approval": pending_approval,
-                        })
+                        await websocket_manager.broadcast(
+                            {
+                                "type": "pending_approval",
+                                "approval": pending_approval,
+                            }
+                        )
                         try:
                             from services.web_push_service import web_push_service
+
                             cmd_title = pending_approval.get("title") or "Approval Needed"
-                            cmd_target = pending_approval.get("command") or pending_approval.get("target") or "Action"
+                            cmd_target = (
+                                pending_approval.get("command")
+                                or pending_approval.get("target")
+                                or "Action"
+                            )
                             web_push_service.send_notification(
                                 title=f"⚠️ {cmd_title}",
                                 body=f"Agent requesting approval: {cmd_target[:120]}",
                                 tag=f"approval-{cur_approval_key}",
                                 url="/",
-                                data={"type": "approval", "step_id": cur_approval_key}
+                                data={"type": "approval", "step_id": cur_approval_key},
                             )
                         except Exception as push_err:
                             logger.debug("Failed to dispatch approval web push: %s", str(push_err))
@@ -230,38 +275,49 @@ async def watch_transcript_loop():
                         approval_candidate_key = None
                         if last_approval_key is not None:
                             last_approval_key = None
-                            await websocket_manager.broadcast({
-                                "type": "approval_dismissed",
-                            })
+                            await websocket_manager.broadcast(
+                                {
+                                    "type": "approval_dismissed",
+                                }
+                            )
 
                 pending_list = interaction_service.list_pending()
                 active_interaction = pending_list[0] if pending_list else None
-                cur_int_id = active_interaction.get("interaction_id") if active_interaction else None
+                cur_int_id = (
+                    active_interaction.get("interaction_id") if active_interaction else None
+                )
                 if cur_int_id and cur_int_id != last_interaction_id:
                     last_interaction_id = cur_int_id
-                    await websocket_manager.broadcast({
-                        "type": "interaction_prompt",
-                        "interaction": active_interaction,
-                    })
+                    await websocket_manager.broadcast(
+                        {
+                            "type": "interaction_prompt",
+                            "interaction": active_interaction,
+                        }
+                    )
                     try:
                         from services.web_push_service import web_push_service
-                        prompt_msg = active_interaction.get("prompt") or "Agent has a question for you"
+
+                        prompt_msg = (
+                            active_interaction.get("prompt") or "Agent has a question for you"
+                        )
                         web_push_service.send_notification(
                             title="❓ Agent Input Required",
                             body=prompt_msg[:120],
                             tag=f"interaction-{cur_int_id}",
                             url="/",
-                            data={"type": "interaction", "interaction_id": cur_int_id}
+                            data={"type": "interaction", "interaction_id": cur_int_id},
                         )
                     except Exception as push_err:
                         logger.debug("Failed to dispatch interaction web push: %s", str(push_err))
                 elif not cur_int_id and last_interaction_id is not None:
                     prev_id = last_interaction_id
                     last_interaction_id = None
-                    await websocket_manager.broadcast({
-                        "type": "interaction_resolved",
-                        "interaction_id": prev_id,
-                    })
+                    await websocket_manager.broadcast(
+                        {
+                            "type": "interaction_resolved",
+                            "interaction_id": prev_id,
+                        }
+                    )
 
         except asyncio.CancelledError:
             break
@@ -278,10 +334,19 @@ async def lifespan(app: FastAPI):
         u_log = logging.getLogger(u_name)
         u_log.handlers = [console_handler, daily_file_handler, log_buffer_handler]
         u_log.propagate = False
-    logger.info("Starting AgentWatch server on %s:%d (env: %s)", settings.host, settings.port, settings.environment)
+    logger.info(
+        "Starting AgentWatch server on %s:%d (env: %s)",
+        settings.host,
+        settings.port,
+        settings.environment,
+    )
     mongo_status = check_mongo_connection()
     if mongo_status["status"] == "connected":
-        logger.info("Connected to MongoDB %s database '%s'", mongo_status["version"], settings.mongodb_database)
+        logger.info(
+            "Connected to MongoDB %s database '%s'",
+            mongo_status["version"],
+            settings.mongodb_database,
+        )
         try:
             init_db_indexes()
         except Exception as e:
@@ -362,7 +427,13 @@ async def auth_middleware(request: Request, call_next):
         "/openapi.json",
     ]
     path = request.url.path
-    if any(path.startswith(p) for p in public_paths) or path in ("/sw.js", "/manifest.json", "/favicon.svg", "/favicon.ico", "/logo.svg"):
+    if any(path.startswith(p) for p in public_paths) or path in (
+        "/sw.js",
+        "/manifest.json",
+        "/favicon.svg",
+        "/favicon.ico",
+        "/logo.svg",
+    ):
         return await call_next(request)
 
     if check_auth_required(request):
@@ -435,26 +506,32 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket_manager.connect(websocket)
     try:
         paginated = conversation_service.get_paginated_conversation(limit=15)
-        await websocket.send_json({
-            "type": "init",
-            "status": "connected",
-            "messages": paginated["messages"],
-            "total": paginated["total"],
-            "oldest_index": paginated["oldest_index"],
-            "has_more": paginated["has_more"],
-        })
+        await websocket.send_json(
+            {
+                "type": "init",
+                "status": "connected",
+                "messages": paginated["messages"],
+                "total": paginated["total"],
+                "oldest_index": paginated["oldest_index"],
+                "has_more": paginated["has_more"],
+            }
+        )
         pending_approval = conversation_service.get_pending_approval()
         if pending_approval:
-            await websocket.send_json({
-                "type": "pending_approval",
-                "approval": pending_approval,
-            })
+            await websocket.send_json(
+                {
+                    "type": "pending_approval",
+                    "approval": pending_approval,
+                }
+            )
         pending_interactions = interaction_service.list_pending()
         if pending_interactions:
-            await websocket.send_json({
-                "type": "interaction_prompt",
-                "interaction": pending_interactions[0],
-            })
+            await websocket.send_json(
+                {
+                    "type": "interaction_prompt",
+                    "interaction": pending_interactions[0],
+                }
+            )
 
         while True:
             text = await websocket.receive_text()
@@ -462,13 +539,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "pong"})
             elif text == "refresh_chat":
                 paginated = conversation_service.get_paginated_conversation(limit=15)
-                await websocket.send_json({
-                    "type": "chat_update",
-                    "messages": paginated["messages"],
-                    "total": paginated["total"],
-                    "oldest_index": paginated["oldest_index"],
-                    "has_more": paginated["has_more"],
-                })
+                await websocket.send_json(
+                    {
+                        "type": "chat_update",
+                        "messages": paginated["messages"],
+                        "total": paginated["total"],
+                        "oldest_index": paginated["oldest_index"],
+                        "has_more": paginated["has_more"],
+                    }
+                )
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
     except Exception as exc:

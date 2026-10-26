@@ -21,7 +21,9 @@ def get_capabilities():
 
 
 @router.get("/pending")
-def list_pending_interactions(session_id: Optional[str] = Query(None, description="Filter by session UUID")):
+def list_pending_interactions(
+    session_id: Optional[str] = Query(None, description="Filter by session UUID"),
+):
     """
     List active pending interaction requests awaiting user response on mobile.
     """
@@ -57,10 +59,24 @@ async def inject_test_interaction(kind: Optional[str] = "single_choice"):
         options_list = []
     else:
         from models.schemas import InteractionOption
+
         options_list = [
-            InteractionOption(id="opt_1", label="(Recommended) Use the existing plan", description="Continue with the current approach without changes.", is_recommended=True),
-            InteractionOption(id="opt_2", label="Switch to a fresh approach", description="Restart planning with a new strategy."),
-            InteractionOption(id="opt_3", label="Pause and ask me later", description="Mark this as deferred until you provide further guidance."),
+            InteractionOption(
+                id="opt_1",
+                label="(Recommended) Use the existing plan",
+                description="Continue with the current approach without changes.",
+                is_recommended=True,
+            ),
+            InteractionOption(
+                id="opt_2",
+                label="Switch to a fresh approach",
+                description="Restart planning with a new strategy.",
+            ),
+            InteractionOption(
+                id="opt_3",
+                label="Pause and ask me later",
+                description="Mark this as deferred until you provide further guidance.",
+            ),
         ]
 
     doc = InteractionDocument(
@@ -81,10 +97,9 @@ async def inject_test_interaction(kind: Optional[str] = "single_choice"):
     interaction_dict = json.loads(doc.model_dump_json())
 
     try:
-        await websocket_manager.broadcast({
-            "type": "interaction_prompt",
-            "interaction": interaction_dict
-        })
+        await websocket_manager.broadcast(
+            {"type": "interaction_prompt", "interaction": interaction_dict}
+        )
     except Exception:
         pass
 
@@ -101,7 +116,9 @@ def get_interaction_details(interaction_id: str):
     """Retrieve details of a specific interaction request."""
     item = interaction_service.get_interaction(interaction_id)
     if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interaction request not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Interaction request not found"
+        )
     return item
 
 
@@ -113,15 +130,15 @@ async def create_interaction(doc: InteractionDocument):
     """
     from services.websocket_manager import websocket_manager
     import json as _json
+
     doc_id, is_dup = interaction_service.create_interaction(doc)
     if not is_dup:
         # Push to all connected frontend clients immediately (no polling delay)
         try:
             interaction_dict = _json.loads(doc.model_dump_json())
-            await websocket_manager.broadcast({
-                "type": "interaction_prompt",
-                "interaction": interaction_dict
-            })
+            await websocket_manager.broadcast(
+                {"type": "interaction_prompt", "interaction": interaction_dict}
+            )
         except Exception:
             pass
     return {
@@ -139,14 +156,16 @@ async def respond_to_interaction_body(payload: Dict[str, Any]):
     """
     interaction_id = payload.get("interaction_id")
     if not interaction_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing interaction_id in request body")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing interaction_id in request body"
+        )
 
     selected_opts = payload.get("selected_options") or payload.get("selected_option_ids") or []
     req = SubmitInteractionRequest(
         selected_option_ids=selected_opts,
         custom_response=payload.get("custom_response"),
         form_values=payload.get("form_values"),
-        idempotency_key=payload.get("idempotency_key")
+        idempotency_key=payload.get("idempotency_key"),
     )
     return await respond_to_interaction(interaction_id, req)
 
@@ -175,7 +194,9 @@ async def dismiss_interaction(interaction_id: str):
     """
     res = await interaction_service.dismiss_interaction(interaction_id)
     if not res.get("success"):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=res.get("error", "Interaction not found"))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=res.get("error", "Interaction not found")
+        )
     return res
 
 
@@ -186,5 +207,7 @@ async def dismiss_interaction_body(payload: Dict[str, Any]):
     """
     interaction_id = payload.get("interaction_id")
     if not interaction_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing interaction_id in request body")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing interaction_id in request body"
+        )
     return await dismiss_interaction(interaction_id)

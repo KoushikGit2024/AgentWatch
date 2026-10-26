@@ -7,7 +7,12 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi.testclient import TestClient
 from main import app
 from repositories.interaction_repository import InteractionRepository
-from models.schemas import InteractionDocument, InteractionOption, InteractionKind, InteractionStatus
+from models.schemas import (
+    InteractionDocument,
+    InteractionOption,
+    InteractionKind,
+    InteractionStatus,
+)
 
 client = TestClient(app)
 
@@ -17,6 +22,7 @@ def clean_test_data():
     repo = InteractionRepository()
     repo.collection.delete_many({"interaction_id": {"$regex": "^adv-"}})
     from repositories.idempotency_repository import IdempotencyRepository
+
     idemp_repo = IdempotencyRepository()
     idemp_repo.collection.delete_many({"idempotency_key": {"$regex": "^test-key-"}})
     yield
@@ -27,10 +33,7 @@ def clean_test_data():
 def test_concurrent_idempotent_prompt_submissions():
     """Scenario 1: Two identical requests arrive concurrently with the same idempotency key."""
     key = f"test-key-{uuid.uuid4().hex}"
-    payload = {
-        "message": "Concurrent Test Message",
-        "idempotency_key": key
-    }
+    payload = {"message": "Concurrent Test Message", "idempotency_key": key}
 
     results = []
 
@@ -57,21 +60,18 @@ def test_concurrent_idempotent_prompt_submissions():
 def test_idempotency_key_reuse_with_mismatched_payload():
     """Scenario 2: The same key is reused with a different payload -> must fail with 409 conflict."""
     key = f"test-key-{uuid.uuid4().hex}"
-    payload1 = {
-        "message": "Initial Message",
-        "idempotency_key": key
-    }
-    payload2 = {
-        "message": "TAMPERED Different Message",
-        "idempotency_key": key
-    }
+    payload1 = {"message": "Initial Message", "idempotency_key": key}
+    payload2 = {"message": "TAMPERED Different Message", "idempotency_key": key}
 
     res1 = client.post("/send", json=payload1)
     assert res1.status_code == 200
 
     res2 = client.post("/send", json=payload2)
     assert res2.status_code == 409
-    assert "different" in res2.json()["detail"].lower() or "mismatched" in res2.json()["detail"].lower()
+    assert (
+        "different" in res2.json()["detail"].lower()
+        or "mismatched" in res2.json()["detail"].lower()
+    )
 
 
 def test_concurrent_interaction_resolution_atomic_winner():
@@ -85,10 +85,10 @@ def test_concurrent_interaction_resolution_atomic_winner():
         title="Concurrent choice",
         options=[
             InteractionOption(id="A", label="Option A"),
-            InteractionOption(id="B", label="Option B")
+            InteractionOption(id="B", label="Option B"),
         ],
         allow_custom_response=False,
-        status=InteractionStatus.PENDING
+        status=InteractionStatus.PENDING,
     )
     repo.create_interaction(doc)
 
@@ -97,7 +97,10 @@ def test_concurrent_interaction_resolution_atomic_winner():
     def submit_choice(option_id):
         res = client.post(
             f"/api/v1/interactions/{interaction_id}/respond",
-            json={"selected_option_ids": [option_id], "idempotency_key": f"test-key-{option_id}-{uuid.uuid4().hex}"}
+            json={
+                "selected_option_ids": [option_id],
+                "idempotency_key": f"test-key-{option_id}-{uuid.uuid4().hex}",
+            },
         )
         responses.append(res)
 
@@ -136,7 +139,9 @@ def test_mode_and_model_strict_validation():
     assert res_bad_model.status_code == 422
 
     # Valid model
-    assert client.post("/set-model", json={"model": "Claude Sonnet 4.6 (Thinking)"}).status_code == 200
+    assert (
+        client.post("/set-model", json={"model": "Claude Sonnet 4.6 (Thinking)"}).status_code == 200
+    )
 
 
 def test_remote_click_native_permission_protection():
@@ -151,16 +156,13 @@ def test_remote_click_native_permission_protection():
 def test_idempotency_recovery_on_interrupted_operation():
     """Crash recovery: key reserved but server/worker restarted while status was in_progress."""
     from repositories.idempotency_repository import IdempotencyRepository
+
     repo = IdempotencyRepository()
     key = f"test-key-crash-{uuid.uuid4().hex}"
     payload = {"message": "Interrupted message", "idempotency_key": key}
 
     # Simulate key reserved by a worker that subsequently died
-    state, cached = repo.reserve_or_get(
-        scope="prompt_send",
-        idempotency_key=key,
-        payload=payload
-    )
+    state, cached = repo.reserve_or_get(scope="prompt_send", idempotency_key=key, payload=payload)
     assert state == "reserved"
 
     # Immediate second request while still in_progress yields 409
@@ -178,6 +180,7 @@ def test_idempotency_recovery_on_interrupted_operation():
 def test_idempotency_scope_isolation():
     """Same idempotency key used across distinct scopes must be completely isolated."""
     from repositories.idempotency_repository import IdempotencyRepository
+
     repo = IdempotencyRepository()
     shared_key = f"test-key-shared-{uuid.uuid4().hex}"
 
@@ -208,22 +211,26 @@ def test_timeline_queries_and_filtering():
     session_id = f"test-sess-{uuid.uuid4().hex[:6]}"
 
     # Ingest distinct event categories
-    repo.insert_event(EventDocument(
-        session_id=session_id,
-        event_type="PromptSubmitted",
-        category="prompt",
-        summary="User asked for database refactor",
-        timestamp=datetime.datetime.now(datetime.timezone.utc),
-        source="mobile_user"
-    ))
-    repo.insert_event(EventDocument(
-        session_id=session_id,
-        event_type="StopRequested",
-        category="execution",
-        summary="Emergency stop trigger",
-        timestamp=datetime.datetime.now(datetime.timezone.utc),
-        source="mobile_user"
-    ))
+    repo.insert_event(
+        EventDocument(
+            session_id=session_id,
+            event_type="PromptSubmitted",
+            category="prompt",
+            summary="User asked for database refactor",
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            source="mobile_user",
+        )
+    )
+    repo.insert_event(
+        EventDocument(
+            session_id=session_id,
+            event_type="StopRequested",
+            category="execution",
+            summary="Emergency stop trigger",
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            source="mobile_user",
+        )
+    )
 
     # Query all events in session
     res_all = client.get(f"/api/v1/events?session_id={session_id}")
@@ -246,14 +253,13 @@ def test_timeline_queries_and_filtering():
 def test_recovery_items_and_manual_reconciliation():
     """Verify Recovery Center detects in-progress interrupted operations and allows audited reconciliation."""
     from repositories.idempotency_repository import IdempotencyRepository
+
     repo = IdempotencyRepository()
     key = f"test-key-rec-{uuid.uuid4().hex}"
 
     # Create in-progress operation
     repo.reserve_or_get(
-        scope="prompt_send",
-        idempotency_key=key,
-        payload={"message": "Incomplete task"}
+        scope="prompt_send", idempotency_key=key, payload={"message": "Incomplete task"}
     )
 
     # 1. Check recovery items endpoint discovers it
@@ -266,11 +272,14 @@ def test_recovery_items_and_manual_reconciliation():
     assert matching[0]["is_retry_safe"] is False
 
     # 2. Mark action as user-reconciled
-    rec_res = client.post("/api/v1/events/reconcile-action", json={
-        "scope": "prompt_send",
-        "idempotency_key": key,
-        "resolution_notes": "Verified prompt succeeded in Antigravity editor directly"
-    })
+    rec_res = client.post(
+        "/api/v1/events/reconcile-action",
+        json={
+            "scope": "prompt_send",
+            "idempotency_key": key,
+            "resolution_notes": "Verified prompt succeeded in Antigravity editor directly",
+        },
+    )
     assert rec_res.status_code == 200
     assert rec_res.json()["success"] is True
 
@@ -283,5 +292,3 @@ def test_recovery_items_and_manual_reconciliation():
     event = repo._db.events.find_one({"correlation_id": key, "event_type": "RecoveryAction"})
     assert event is not None
     assert event["category"] == "recovery"
-
-

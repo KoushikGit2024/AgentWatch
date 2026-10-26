@@ -20,7 +20,7 @@ async def get_ide_queued_messages(target_url: str) -> List[Dict[str, Any]]:
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             extract_js = """
             (() => {
                 const card = document.querySelector('[data-testid="queued-messages-card"]');
@@ -44,11 +44,15 @@ async def get_ide_queued_messages(target_url: str) -> List[Dict[str, Any]]:
                 }).filter(item => item.text.length > 0);
             })()
             """
-            await ws.send(json.dumps({
-                "id": 401,
-                "method": "Runtime.evaluate",
-                "params": {"expression": extract_js, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 401,
+                        "method": "Runtime.evaluate",
+                        "params": {"expression": extract_js, "returnByValue": True},
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.0))
             return reply.get("result", {}).get("result", {}).get("value", []) or []
     except Exception as exc:
@@ -57,10 +61,7 @@ async def get_ide_queued_messages(target_url: str) -> List[Dict[str, Any]]:
 
 
 async def dispatch_queued_action(
-    target_url: str,
-    action: str,
-    index: int = 0,
-    text: Optional[str] = None
+    target_url: str, action: str, index: int = 0, text: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Executes Send Now, Delete, or Edit on a queued message in the IDE.
@@ -69,7 +70,7 @@ async def dispatch_queued_action(
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10*1024*1024, close_timeout=3) as ws:
+        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
             action_js = f"""
             (async () => {{
                 const card = document.querySelector('[data-testid="queued-messages-card"]');
@@ -98,60 +99,122 @@ async def dispatch_queued_action(
                 return {{ success: false, error: 'Unknown queued action' }};
             }})()
             """
-            await ws.send(json.dumps({
-                "id": 402,
-                "method": "Runtime.evaluate",
-                "params": {"expression": action_js, "awaitPromise": True, "returnByValue": True}
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 402,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": action_js,
+                            "awaitPromise": True,
+                            "returnByValue": True,
+                        },
+                    }
+                )
+            )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.5))
             val = reply.get("result", {}).get("result", {}).get("value", {}) or {}
 
             # If action was edit and new text was provided, insert the new text and confirm
-            if action.lower() == 'edit' and val.get("success") and text is not None:
+            if action.lower() == "edit" and val.get("success") and text is not None:
                 await asyncio.sleep(0.1)
                 # Clear and insert text into the active edit input
-                await ws.send(json.dumps({
-                    "id": 403,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {"type": "rawKeyDown", "key": "a", "code": "KeyA", "modifiers": 2, "windowsVirtualKeyCode": 65}
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 403,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "rawKeyDown",
+                                "key": "a",
+                                "code": "KeyA",
+                                "modifiers": 2,
+                                "windowsVirtualKeyCode": 65,
+                            },
+                        }
+                    )
+                )
                 await ws.recv()
-                await ws.send(json.dumps({
-                    "id": 404,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {"type": "keyUp", "key": "a", "code": "KeyA", "modifiers": 2, "windowsVirtualKeyCode": 65}
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 404,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "keyUp",
+                                "key": "a",
+                                "code": "KeyA",
+                                "modifiers": 2,
+                                "windowsVirtualKeyCode": 65,
+                            },
+                        }
+                    )
+                )
                 await ws.recv()
-                await ws.send(json.dumps({
-                    "id": 405,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {"type": "rawKeyDown", "key": "Backspace", "code": "Backspace", "windowsVirtualKeyCode": 8}
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 405,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "rawKeyDown",
+                                "key": "Backspace",
+                                "code": "Backspace",
+                                "windowsVirtualKeyCode": 8,
+                            },
+                        }
+                    )
+                )
                 await ws.recv()
-                await ws.send(json.dumps({
-                    "id": 406,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {"type": "keyUp", "key": "Backspace", "code": "Backspace", "windowsVirtualKeyCode": 8}
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 406,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "keyUp",
+                                "key": "Backspace",
+                                "code": "Backspace",
+                                "windowsVirtualKeyCode": 8,
+                            },
+                        }
+                    )
+                )
                 await ws.recv()
-                await ws.send(json.dumps({
-                    "id": 407,
-                    "method": "Input.insertText",
-                    "params": {"text": text}
-                }))
+                await ws.send(
+                    json.dumps({"id": 407, "method": "Input.insertText", "params": {"text": text}})
+                )
                 await ws.recv()
                 # Confirm edit via Enter key
-                await ws.send(json.dumps({
-                    "id": 408,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {"type": "rawKeyDown", "key": "Enter", "code": "Enter", "windowsVirtualKeyCode": 13}
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 408,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "rawKeyDown",
+                                "key": "Enter",
+                                "code": "Enter",
+                                "windowsVirtualKeyCode": 13,
+                            },
+                        }
+                    )
+                )
                 await ws.recv()
-                await ws.send(json.dumps({
-                    "id": 409,
-                    "method": "Input.dispatchKeyEvent",
-                    "params": {"type": "keyUp", "key": "Enter", "code": "Enter", "windowsVirtualKeyCode": 13}
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 409,
+                            "method": "Input.dispatchKeyEvent",
+                            "params": {
+                                "type": "keyUp",
+                                "key": "Enter",
+                                "code": "Enter",
+                                "windowsVirtualKeyCode": 13,
+                            },
+                        }
+                    )
+                )
                 await ws.recv()
                 val["updated_text"] = text
 

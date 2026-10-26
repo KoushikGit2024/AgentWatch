@@ -1,15 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-@import "tailwindcss";
-@import "./styles/tokens.css";
-@import "./styles/layout.css";
+@import 'tailwindcss';
+@import './styles/tokens.css';
+@import './styles/layout.css';
 
 @layer base {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
     width: 100%;
     margin: 0;
@@ -21,12 +25,14 @@
 
   body {
     font-family: var(--font-sans);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  code, pre, .font-mono {
+  code,
+  pre,
+  .font-mono {
     font-family: var(--font-mono);
   }
 }
@@ -39,11 +45,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #30343A;
+  background: #30343a;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #40464F;
+  background: #40464f;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -65,14 +71,22 @@
   font-size: 0.84rem;
   line-height: 1.6;
 }
-.chat-content h1, .chat-content h2, .chat-content h3 {
+.chat-content h1,
+.chat-content h2,
+.chat-content h3 {
   color: var(--text-primary);
   font-weight: 600;
   margin: 1rem 0 0.4rem;
 }
-.chat-content h1 { font-size: 1.05rem; }
-.chat-content h2 { font-size: 0.95rem; }
-.chat-content h3 { font-size: 0.875rem; }
+.chat-content h1 {
+  font-size: 1.05rem;
+}
+.chat-content h2 {
+  font-size: 0.95rem;
+}
+.chat-content h3 {
+  font-size: 0.875rem;
+}
 .chat-content code {
   font-family: var(--font-mono);
   font-size: 0.78rem;
@@ -96,7 +110,8 @@
   padding: 0;
   color: var(--text-primary);
 }
-.chat-content ul, .chat-content ol {
+.chat-content ul,
+.chat-content ol {
   padding-left: 1.25rem;
   margin-bottom: 0.65rem;
   color: var(--text-primary);
@@ -144,8 +159,13 @@
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 .pulse-live {
   animation: pulse-dot 2s ease-in-out infinite;
@@ -164,11 +184,11 @@
 
 .monaco-highlight-line {
   background: rgba(124, 159, 197, 0.14) !important;
-  border-left: 2px solid #7C9FC5 !important;
+  border-left: 2px solid #7c9fc5 !important;
 }
 
 .monaco-highlight-glyph {
-  background: #7C9FC5 !important;
+  background: #7c9fc5 !important;
   width: 6px !important;
   border-radius: 1px !important;
 }

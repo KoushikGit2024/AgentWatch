@@ -69,13 +69,13 @@ Monitor, approve, and steer your local **Google Antigravity** AI coding sessions
 
 Before launching AgentWatch, make sure your machine has the following tools installed globally:
 
-| Tool | Minimum Version | Required? | Why It's Needed |
-| :--- | :--- | :--- | :--- |
-| **Python** | 3.10+ | **Yes** | Powers the FastAPI backend & WebSocket server. (All libraries install into repo `.venv`). |
-| **Google Antigravity** | Any | **Yes** | The AI IDE you are monitoring with `--remote-debugging-port=9000`. |
-| **Node.js & npm** | 18+ | **Optional** | Pre-compiled bundle is included in `static/dist/`. Only needed if modifying frontend code. |
-| **Tailscale** | Any | **Recommended** | Provides secure, private peer-to-peer HTTPS connection for mobile browser push notifications. |
-| **MongoDB** | 6.0+ | **Optional** | For persistent history logs. If not installed, AgentWatch **automatically uses its built-in in-memory fallback**. |
+| Tool                   | Minimum Version | Required?       | Why It's Needed                                                                                                   |
+| :--------------------- | :-------------- | :-------------- | :---------------------------------------------------------------------------------------------------------------- |
+| **Python**             | 3.10+           | **Yes**         | Powers the FastAPI backend & WebSocket server. (All libraries install into repo `.venv`).                         |
+| **Google Antigravity** | Any             | **Yes**         | The AI IDE you are monitoring with `--remote-debugging-port=9000`.                                                |
+| **Node.js & npm**      | 18+             | **Optional**    | Pre-compiled bundle is included in `static/dist/`. Only needed if modifying frontend code.                        |
+| **Tailscale**          | Any             | **Recommended** | Provides secure, private peer-to-peer HTTPS connection for mobile browser push notifications.                     |
+| **MongoDB**            | 6.0+            | **Optional**    | For persistent history logs. If not installed, AgentWatch **automatically uses its built-in in-memory fallback**. |
 
 > **Note on Python Packages:** You do **not** need to install Python libraries globally. When you run `run.bat` or `run.ps1`, all required packages (`fastapi`, `uvicorn`, `pywebpush`, `cryptography`, etc.) are downloaded and kept **strictly inside this repository's isolated `.venv/` directory**.
 
@@ -88,10 +88,13 @@ Before launching AgentWatch, make sure your machine has the following tools inst
 AgentWatch features a zero-configuration, self-healing launcher that automatically locates your Python and Node/NPM runtimes, builds the frontend if needed, frees port 8000 from stale instances, starts MongoDB, verifies Antigravity CDP, and opens your browser:
 
 Simply double-click:
+
 ```bat
 run.bat
 ```
+
 Or run in PowerShell:
+
 ```powershell
 .\run.ps1
 ```
@@ -130,6 +133,7 @@ if ($agExe -and (Test-Path $agExe)) {
 ```
 
 **Run AgentWatch Silently in the Background on Windows (Safe to Close PowerShell):**
+
 ```powershell
 $py = (Join-Path (Get-Location).Path ".venv\Scripts\python.exe")
 Start-Process $py -ArgumentList "-m uvicorn main:app --host 127.0.0.1 --port 8000" -WorkingDirectory (Get-Location).Path -WindowStyle Hidden
@@ -232,6 +236,7 @@ If you run `AgentWatch` inside **WSL2** while **Antigravity IDE** runs on the Wi
 ### 5. Android Phone / Tablet & iPhone / iPad (iOS) Setup
 
 #### Option A: Secure Anywhere Access via Tailscale (Recommended — Works on Mobile Data & Wi-Fi)
+
 1. Install **Tailscale** on your workstation and on your Android / iOS device, and sign in to the same account.
 2. On your workstation, expose port `8000` privately inside your Tailnet with automatic HTTPS:
    ```bash
@@ -244,6 +249,7 @@ If you run `AgentWatch` inside **WSL2** while **Antigravity IDE** runs on the Wi
    - **iPhone / iPad (Safari):** Tap the **Share** button (`↑`) → **Add to Home Screen** → **Add**.
 
 #### Option B: Same-Room Local Wi-Fi Access (No Tailscale Needed)
+
 1. Start Uvicorn bound to `0.0.0.0` instead of `127.0.0.1`:
    - **Windows PowerShell:**
      ```powershell
@@ -258,16 +264,16 @@ If you run `AgentWatch` inside **WSL2** while **Antigravity IDE** runs on the Wi
 
 ## Edge Cases & Device-Specific Troubleshooting Matrix
 
-| Symptom / Edge Case | Why It Happens | Exact Copy-Paste Solution |
-| :--- | :--- | :--- |
+| Symptom / Edge Case                                                                            | Why It Happens                                                                                                                                                                                                 | Exact Copy-Paste Solution                                                                                                                                                                                                                                                                                                   |
+| :--------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Antigravity was started with `--remote-debugging-port=9000`, but port 9000 is still closed** | Electron single-instance lock: an existing Antigravity window or tray process was already running without the flag, so the new launch just focused the old process and ignored `--remote-debugging-port=9000`. | **Windows:** `Stop-Process -Name "Antigravity*" -Force; Start-Process "antigravity" -ArgumentList "--remote-debugging-port=9000"`<br>**macOS:** `killall "Antigravity"; open -a "Antigravity" --args --remote-debugging-port=9000`<br>**Linux:** `pkill -f antigravity && nohup antigravity --remote-debugging-port=9000 &` |
-| **Opening `http://127.0.0.1:8000` shows `"Static frontend not found"`** | The Vite production bundle (`static/dist/index.html`) hasn't been compiled yet. | Run `cd frontend && npm install && npm run build && cd ..` and refresh the browser. |
-| **Command Approval or Question Popup used to disappear after 7 seconds** | Previously, `is_stale_inactivity` marked the turn done after 7s of idle transcript time. | **Fixed in this build:** `ConversationService` now exempts pending command approvals and unanswered agent questions from the 7-second inactivity timer until resolved. |
-| **Clicking "Allow" vs "Always Allow" clicked the wrong button or missed split-dropdowns** | Both terms shared a flat substring matcher, and split-button dropdown chevrons were not expanded. | **Fixed in this build:** `dispatch_forward_approval()` scores exact labels separately and automatically expands split-button dropdown menus when `Always Allow` is nested. |
-| **Want to reject a command and tell the agent what to do instead** | Binary Allow/Deny didn't pass follow-up context to the agent. | **Fixed in this build:** Tap **"Type something else / Deny with instructions…"** inside `ApprovalModal` or `ApprovalCard`, type your guidance, and tap **Deny & Send Instructions** (or **Allow + Send Note**). |
-| **Scrolling up in a long session used to lag or jump the scroll position** | All 50 turns were rendered at once without memoization or scroll anchoring. | **Fixed in this build:** Only 15 turns load initially. Scrolling near the top fetches the next 15-turn block via `?before=<oldest_index>`, anchors `scrollTop`, and keeps loaded blocks in memory. |
-| **MongoDB is not installed or stopped on my laptop** | `127.0.0.1:27017` is unreachable. | `InteractionRepository` automatically falls back to its built-in in-memory store (`_fallback_store`), so live chat streaming, command approvals, and question popups work even without MongoDB running. |
-| **Phone screen locks and WebSocket disconnects** | Mobile OS suspends background tab sockets to save battery. | **Fixed in this build:** All background timers pause while `document.hidden` is true (saving battery and data) and immediately resync chat, approvals, and interactions the moment you unlock your phone. |
+| **Opening `http://127.0.0.1:8000` shows `"Static frontend not found"`**                        | The Vite production bundle (`static/dist/index.html`) hasn't been compiled yet.                                                                                                                                | Run `cd frontend && npm install && npm run build && cd ..` and refresh the browser.                                                                                                                                                                                                                                         |
+| **Command Approval or Question Popup used to disappear after 7 seconds**                       | Previously, `is_stale_inactivity` marked the turn done after 7s of idle transcript time.                                                                                                                       | **Fixed in this build:** `ConversationService` now exempts pending command approvals and unanswered agent questions from the 7-second inactivity timer until resolved.                                                                                                                                                      |
+| **Clicking "Allow" vs "Always Allow" clicked the wrong button or missed split-dropdowns**      | Both terms shared a flat substring matcher, and split-button dropdown chevrons were not expanded.                                                                                                              | **Fixed in this build:** `dispatch_forward_approval()` scores exact labels separately and automatically expands split-button dropdown menus when `Always Allow` is nested.                                                                                                                                                  |
+| **Want to reject a command and tell the agent what to do instead**                             | Binary Allow/Deny didn't pass follow-up context to the agent.                                                                                                                                                  | **Fixed in this build:** Tap **"Type something else / Deny with instructions…"** inside `ApprovalModal` or `ApprovalCard`, type your guidance, and tap **Deny & Send Instructions** (or **Allow + Send Note**).                                                                                                             |
+| **Scrolling up in a long session used to lag or jump the scroll position**                     | All 50 turns were rendered at once without memoization or scroll anchoring.                                                                                                                                    | **Fixed in this build:** Only 15 turns load initially. Scrolling near the top fetches the next 15-turn block via `?before=<oldest_index>`, anchors `scrollTop`, and keeps loaded blocks in memory.                                                                                                                          |
+| **MongoDB is not installed or stopped on my laptop**                                           | `127.0.0.1:27017` is unreachable.                                                                                                                                                                              | `InteractionRepository` automatically falls back to its built-in in-memory store (`_fallback_store`), so live chat streaming, command approvals, and question popups work even without MongoDB running.                                                                                                                     |
+| **Phone screen locks and WebSocket disconnects**                                               | Mobile OS suspends background tab sockets to save battery.                                                                                                                                                     | **Fixed in this build:** All background timers pause while `document.hidden` is true (saving battery and data) and immediately resync chat, approvals, and interactions the moment you unlock your phone.                                                                                                                   |
 
 ## Verification & Testing Commands
 

@@ -11,10 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 @lru_cache(maxsize=256)
 def _cached_unified_diff(
-    old_text: str,
-    new_text: str,
-    filename: str = "",
-    start_line: int = 1
+    old_text: str, new_text: str, filename: str = "", start_line: int = 1
 ) -> Dict[str, Any]:
     """Cached internal computation of additions, deletions, and unified patch."""
     old_lines = (old_text or "").splitlines(keepends=True)
@@ -29,17 +26,19 @@ def _cached_unified_diff(
 
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag in ("replace", "delete"):
-            removed_count += (i2 - i1)
+            removed_count += i2 - i1
         if tag in ("replace", "insert"):
-            added_count += (j2 - j1)
+            added_count += j2 - j1
 
-    unified = list(difflib.unified_diff(
-        old_lines,
-        new_lines,
-        fromfile=f"a/{filename}" if filename else "a",
-        tofile=f"b/{filename}" if filename else "b",
-        n=2
-    ))
+    unified = list(
+        difflib.unified_diff(
+            old_lines,
+            new_lines,
+            fromfile=f"a/{filename}" if filename else "a",
+            tofile=f"b/{filename}" if filename else "b",
+            n=2,
+        )
+    )
 
     diff_text = "".join(unified)
     if not diff_text and (old_text != new_text):
@@ -54,15 +53,12 @@ def _cached_unified_diff(
         "removed_count": removed_count,
         "diff_text": diff_text[:6000] if diff_text else None,
         "start_line": start_line,
-        "is_net_change": (added_count > 0 or removed_count > 0)
+        "is_net_change": (added_count > 0 or removed_count > 0),
     }
 
 
 def compute_unified_diff(
-    old_text: str,
-    new_text: str,
-    filename: str = "",
-    start_line: int = 1
+    old_text: str, new_text: str, filename: str = "", start_line: int = 1
 ) -> Dict[str, Any]:
     """
     Compute precise additions, deletions, and unified patch with line context.
@@ -88,9 +84,7 @@ _TOOL_DIFF_CACHE: Dict[str, Tuple[str, Optional[str], Optional[Dict[str, Any]]]]
 
 
 def parse_edit_tool_diff(
-    tool_name: str,
-    args: Dict[str, Any],
-    workspace_root: Optional[str] = None
+    tool_name: str, args: Dict[str, Any], workspace_root: Optional[str] = None
 ) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     """
     Parse write_to_file, replace_file_content, or multi_replace_file_content
@@ -163,7 +157,7 @@ def parse_edit_tool_diff(
             "removed_count": total_removed,
             "chunk_count": chunk_count,
             "start_line": min_start,
-            "end_line": max_end
+            "end_line": max_end,
         }
         result = (target, extra, diff_info)
 
@@ -192,7 +186,7 @@ def parse_edit_tool_diff(
             "added_count": added,
             "removed_count": removed,
             "start_line": start_l,
-            "end_line": end_l
+            "end_line": end_l,
         }
         result = (target, extra, diff_info)
 
@@ -214,7 +208,7 @@ def parse_edit_tool_diff(
             "diff_text": diff_text[:6000] if diff_text else None,
             "added_count": added,
             "removed_count": removed,
-            "is_new_file": not bool(args.get("Overwrite", False))
+            "is_new_file": not bool(args.get("Overwrite", False)),
         }
         result = (target, extra, diff_info)
 

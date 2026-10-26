@@ -7,6 +7,7 @@ from fastapi import WebSocket
 
 logger = logging.getLogger("services.websocket_manager")
 
+
 class WebSocketManager:
     """Manages active WebSockets and broadcasts live state updates to frontend."""
 
@@ -21,7 +22,9 @@ class WebSocketManager:
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            logger.info("WebSocket client disconnected. Total clients: %d", len(self.active_connections))
+            logger.info(
+                "WebSocket client disconnected. Total clients: %d", len(self.active_connections)
+            )
 
     async def broadcast(self, message: Dict[str, Any]):
         """Broadcast payload to all active clients, pruning stale connections."""

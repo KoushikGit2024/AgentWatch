@@ -10,9 +10,7 @@ client = TestClient(app)
 
 def test_upload_single_image_attachment():
     file_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
-    files = {
-        "files": ("mock_screenshot.png", io.BytesIO(file_content), "image/png")
-    }
+    files = {"files": ("mock_screenshot.png", io.BytesIO(file_content), "image/png")}
 
     res = client.post("/api/v1/attachments/upload", files=files)
     assert res.status_code == 200
@@ -28,9 +26,7 @@ def test_upload_single_image_attachment():
 
 def test_upload_code_file_attachment():
     file_content = b"console.log('Hello from AgentWatch');\n"
-    files = {
-        "files": ("script.js", io.BytesIO(file_content), "application/javascript")
-    }
+    files = {"files": ("script.js", io.BytesIO(file_content), "application/javascript")}
 
     res = client.post("/api/v1/attachments/upload", files=files)
     assert res.status_code == 200
@@ -63,14 +59,14 @@ def test_prompt_send_with_attachments():
             {
                 "original_name": "screenshot.png",
                 "storage_path": "d:/All Codes/AllProjects/AgentWatchV2/uploads/test.png",
-                "is_image": True
+                "is_image": True,
             },
             {
                 "original_name": "app.py",
                 "storage_path": "d:/All Codes/AllProjects/AgentWatchV2/uploads/app.py",
-                "is_image": False
-            }
-        ]
+                "is_image": False,
+            },
+        ],
     }
     res = client.post("/send", json=payload)
     assert res.status_code == 200

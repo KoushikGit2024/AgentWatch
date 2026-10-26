@@ -21,10 +21,20 @@ PROCESS_TERMINATE = 0x0001
 MAX_PATH = 260
 
 PROTECTED_PROCESS_NAMES = {
-    "system", "system idle process", "csrss.exe", "smss.exe", "wininit.exe",
-    "winlogon.exe", "services.exe", "lsass.exe", "svchost.exe", "explorer.exe",
-    "runtimebroker.exe", "dwm.exe"
+    "system",
+    "system idle process",
+    "csrss.exe",
+    "smss.exe",
+    "wininit.exe",
+    "winlogon.exe",
+    "services.exe",
+    "lsass.exe",
+    "svchost.exe",
+    "explorer.exe",
+    "runtimebroker.exe",
+    "dwm.exe",
 }
+
 
 # Ctypes structures
 class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
@@ -42,6 +52,7 @@ class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
         ("PrivateUsage", ctypes.c_size_t),
     ]
 
+
 class MEMORYSTATUSEX(ctypes.Structure):
     _fields_ = [
         ("dwLength", wintypes.DWORD),
@@ -54,6 +65,7 @@ class MEMORYSTATUSEX(ctypes.Structure):
         ("ullAvailVirtual", ctypes.c_ulonglong),
         ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
     ]
+
 
 class SystemMetricsService:
     def __init__(self):
@@ -103,7 +115,7 @@ class SystemMetricsService:
             ctypes.byref(creation_time),
             ctypes.byref(exit_time),
             ctypes.byref(kernel_time),
-            ctypes.byref(user_time)
+            ctypes.byref(user_time),
         ):
             k_ticks = (kernel_time.dwHighDateTime << 32) + kernel_time.dwLowDateTime
             u_ticks = (user_time.dwHighDateTime << 32) + user_time.dwLowDateTime
@@ -123,9 +135,7 @@ class SystemMetricsService:
         pids_arr = (wintypes.DWORD * 4096)()
         bytes_returned = wintypes.DWORD()
         if not self._psapi.EnumProcesses(
-            ctypes.byref(pids_arr),
-            ctypes.sizeof(pids_arr),
-            ctypes.byref(bytes_returned)
+            ctypes.byref(pids_arr), ctypes.sizeof(pids_arr), ctypes.byref(bytes_returned)
         ):
             return []
 
@@ -140,9 +150,7 @@ class SystemMetricsService:
                 continue
 
             h_proc = self._kernel32.OpenProcess(
-                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-                False,
-                pid
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, pid
             )
             if not h_proc:
                 continue
@@ -170,12 +178,14 @@ class SystemMetricsService:
                     if delta_proc_time > 0:
                         cpu_percent = (delta_proc_time / (time_delta * cpu_count)) * 100.0
 
-                raw_list.append({
-                    "pid": pid,
-                    "name": base_name,
-                    "memory_bytes": mem_bytes,
-                    "cpu_percent": round(min(cpu_percent, 100.0), 1),
-                })
+                raw_list.append(
+                    {
+                        "pid": pid,
+                        "name": base_name,
+                        "memory_bytes": mem_bytes,
+                        "cpu_percent": round(min(cpu_percent, 100.0), 1),
+                    }
+                )
             finally:
                 self._kernel32.CloseHandle(h_proc)
 
@@ -226,7 +236,9 @@ class SystemMetricsService:
                 grouped[display_name]["pids"].append(p["pid"])
                 grouped[display_name]["count"] += 1
                 grouped[display_name]["memory_bytes"] += p["memory_bytes"]
-                grouped[display_name]["cpu_percent"] = round(grouped[display_name]["cpu_percent"] + p["cpu_percent"], 1)
+                grouped[display_name]["cpu_percent"] = round(
+                    grouped[display_name]["cpu_percent"] + p["cpu_percent"], 1
+                )
 
         total_system_mb = mem_info["total_mb"] or 16384.0
         total_cpu = sum(g["cpu_percent"] for g in grouped.values())
@@ -238,17 +250,19 @@ class SystemMetricsService:
             mem_pct = round((mem_mb / total_system_mb) * 100.0, 1)
             is_self = current_pid in g["pids"]
             is_sys = g["name"].lower() in PROTECTED_PROCESS_NAMES
-            process_list.append({
-                "name": g["name"],
-                "count": g["count"],
-                "pid": g["pids"][0] if g["count"] == 1 else None,
-                "pids": g["pids"],
-                "memory_mb": mem_mb,
-                "memory_percent": mem_pct,
-                "cpu_percent": round(g["cpu_percent"], 1),
-                "is_protected": is_self or is_sys,
-                "is_self": is_self,
-            })
+            process_list.append(
+                {
+                    "name": g["name"],
+                    "count": g["count"],
+                    "pid": g["pids"][0] if g["count"] == 1 else None,
+                    "pids": g["pids"],
+                    "memory_mb": mem_mb,
+                    "memory_percent": mem_pct,
+                    "cpu_percent": round(g["cpu_percent"], 1),
+                    "is_protected": is_self or is_sys,
+                    "is_self": is_self,
+                }
+            )
 
         # Sort by selected column
         if sort_by.lower() == "cpu":
@@ -284,7 +298,7 @@ class SystemMetricsService:
                 "success": False,
                 "error": f"Cannot terminate protected system process: {name}",
                 "killed_pids": [],
-                "failed_pids": pids
+                "failed_pids": pids,
             }
 
         killed_pids = []
@@ -292,7 +306,12 @@ class SystemMetricsService:
         errors = []
 
         if not self._is_windows or not self._kernel32:
-            return {"success": False, "error": "Process termination only supported on Windows host", "killed_pids": [], "failed_pids": pids}
+            return {
+                "success": False,
+                "error": "Process termination only supported on Windows host",
+                "killed_pids": [],
+                "failed_pids": pids,
+            }
 
         for pid in pids:
             if not isinstance(pid, int) or pid <= 4:
@@ -324,7 +343,8 @@ class SystemMetricsService:
             "success": len(killed_pids) > 0,
             "killed_pids": killed_pids,
             "failed_pids": failed_pids,
-            "error": "; ".join(errors) if errors and not killed_pids else None
+            "error": "; ".join(errors) if errors and not killed_pids else None,
         }
+
 
 system_metrics_service = SystemMetricsService()

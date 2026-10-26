@@ -6,6 +6,7 @@ import httpx
 import websockets
 from pathlib import Path
 
+
 async def dump_live_ide_dom():
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
@@ -30,16 +31,20 @@ async def dump_live_ide_dom():
 
         js_code = Path("scripts/extract_ide_popup_dom.js").read_text(encoding="utf-8")
 
-        async with websockets.connect(ws_url, max_size=20*1024*1024) as ws:
-            await ws.send(json.dumps({
-                "id": 999,
-                "method": "Runtime.evaluate",
-                "params": {
-                    "expression": js_code,
-                    "returnByValue": True,
-                    "awaitPromise": True
-                }
-            }))
+        async with websockets.connect(ws_url, max_size=20 * 1024 * 1024) as ws:
+            await ws.send(
+                json.dumps(
+                    {
+                        "id": 999,
+                        "method": "Runtime.evaluate",
+                        "params": {
+                            "expression": js_code,
+                            "returnByValue": True,
+                            "awaitPromise": True,
+                        },
+                    }
+                )
+            )
 
             raw_reply = await asyncio.wait_for(ws.recv(), timeout=5.0)
             data = json.loads(raw_reply)
@@ -54,6 +59,7 @@ async def dump_live_ide_dom():
 
     except Exception as exc:
         print(f"Error extracting DOM via CDP: {exc}")
+
 
 if __name__ == "__main__":
     asyncio.run(dump_live_ide_dom())

@@ -72,8 +72,8 @@ def test_parse_edit_tool_diff_multi_replace():
                 "ReplacementContent": "count = 10",
                 "StartLine": 20,
                 "EndLine": 20,
-            }
-        ]
+            },
+        ],
     }
     target, extra, diff_info = parse_edit_tool_diff("multi_replace_file_content", args)
 

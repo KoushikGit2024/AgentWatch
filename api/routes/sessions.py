@@ -10,9 +10,11 @@ session_repo = SessionRepository()
 
 from pydantic import BaseModel, Field
 
+
 class SelectChatRequest(BaseModel):
     title: Optional[str] = None
     session_id: Optional[str] = None
+
 
 @router.get("")
 def list_sessions(limit: int = Query(50, ge=1, le=100)):
@@ -29,7 +31,10 @@ def list_sessions(limit: int = Query(50, ge=1, le=100)):
 def get_chat_history(limit: int = Query(50, ge=1, le=100)):
     """Retrieve list of past conversations formatted for frontend HistoryDrawer."""
     sessions = session_repo.list_sessions(limit=limit)
-    chats = [{"title": s.get("title") or s.get("session_id"), "session_id": s.get("session_id")} for s in sessions]
+    chats = [
+        {"title": s.get("title") or s.get("session_id"), "session_id": s.get("session_id")}
+        for s in sessions
+    ]
     return {"count": len(chats), "chats": chats}
 
 

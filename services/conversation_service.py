@@ -30,7 +30,9 @@ class ConversationService:
         self._stopped_active = True
         self._cached_key = None
 
-    def mark_approval_resolved(self, step_id: Optional[str], decision: str, target: Optional[str] = None):
+    def mark_approval_resolved(
+        self, step_id: Optional[str], decision: str, target: Optional[str] = None
+    ):
         """Record that a pending approval step was answered so it does not re-trigger."""
         if step_id:
             self._resolved_approvals[step_id] = decision
@@ -38,7 +40,11 @@ class ConversationService:
             target_hash = hashlib.md5(target.encode("utf-8", errors="ignore")).hexdigest()[:8]
             self._resolved_approvals[f"cmd-{target_hash}"] = decision
         if self._latest_pending_approval:
-            if not step_id or self._latest_pending_approval.get("step_id") == step_id or self._latest_pending_approval.get("target") == target:
+            if (
+                not step_id
+                or self._latest_pending_approval.get("step_id") == step_id
+                or self._latest_pending_approval.get("target") == target
+            ):
                 self._latest_pending_approval = None
         self._cached_key = None
 
@@ -70,13 +76,13 @@ class ConversationService:
     def _clean_arg(self, val: Any) -> Any:
         if isinstance(val, str):
             s = val.strip()
-            if (s.startswith('{') and s.endswith('}')) or (s.startswith('[') and s.endswith(']')):
+            if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
                 try:
                     return json.loads(s)
                 except Exception:
                     pass
             if s.startswith('"') and s.endswith('"') and len(s) >= 2:
-                s = s[1:-1].replace('\\"', '"').replace('\\\\', '\\')
+                s = s[1:-1].replace('\\"', '"').replace("\\\\", "\\")
             return s
         return val
 
@@ -104,23 +110,32 @@ class ConversationService:
                     or f"Option {idx + 1}"
                 ).strip()
                 desc = opt.get("description") or opt.get("detail") or opt.get("hint")
-                is_rec = bool(opt.get("is_recommended") or opt.get("recommended") or ("(recommended)" in label.lower()))
+                is_rec = bool(
+                    opt.get("is_recommended")
+                    or opt.get("recommended")
+                    or ("(recommended)" in label.lower())
+                )
                 opt_id = str(opt.get("id") or f"opt_{idx + 1}")
-                normalized.append({
-                    "id": opt_id,
-                    "label": label,
-                    "description": str(desc).strip() if desc else None,
-                    "is_recommended": is_rec,
-                })
+                normalized.append(
+                    {
+                        "id": opt_id,
+                        "label": label,
+                        "description": str(desc).strip() if desc else None,
+                        "is_recommended": is_rec,
+                    }
+                )
             elif opt is not None:
                 label = str(opt).strip()
                 if label:
-                    normalized.append({
-                        "id": f"opt_{idx + 1}",
-                        "label": label,
-                        "description": None,
-                        "is_recommended": (idx == 0 and "(recommended)" in label.lower()) or "(recommended)" in label.lower(),
-                    })
+                    normalized.append(
+                        {
+                            "id": f"opt_{idx + 1}",
+                            "label": label,
+                            "description": None,
+                            "is_recommended": (idx == 0 and "(recommended)" in label.lower())
+                            or "(recommended)" in label.lower(),
+                        }
+                    )
         return normalized
 
     def _parse_all_turns(self) -> List[Dict[str, Any]]:
@@ -167,16 +182,24 @@ class ConversationService:
                             clean = content
 
                             # If <USER_REQUEST> tags exist, extract strictly the innermost user request
-                            req_match = re.search(r"<USER_REQUEST>(.*?)</USER_REQUEST>", clean, flags=re.DOTALL)
+                            req_match = re.search(
+                                r"<USER_REQUEST>(.*?)</USER_REQUEST>", clean, flags=re.DOTALL
+                            )
                             if req_match:
                                 clean = req_match.group(1).strip()
                             else:
                                 clean = re.sub(r"<USER_REQUEST>\s*", "", clean)
-                                clean = re.sub(r"</USER_REQUEST>.*", "", clean, flags=re.DOTALL).strip()
+                                clean = re.sub(
+                                    r"</USER_REQUEST>.*", "", clean, flags=re.DOTALL
+                                ).strip()
 
                             # Clean any leaked metadata or IDE prefixes
-                            clean = re.sub(r"<ADDITIONAL_METADATA>.*", "", clean, flags=re.DOTALL).strip()
-                            clean = re.sub(r"<USER_SETTINGS_CHANGE>.*", "", clean, flags=re.DOTALL).strip()
+                            clean = re.sub(
+                                r"<ADDITIONAL_METADATA>.*", "", clean, flags=re.DOTALL
+                            ).strip()
+                            clean = re.sub(
+                                r"<USER_SETTINGS_CHANGE>.*", "", clean, flags=re.DOTALL
+                            ).strip()
 
                             # If IDE injected action history prefix (e.g. "The USER performed the following action: ..."),
                             # or repeated chat logs, strip them down to the actual user message
@@ -198,13 +221,15 @@ class ConversationService:
                                     turns.append(current_agent_turn)
                                     current_agent_turn = None
                                 turn_idx = len(turns)
-                                turns.append({
-                                    "id": f"turn-{turn_idx}",
-                                    "turn_index": turn_idx,
-                                    "role": "user",
-                                    "text": clean,
-                                    "timestamp": created_at
-                                })
+                                turns.append(
+                                    {
+                                        "id": f"turn-{turn_idx}",
+                                        "turn_index": turn_idx,
+                                        "role": "user",
+                                        "text": clean,
+                                        "timestamp": created_at,
+                                    }
+                                )
 
                         elif stype == "PLANNER_RESPONSE":
                             if not current_agent_turn:
@@ -218,19 +243,21 @@ class ConversationService:
                                     "items": [],
                                     "steps": [],
                                     "timestamp": created_at,
-                                    "is_working": True
+                                    "is_working": True,
                                 }
 
                             if thinking:
                                 word_count = len(thinking.split())
                                 est_sec = max(1, min(15, max(1, word_count // 45)))
-                                current_agent_turn["items"].append({
-                                    "id": f"item-{len(current_agent_turn['items'])}",
-                                    "type": "thought",
-                                    "title": f"Thought for {est_sec}s",
-                                    "text": thinking,
-                                    "timestamp": created_at
-                                })
+                                current_agent_turn["items"].append(
+                                    {
+                                        "id": f"item-{len(current_agent_turn['items'])}",
+                                        "type": "thought",
+                                        "title": f"Thought for {est_sec}s",
+                                        "text": thinking,
+                                        "timestamp": created_at,
+                                    }
+                                )
                                 if current_agent_turn["thinking"]:
                                     current_agent_turn["thinking"] += "\n\n" + thinking
                                 else:
@@ -244,13 +271,17 @@ class ConversationService:
 
                                     kind = "generic"
                                     verb = "Used"
-                                    target = args.get("toolSummary") or args.get("toolAction") or name
+                                    target = (
+                                        args.get("toolSummary") or args.get("toolAction") or name
+                                    )
                                     requires_perm = False
                                     perm_type = None
                                     perm_title = None
                                     perm_desc = None
                                     approval_options = None
-                                    summary = args.get("toolSummary") or args.get("toolAction") or name
+                                    summary = (
+                                        args.get("toolSummary") or args.get("toolAction") or name
+                                    )
                                     command = None
                                     cwd = None
                                     cwd_short = None
@@ -283,47 +314,85 @@ class ConversationService:
                                         query = args.get("Query") or args.get("query") or ""
                                         target = query
 
-                                    elif name in ("write_to_file", "replace_file_content", "multi_replace_file_content"):
+                                    elif name in (
+                                        "write_to_file",
+                                        "replace_file_content",
+                                        "multi_replace_file_content",
+                                    ):
                                         kind = "edit"
                                         file_target = args.get("TargetFile") or ""
                                         file_parts = re.split(r"[\\/]", file_target)
                                         file_short = file_parts[-1] if file_parts else file_target
-                                        instruction = args.get("Description") or args.get("Instruction") or ""
+                                        instruction = (
+                                            args.get("Description") or args.get("Instruction") or ""
+                                        )
                                         requires_perm = False
 
                                         workspace_root = str(Path(__file__).resolve().parent.parent)
-                                        target, extra, diff_info = parse_edit_tool_diff(name, args, workspace_root=workspace_root)
+                                        target, extra, diff_info = parse_edit_tool_diff(
+                                            name, args, workspace_root=workspace_root
+                                        )
                                         if name == "write_to_file":
-                                            verb = "Created" if (diff_info and diff_info.get("is_new_file", True)) else "Edited"
+                                            verb = (
+                                                "Created"
+                                                if (
+                                                    diff_info and diff_info.get("is_new_file", True)
+                                                )
+                                                else "Edited"
+                                            )
                                         else:
                                             verb = "Edited"
 
                                     elif name in ("run_command", "execute_bash"):
                                         verb = "Ran"
                                         kind = "command"
-                                        command = args.get("CommandLine") or args.get("command") or ""
+                                        command = (
+                                            args.get("CommandLine") or args.get("command") or ""
+                                        )
                                         cwd = args.get("Cwd") or args.get("cwd") or ""
                                         cwd_parts = re.split(r"[\\/]", cwd) if cwd else []
-                                        cwd_short = f".../{cwd_parts[-1]}" if cwd_parts and cwd_parts[-1] else ".../workspace"
+                                        cwd_short = (
+                                            f".../{cwd_parts[-1]}"
+                                            if cwd_parts and cwd_parts[-1]
+                                            else ".../workspace"
+                                        )
                                         target = command
 
                                         safe_val = args.get("SafeToAutoRun")
-                                        not_safe_auto = (safe_val is False) or (str(safe_val).lower() == "false")
+                                        not_safe_auto = (safe_val is False) or (
+                                            str(safe_val).lower() == "false"
+                                        )
                                         bypass = bool(args.get("BypassSandbox", False))
 
                                         if not_safe_auto or bypass:
                                             requires_perm = True
                                             perm_type = "command"
-                                            perm_title = "Command Approval Required" if not bypass else "Elevated Command Approval Required"
+                                            perm_title = (
+                                                "Command Approval Required"
+                                                if not bypass
+                                                else "Elevated Command Approval Required"
+                                            )
                                             perm_desc = (
                                                 "Antigravity is waiting for your permission to execute this terminal command."
                                                 if not bypass
                                                 else "This command requests unsandboxed execution. Approve, Always Allow, Deny, or send custom instructions."
                                             )
                                             approval_options = [
-                                                {"id": "allow", "label": "Allow", "description": "Run this command once"},
-                                                {"id": "always_allow", "label": "Always Allow", "description": "Allow similar commands in this session"},
-                                                {"id": "deny", "label": "Deny", "description": "Reject command or provide custom instructions"},
+                                                {
+                                                    "id": "allow",
+                                                    "label": "Allow",
+                                                    "description": "Run this command once",
+                                                },
+                                                {
+                                                    "id": "always_allow",
+                                                    "label": "Always Allow",
+                                                    "description": "Allow similar commands in this session",
+                                                },
+                                                {
+                                                    "id": "deny",
+                                                    "label": "Deny",
+                                                    "description": "Reject command or provide custom instructions",
+                                                },
                                             ]
                                         else:
                                             requires_perm = False
@@ -332,18 +401,32 @@ class ConversationService:
                                         verb = "Explored"
                                         kind = "browser"
                                         requires_perm = False
-                                        task_name = args.get("TaskName") or args.get("TaskSummary") or "Web exploration"
+                                        task_name = (
+                                            args.get("TaskName")
+                                            or args.get("TaskSummary")
+                                            or "Web exploration"
+                                        )
                                         target = f"1 browser: {task_name}"
 
                                     elif name in ("ask_question", "notify_user"):
                                         blocked = args.get("BlockedOnUser")
-                                        raw_questions = args.get("questions") or args.get("Questions") or []
+                                        raw_questions = (
+                                            args.get("questions") or args.get("Questions") or []
+                                        )
                                         if isinstance(raw_questions, str):
                                             try:
                                                 raw_questions = json.loads(raw_questions)
                                             except Exception:
                                                 raw_questions = []
-                                        q_obj = raw_questions[0] if (isinstance(raw_questions, list) and raw_questions and isinstance(raw_questions[0], dict)) else {}
+                                        q_obj = (
+                                            raw_questions[0]
+                                            if (
+                                                isinstance(raw_questions, list)
+                                                and raw_questions
+                                                and isinstance(raw_questions[0], dict)
+                                            )
+                                            else {}
+                                        )
                                         q_text = (
                                             q_obj.get("question")
                                             or q_obj.get("prompt")
@@ -376,13 +459,22 @@ class ConversationService:
                                             or "The agent is awaiting your decision or custom instructions to proceed."
                                         )
 
-                                        if name == "ask_question" or blocked is True or str(blocked).lower() == "true" or norm_opts:
+                                        if (
+                                            name == "ask_question"
+                                            or blocked is True
+                                            or str(blocked).lower() == "true"
+                                            or norm_opts
+                                        ):
                                             verb = "Asked"
                                             kind = "question"
                                             requires_perm = False
                                             target = q_text or "Agent Question"
                                             summary = f"Question: {target}"
-                                            extra = f"{len(norm_opts)} choices" if norm_opts else "Custom input"
+                                            extra = (
+                                                f"{len(norm_opts)} choices"
+                                                if norm_opts
+                                                else "Custom input"
+                                            )
                                             question_payload = {
                                                 "question": q_text or "Agent Question",
                                                 "description": description_text,
@@ -405,7 +497,9 @@ class ConversationService:
                                         cmd_hash_key = f"cmd-{hashlib.md5(command.encode('utf-8', errors='ignore')).hexdigest()[:8]}"
 
                                     resolved_decision = self._resolved_approvals.get(step_key) or (
-                                        self._resolved_approvals.get(cmd_hash_key) if cmd_hash_key else None
+                                        self._resolved_approvals.get(cmd_hash_key)
+                                        if cmd_hash_key
+                                        else None
                                     )
 
                                     item = {
@@ -435,7 +529,9 @@ class ConversationService:
                                         "allow_custom_response": True if requires_perm else False,
                                         "approval_decision": resolved_decision,
                                         "question_data": question_payload,
-                                        "status": "done" if (not requires_perm or resolved_decision) else "pending"
+                                        "status": "done"
+                                        if (not requires_perm or resolved_decision)
+                                        else "pending",
                                     }
                                     current_agent_turn["items"].append(item)
                                     current_agent_turn["steps"].append(item)
@@ -449,19 +545,24 @@ class ConversationService:
                             elif content:
                                 current_agent_turn["text"] = content
 
-                        elif stype in (
-                            "RUN_COMMAND",
-                            "WRITE_TO_FILE",
-                            "REPLACE_FILE_CONTENT",
-                            "MULTI_REPLACE_FILE_CONTENT",
-                            "VIEW_FILE",
-                            "GREP_SEARCH",
-                            "LIST_DIRECTORY",
-                            "GENERIC",
-                            "CODE_ACTION",
-                            "TOOL_RESPONSE",
-                            "ASK_QUESTION",
-                        ) and current_agent_turn and current_agent_turn.get("items"):
+                        elif (
+                            stype
+                            in (
+                                "RUN_COMMAND",
+                                "WRITE_TO_FILE",
+                                "REPLACE_FILE_CONTENT",
+                                "MULTI_REPLACE_FILE_CONTENT",
+                                "VIEW_FILE",
+                                "GREP_SEARCH",
+                                "LIST_DIRECTORY",
+                                "GENERIC",
+                                "CODE_ACTION",
+                                "TOOL_RESPONSE",
+                                "ASK_QUESTION",
+                            )
+                            and current_agent_turn
+                            and current_agent_turn.get("items")
+                        ):
                             last_item = current_agent_turn["items"][-1]
                             if last_item.get("type") == "action":
                                 last_item["requires_permission"] = False
@@ -516,16 +617,33 @@ class ConversationService:
                     pending_approval_data = {
                         "step_id": last_action.get("step_id"),
                         "request_type": last_action.get("permission_type") or "command",
-                        "target": last_action.get("command") or last_action.get("file") or last_action.get("target") or "",
+                        "target": last_action.get("command")
+                        or last_action.get("file")
+                        or last_action.get("target")
+                        or "",
                         "title": last_action.get("permission_title") or "Command Approval Required",
-                        "description": last_action.get("permission_desc") or "Antigravity is waiting for your permission to run this command.",
+                        "description": last_action.get("permission_desc")
+                        or "Antigravity is waiting for your permission to run this command.",
                         "command": last_action.get("command"),
                         "cwd": last_action.get("cwd"),
                         "cwd_short": last_action.get("cwd_short"),
-                        "options": last_action.get("approval_options") or [
-                            {"id": "allow", "label": "Allow", "description": "Run this command once"},
-                            {"id": "always_allow", "label": "Always Allow", "description": "Allow similar commands in this session"},
-                            {"id": "deny", "label": "Deny", "description": "Reject command or provide custom instructions"},
+                        "options": last_action.get("approval_options")
+                        or [
+                            {
+                                "id": "allow",
+                                "label": "Allow",
+                                "description": "Run this command once",
+                            },
+                            {
+                                "id": "always_allow",
+                                "label": "Always Allow",
+                                "description": "Allow similar commands in this session",
+                            },
+                            {
+                                "id": "deny",
+                                "label": "Deny",
+                                "description": "Reject command or provide custom instructions",
+                            },
                         ],
                         "allow_custom_response": True,
                     }
@@ -541,10 +659,11 @@ class ConversationService:
 
             try:
                 from services.interaction_service import interaction_service
+
                 interaction_service.sync_question_from_transcript(
                     session_id=session_id,
                     question_data=pending_question_data,
-                    is_active=bool(pending_question_data)
+                    is_active=bool(pending_question_data),
                 )
             except Exception:
                 pass
@@ -562,9 +681,7 @@ class ConversationService:
         return turns[-limit:] if limit > 0 else turns
 
     def get_paginated_conversation(
-        self,
-        limit: int = 15,
-        before: Optional[int] = None
+        self, limit: int = 15, before: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Return a cursor-paginated slice of conversation turns for upward scroll lazy-loading.

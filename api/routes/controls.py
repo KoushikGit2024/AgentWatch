@@ -31,7 +31,9 @@ _pushed_pending_approval: Optional[Dict[str, Any]] = None
 @router.get("/api/v1/chat/messages")
 def get_chat_messages(
     limit: int = Query(15, ge=1, le=200, description="Number of turns to fetch per block"),
-    before: Optional[int] = Query(None, ge=0, description="Cursor turn_index for upward scroll lazy-loading")
+    before: Optional[int] = Query(
+        None, ge=0, description="Cursor turn_index for upward scroll lazy-loading"
+    ),
 ):
     """
     Return paginated Antigravity conversation stream extracted from IDE transcripts.
@@ -46,12 +48,17 @@ class ApprovalDecisionRequest(BaseModel):
     decision: str = Field(..., description="allow, always_allow, deny, or custom option id")
     step_id: Optional[str] = None
     option_label: Optional[str] = None
-    custom_response: Optional[str] = Field(default=None, max_length=5000, description="Optional custom instructions to send to the agent")
+    custom_response: Optional[str] = Field(
+        default=None,
+        max_length=5000,
+        description="Optional custom instructions to send to the agent",
+    )
     metadata: Optional[Dict[str, Any]] = None
 
 
 class ApprovalPushRequest(BaseModel):
     """Payload to push a pending approval notification to the frontend."""
+
     request_type: str = Field(default="command", description="command, file, browser, or decision")
     target: str = Field(..., description="The command, file path, or resource needing approval")
     title: Optional[str] = None
@@ -110,22 +117,24 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
             "decision": payload.decision,
             "step_id": payload.step_id,
             "has_custom_response": bool(custom_text),
-            "metadata": payload.metadata or {}
-        }
+            "metadata": payload.metadata or {},
+        },
     )
     event_repo.insert_event(doc)
 
-    await websocket_manager.broadcast({
-        "type": "approval_resolved",
-        "data": {
-            "step_id": payload.step_id,
-            "request_type": payload.request_type,
-            "target": payload.target,
-            "decision": payload.decision,
-            "custom_response": custom_text,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+    await websocket_manager.broadcast(
+        {
+            "type": "approval_resolved",
+            "data": {
+                "step_id": payload.step_id,
+                "request_type": payload.request_type,
+                "target": payload.target,
+                "decision": payload.decision,
+                "custom_response": custom_text,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
         }
-    })
+    )
 
     cdp_forward = await antigravity_adapter.forward_approval(
         request_type=payload.request_type,
@@ -136,13 +145,15 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
 
     try:
         paginated = _conversation_service.get_paginated_conversation(limit=15)
-        await websocket_manager.broadcast({
-            "type": "chat_update",
-            "messages": paginated["messages"],
-            "total": paginated["total"],
-            "oldest_index": paginated["oldest_index"],
-            "has_more": paginated["has_more"],
-        })
+        await websocket_manager.broadcast(
+            {
+                "type": "chat_update",
+                "messages": paginated["messages"],
+                "total": paginated["total"],
+                "oldest_index": paginated["oldest_index"],
+                "has_more": paginated["has_more"],
+            }
+        )
     except Exception:
         pass
 
@@ -155,7 +166,7 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
         "forward_details": cdp_forward,
         "decision": payload.decision,
         "request_type": payload.request_type,
-        "target": payload.target
+        "target": payload.target,
     }
 
 
@@ -166,29 +177,37 @@ async def push_approval_request(payload: ApprovalPushRequest):
     """
     global _pushed_pending_approval
     import uuid
+
     step_id = payload.step_id or str(uuid.uuid4())[:8]
     default_options = [
         {"id": "allow", "label": "Allow", "description": "Run this action once"},
-        {"id": "always_allow", "label": "Always Allow", "description": "Allow similar actions in this session"},
-        {"id": "deny", "label": "Deny", "description": "Reject action or provide custom instructions"},
+        {
+            "id": "always_allow",
+            "label": "Always Allow",
+            "description": "Allow similar actions in this session",
+        },
+        {
+            "id": "deny",
+            "label": "Deny",
+            "description": "Reject action or provide custom instructions",
+        },
     ]
     approval_data = {
         "request_type": payload.request_type,
         "target": payload.target,
-        "title": payload.title or f"{payload.request_type.replace('_', ' ').title()} Permission Request",
+        "title": payload.title
+        or f"{payload.request_type.replace('_', ' ').title()} Permission Request",
         "description": payload.description,
-        "command": payload.command or (payload.target if payload.request_type == "command" else None),
+        "command": payload.command
+        or (payload.target if payload.request_type == "command" else None),
         "cwd": payload.cwd,
         "step_id": step_id,
         "options": payload.options or default_options,
         "allow_custom_response": payload.allow_custom_response,
-        "metadata": payload.metadata or {}
+        "metadata": payload.metadata or {},
     }
     _pushed_pending_approval = approval_data
-    await websocket_manager.broadcast({
-        "type": "pending_approval",
-        "approval": approval_data
-    })
+    await websocket_manager.broadcast({"type": "pending_approval", "approval": approval_data})
     return {"success": True, "pushed": True, "step_id": step_id, "approval": approval_data}
 
 
@@ -199,6 +218,7 @@ async def test_approval_popup(request_type: str = "command", target: str = "git 
     """
     global _pushed_pending_approval
     import uuid
+
     step_id = str(uuid.uuid4())[:8]
     approval_data = {
         "request_type": request_type,
@@ -210,22 +230,36 @@ async def test_approval_popup(request_type: str = "command", target: str = "git 
         "step_id": step_id,
         "options": [
             {"id": "allow", "label": "Allow", "description": "Run this command once"},
-            {"id": "always_allow", "label": "Always Allow", "description": "Allow similar commands in this session"},
-            {"id": "deny", "label": "Deny", "description": "Reject command or provide custom instructions"},
+            {
+                "id": "always_allow",
+                "label": "Always Allow",
+                "description": "Allow similar commands in this session",
+            },
+            {
+                "id": "deny",
+                "label": "Deny",
+                "description": "Reject command or provide custom instructions",
+            },
         ],
         "allow_custom_response": True,
     }
     _pushed_pending_approval = approval_data
-    await websocket_manager.broadcast({
-        "type": "pending_approval",
-        "approval": approval_data
-    })
-    return {"success": True, "test_popup_triggered": True, "step_id": step_id, "approval": approval_data}
+    await websocket_manager.broadcast({"type": "pending_approval", "approval": approval_data})
+    return {
+        "success": True,
+        "test_popup_triggered": True,
+        "step_id": step_id,
+        "approval": approval_data,
+    }
 
 
 @router.get("/snapshot")
 @router.get("/api/v1/snapshot")
-async def get_snapshot(last_hash: Optional[str] = Query(None, description="Previous screenshot hash to skip redundant transfer")):
+async def get_snapshot(
+    last_hash: Optional[str] = Query(
+        None, description="Previous screenshot hash to skip redundant transfer"
+    ),
+):
     """
     Return latest snapshot view. Supports `last_hash` deduplication so unchanged screenshots
     consume ~50 bytes instead of ~250KB, and omits duplicate base64 strings.
@@ -307,21 +341,19 @@ async def send_message(payload: PromptSubmissionRequest):
     """
     if payload.idempotency_key:
         state, cached = _idempotency_repo.reserve_or_get(
-            scope="prompt_send",
-            idempotency_key=payload.idempotency_key,
-            payload=payload
+            scope="prompt_send", idempotency_key=payload.idempotency_key, payload=payload
         )
         if state == "completed":
             return cached
         elif state == "conflict_mismatch":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Idempotency key was already used with a different request payload."
+                detail="Idempotency key was already used with a different request payload.",
             )
         elif state == "in_progress":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="An identical request is currently in progress."
+                detail="An identical request is currently in progress.",
             )
 
     ag_status = antigravity_adapter.get_status()
@@ -352,7 +384,9 @@ async def send_message(payload: PromptSubmissionRequest):
 
     dispatched = dispatch_res.get("success", False)
     response = {
-        "status": "submitted" if dispatched else ("cdp_dispatch_failed" if cdp_connected else "queued_offline"),
+        "status": "submitted"
+        if dispatched
+        else ("cdp_dispatch_failed" if cdp_connected else "queued_offline"),
         "action_lifecycle": "acknowledged" if dispatched else "offline_buffered",
         "antigravity_connected": cdp_connected,
         "message_length": len(raw_msg),
@@ -361,32 +395,40 @@ async def send_message(payload: PromptSubmissionRequest):
         "target_session_id": payload.session_id,
         "confirmed_execution": dispatched,
         "dispatch_details": dispatch_res,
-        "reason": None if dispatched else dispatch_res.get("error", "Antigravity CDP is not currently connected on remote debugging port"),
+        "reason": None
+        if dispatched
+        else dispatch_res.get(
+            "error", "Antigravity CDP is not currently connected on remote debugging port"
+        ),
     }
 
     if payload.idempotency_key:
         _idempotency_repo.complete(
-            scope="prompt_send",
-            idempotency_key=payload.idempotency_key,
-            response=response
+            scope="prompt_send", idempotency_key=payload.idempotency_key, response=response
         )
 
     try:
         from repositories.event_repository import EventRepository
         from models.schemas import EventDocument
         import datetime
-        EventRepository().insert_event(EventDocument(
-            session_id=payload.session_id or "default_session",
-            event_type="PromptSubmitted",
-            category="prompt",
-            summary=f"User prompt submitted ({len(prompt_msg)} chars)",
-            execution_state="dispatch_acknowledged" if cdp_connected else "request_accepted",
-            correlation_id=payload.idempotency_key,
-            timestamp=datetime.datetime.now(datetime.timezone.utc),
-            source="mobile_user",
-            source_confidence="observed",
-            sanitized_payload={"message_preview": prompt_msg[:150], "cdp_connected": cdp_connected}
-        ))
+
+        EventRepository().insert_event(
+            EventDocument(
+                session_id=payload.session_id or "default_session",
+                event_type="PromptSubmitted",
+                category="prompt",
+                summary=f"User prompt submitted ({len(prompt_msg)} chars)",
+                execution_state="dispatch_acknowledged" if cdp_connected else "request_accepted",
+                correlation_id=payload.idempotency_key,
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
+                source="mobile_user",
+                source_confidence="observed",
+                sanitized_payload={
+                    "message_preview": prompt_msg[:150],
+                    "cdp_connected": cdp_connected,
+                },
+            )
+        )
     except Exception:
         pass
 
@@ -394,13 +436,17 @@ async def send_message(payload: PromptSubmissionRequest):
         paginated = _conversation_service.get_paginated_conversation(limit=15)
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(websocket_manager.broadcast({
-                "type": "chat_update",
-                "messages": paginated["messages"],
-                "total": paginated["total"],
-                "oldest_index": paginated["oldest_index"],
-                "has_more": paginated["has_more"],
-            }))
+            loop.create_task(
+                websocket_manager.broadcast(
+                    {
+                        "type": "chat_update",
+                        "messages": paginated["messages"],
+                        "total": paginated["total"],
+                        "oldest_index": paginated["oldest_index"],
+                        "has_more": paginated["has_more"],
+                    }
+                )
+            )
         except RuntimeError:
             pass
     except Exception:
@@ -426,13 +472,15 @@ async def stop_generation():
     _conversation_service.mark_active_turn_stopped()
     try:
         paginated = _conversation_service.get_paginated_conversation(limit=15)
-        await websocket_manager.broadcast({
-            "type": "chat_update",
-            "messages": paginated["messages"],
-            "total": paginated["total"],
-            "oldest_index": paginated["oldest_index"],
-            "has_more": paginated["has_more"],
-        })
+        await websocket_manager.broadcast(
+            {
+                "type": "chat_update",
+                "messages": paginated["messages"],
+                "total": paginated["total"],
+                "oldest_index": paginated["oldest_index"],
+                "has_more": paginated["has_more"],
+            }
+        )
     except Exception:
         pass
 
@@ -440,26 +488,34 @@ async def stop_generation():
         from repositories.event_repository import EventRepository
         from models.schemas import EventDocument
         import datetime
-        EventRepository().insert_event(EventDocument(
-            session_id="default_session",
-            event_type="StopRequested",
-            category="execution",
-            summary="Emergency Stop requested by user",
-            execution_state="stop_acknowledged" if cdp_connected else "stop_requested",
-            timestamp=datetime.datetime.now(datetime.timezone.utc),
-            source="mobile_user",
-            source_confidence="observed",
-            sanitized_payload={"cdp_connected": cdp_connected, "dispatch_details": dispatch_res}
-        ))
+
+        EventRepository().insert_event(
+            EventDocument(
+                session_id="default_session",
+                event_type="StopRequested",
+                category="execution",
+                summary="Emergency Stop requested by user",
+                execution_state="stop_acknowledged" if cdp_connected else "stop_requested",
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
+                source="mobile_user",
+                source_confidence="observed",
+                sanitized_payload={
+                    "cdp_connected": cdp_connected,
+                    "dispatch_details": dispatch_res,
+                },
+            )
+        )
     except Exception:
         pass
 
     return {
-        "status": "stopped" if dispatch_res.get("success") else ("stop_signal_dispatched" if cdp_connected else "stop_requested_offline"),
+        "status": "stopped"
+        if dispatch_res.get("success")
+        else ("stop_signal_dispatched" if cdp_connected else "stop_requested_offline"),
         "action_lifecycle": "confirmed" if dispatch_res.get("success") else "dispatched",
         "antigravity_connected": cdp_connected,
         "confirmed_termination": False,
-        "dispatch_details": dispatch_res
+        "dispatch_details": dispatch_res,
     }
 
 
@@ -474,17 +530,20 @@ def new_chat():
         from repositories.event_repository import EventRepository
         from models.schemas import EventDocument
         import datetime
-        EventRepository().insert_event(EventDocument(
-            session_id="default_session",
-            event_type="NewChat",
-            category="system",
-            summary="New conversation session started",
-            execution_state="execution_observed" if cdp_connected else "request_accepted",
-            timestamp=datetime.datetime.now(datetime.timezone.utc),
-            source="mobile_user",
-            source_confidence="observed",
-            sanitized_payload={"cdp_connected": cdp_connected}
-        ))
+
+        EventRepository().insert_event(
+            EventDocument(
+                session_id="default_session",
+                event_type="NewChat",
+                category="system",
+                summary="New conversation session started",
+                execution_state="execution_observed" if cdp_connected else "request_accepted",
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
+                source="mobile_user",
+                source_confidence="observed",
+                sanitized_payload={"cdp_connected": cdp_connected},
+            )
+        )
     except Exception:
         pass
 
@@ -500,8 +559,12 @@ def new_chat():
 def get_chat_history():
     """Retrieve chat history for frontend drawer."""
     from repositories.session_repository import SessionRepository
+
     sessions = SessionRepository().list_sessions(limit=50)
-    chats = [{"title": s.get("title") or s.get("session_id"), "session_id": s.get("session_id")} for s in sessions]
+    chats = [
+        {"title": s.get("title") or s.get("session_id"), "session_id": s.get("session_id")}
+        for s in sessions
+    ]
     return {"count": len(chats), "chats": chats}
 
 
@@ -547,7 +610,9 @@ def remote_click(payload: RemoteClickRequest):
     Guards against unauthorized permission bypass while allowing safe UI toggles (Thought/Worked blocks).
     """
     element_text = payload.text or ""
-    if any(k in element_text.lower() for k in ["allow", "authorize", "grant permission", "approve"]):
+    if any(
+        k in element_text.lower() for k in ["allow", "authorize", "grant permission", "approve"]
+    ):
         return {
             "success": False,
             "status": "requires_native_ide",

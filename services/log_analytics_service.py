@@ -39,13 +39,15 @@ class LogAnalyticsService:
             stat = p.stat()
             # Extract date from filename agentwatch_YYYY-MM-DD.log
             date_str = p.stem.replace("agentwatch_", "")
-            files.append({
-                "filename": p.name,
-                "date": date_str,
-                "size_bytes": stat.st_size,
-                "modified_time": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                "path": str(p).replace("\\", "/")
-            })
+            files.append(
+                {
+                    "filename": p.name,
+                    "date": date_str,
+                    "size_bytes": stat.st_size,
+                    "modified_time": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "path": str(p).replace("\\", "/"),
+                }
+            )
 
         # Sort descending by date
         files.sort(key=lambda x: x["date"], reverse=True)
@@ -66,15 +68,21 @@ class LogAnalyticsService:
             return {
                 "error": f"Log file for '{date_or_filename}' not found",
                 "filename": date_or_filename,
-                "exists": False
+                "exists": False,
             }
 
-        level_counts: Dict[str, int] = {"INFO": 0, "WARNING": 0, "ERROR": 0, "DEBUG": 0, "CRITICAL": 0}
+        level_counts: Dict[str, int] = {
+            "INFO": 0,
+            "WARNING": 0,
+            "ERROR": 0,
+            "DEBUG": 0,
+            "CRITICAL": 0,
+        }
         hourly_distribution: Dict[str, Dict[str, Any]] = {
             f"{h:02d}:00": {
                 "total": 0,
                 "levels": {"INFO": 0, "WARNING": 0, "ERROR": 0, "DEBUG": 0, "CRITICAL": 0},
-                "status": {"2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0}
+                "status": {"2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0},
             }
             for h in range(24)
         }
@@ -119,12 +127,14 @@ class LogAnalyticsService:
                     # Error sample collection (last 15 errors)
                     if lvl in ("ERROR", "CRITICAL"):
                         if len(recent_errors) < 15:
-                            recent_errors.append({
-                                "time": time_str,
-                                "level": lvl,
-                                "logger": logger_name,
-                                "message": data["message"][:200]
-                            })
+                            recent_errors.append(
+                                {
+                                    "time": time_str,
+                                    "level": lvl,
+                                    "logger": logger_name,
+                                    "message": data["message"][:200],
+                                }
+                            )
 
                     # HTTP Access check
                     if "uvicorn.access" in data["logger"]:
@@ -177,11 +187,13 @@ class LogAnalyticsService:
         if total_http > 0:
             for sc, cnt in status_codes.items():
                 if cnt > 0:
-                    pie_status.append({
-                        "category": sc,
-                        "count": cnt,
-                        "percentage": round((cnt / total_http) * 100, 1)
-                    })
+                    pie_status.append(
+                        {
+                            "category": sc,
+                            "count": cnt,
+                            "percentage": round((cnt / total_http) * 100, 1),
+                        }
+                    )
 
         return {
             "exists": True,
@@ -200,7 +212,7 @@ class LogAnalyticsService:
                     "hour": h,
                     "count": data["total"],
                     "levels": data["levels"],
-                    "status": data["status"]
+                    "status": data["status"],
                 }
                 for h, data in hourly_distribution.items()
             ],
@@ -230,7 +242,7 @@ class LogAnalyticsService:
                     "success": True,
                     "filename": target.name,
                     "action": "truncated",
-                    "message": f"Active file '{target.name}' truncated successfully."
+                    "message": f"Active file '{target.name}' truncated successfully.",
                 }
             else:
                 target.unlink(missing_ok=True)
@@ -238,7 +250,7 @@ class LogAnalyticsService:
                     "success": True,
                     "filename": target.name,
                     "action": "deleted",
-                    "message": f"Log file '{target.name}' deleted successfully."
+                    "message": f"Log file '{target.name}' deleted successfully.",
                 }
         except Exception as e:
             return {"success": False, "error": str(e), "filename": target.name}
@@ -257,4 +269,3 @@ class LogAnalyticsService:
 
 
 log_analytics_service = LogAnalyticsService()
-

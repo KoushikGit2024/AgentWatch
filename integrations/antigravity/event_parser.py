@@ -33,7 +33,7 @@ def parse_environment_metadata(env: Dict[str, str]) -> Optional[IngestEventReque
     session_id = conv_id or meta.get("conversationId") or "unknown_session"
     step_idx = meta.get("stepIndex", 0)
     tool_name = meta.get("toolName", "AgentStep")
-    
+
     # Deterministic source event ID
     source_event_id = f"{session_id}:PreToolUse:{step_idx}:{tool_name}"
 
@@ -61,5 +61,5 @@ def parse_environment_metadata(env: Dict[str, str]) -> Optional[IngestEventReque
             "step_index": step_idx,
             "arguments": sanitized_args,
             "trajectory_id": env.get("ANTIGRAVITY_TRAJECTORY_ID"),
-        }
+        },
     )

@@ -134,7 +134,13 @@ Mobile User                   FastAPI /send                   AntigravityAdapter
    ```python
    self.collection.find_one_and_update(
        {"interaction_id": interaction_id, "status": "pending"},
-       {"$set": {"status": "submitted", "submitted_response": sanitized, "resolved_at": datetime.now(timezone.utc)}}
+       {
+           "$set": {
+               "status": "submitted",
+               "submitted_response": sanitized,
+               "resolved_at": datetime.now(timezone.utc),
+           }
+       },
    )
    ```
    If two requests attempt to resolve the same interaction concurrently, exactly one succeeds; the second receives an explicit `409 Conflict` (already submitted) error.

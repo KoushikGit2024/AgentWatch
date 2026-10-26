@@ -34,7 +34,7 @@ def test_interaction_creation_and_pending_listing(clean_test_interactions):
             InteractionOption(id="opt_1", label="First"),
             InteractionOption(id="opt_2", label="Second"),
         ],
-        status=InteractionStatus.PENDING
+        status=InteractionStatus.PENDING,
     )
     doc_id, is_dup = svc.create_interaction(doc)
     assert not is_dup
@@ -55,20 +55,22 @@ def test_supersede_pending_interactions(clean_test_interactions):
         session_id="unit-test-session",
         kind=InteractionKind.SINGLE_CHOICE,
         title="Old Question",
-        status=InteractionStatus.PENDING
+        status=InteractionStatus.PENDING,
     )
     doc2 = InteractionDocument(
         interaction_id="unit-int-new",
         session_id="unit-test-session",
         kind=InteractionKind.SINGLE_CHOICE,
         title="New Question",
-        status=InteractionStatus.PENDING
+        status=InteractionStatus.PENDING,
     )
     repo.create_interaction(doc1)
     repo.create_interaction(doc2)
 
     # Supersede older questions excluding unit-int-new
-    count = repo.supersede_pending_interactions(session_id="unit-test-session", exclude_id="unit-int-new")
+    count = repo.supersede_pending_interactions(
+        session_id="unit-test-session", exclude_id="unit-int-new"
+    )
     assert count >= 1
 
     pending = svc.list_pending(session_id="unit-test-session")
@@ -90,13 +92,11 @@ async def test_atomic_response_submission(clean_test_interactions):
         kind=InteractionKind.SINGLE_CHOICE,
         title="Respond Question",
         options=[InteractionOption(id="opt_1", label="Choice 1")],
-        status=InteractionStatus.PENDING
+        status=InteractionStatus.PENDING,
     )
     repo.create_interaction(doc)
 
-    req = SubmitInteractionRequest(
-        selected_option_ids=["opt_1"]
-    )
+    req = SubmitInteractionRequest(selected_option_ids=["opt_1"])
     res = await svc.submit_response("unit-int-respond", req)
     assert res["success"] is True
     assert res["status"] == "submitted"
@@ -122,24 +122,19 @@ def test_sync_multi_question_parsing(clean_test_interactions):
                 "is_multi_select": False,
                 "options": [
                     {"label": "(Recommended) Staging", "is_recommended": True},
-                    {"label": "Production"}
-                ]
+                    {"label": "Production"},
+                ],
             },
             {
                 "question": "Select test suites to run",
                 "is_multi_select": True,
-                "options": [
-                    {"label": "Unit tests"},
-                    {"label": "Integration tests"}
-                ]
-            }
-        ]
+                "options": [{"label": "Unit tests"}, {"label": "Integration tests"}],
+            },
+        ],
     }
 
     interaction_id = svc.sync_question_from_transcript(
-        session_id="multi-q-test-session",
-        question_data=payload,
-        is_active=True
+        session_id="multi-q-test-session", question_data=payload, is_active=True
     )
 
     assert interaction_id is not None
@@ -163,10 +158,11 @@ def test_sync_multi_question_parsing(clean_test_interactions):
 async def test_dispatch_answer_question_no_options():
     """Verify dispatch_answer_question validates input cleanly without open CDP socket."""
     from integrations.antigravity.cdp_actions import dispatch_answer_question
+
     res = await dispatch_answer_question(
         target_url="ws://127.0.0.1:9999/devtools/page/test",
         selected_labels=[],
-        custom_response=None
+        custom_response=None,
     )
     assert res["success"] is False
     assert "No options or custom response" in res.get("error", "")
@@ -189,7 +185,7 @@ def test_browser_permission_schema_and_resolution(clean_test_interactions):
             InteractionOption(id="allow_this_time", label="Allow this time"),
             InteractionOption(id="deny", label="Deny"),
         ],
-        status=InteractionStatus.PENDING
+        status=InteractionStatus.PENDING,
     )
     doc_id, is_dup = svc.create_interaction(doc)
     assert not is_dup
@@ -221,7 +217,7 @@ def test_command_approval_schema_with_command_target(clean_test_interactions):
             InteractionOption(id="deny", label="No (tell the agent what to do instead)"),
         ],
         allow_custom_response=True,
-        status=InteractionStatus.PENDING
+        status=InteractionStatus.PENDING,
     )
     doc_id, is_dup = svc.create_interaction(doc)
     assert not is_dup
@@ -231,6 +227,3 @@ def test_command_approval_schema_with_command_target(clean_test_interactions):
     assert retrieved is not None
     assert retrieved["command"] == "powershell -Command Write-Host 'test'"
     assert retrieved["allow_custom_response"] is True
-
-
-

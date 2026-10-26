@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "prettier --write \"../*.{json,md}\" \"../{frontend,config}/**/*.{js,jsx,css,json,md}\"",
+    "format:check": "prettier --check \"../*.{json,md}\" \"../{frontend,config}/**/*.{js,jsx,css,json,md}\"",
+    "py:format": "ruff format ..",
+    "py:check": "ruff format --check ..",
+    "format:all": "npm run format && npm run py:format"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -24,6 +29,7 @@
     "autoprefixer": "^10.6.1",
     "oxlint": "^1.88.0",
     "postcss": "^8.5.31",
+    "prettier": "^3.9.10",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.4"
   }

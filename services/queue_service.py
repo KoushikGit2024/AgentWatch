@@ -19,7 +19,9 @@ class QueueMessageService:
         # Local buffer of messages queued when agent is working or IDE is disconnected
         self._buffered_queue: List[Dict[str, Any]] = []
 
-    def queue_message(self, message: str, attachments: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def queue_message(
+        self, message: str, attachments: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
         """Add a follow-up message to the queue."""
         item = {
             "id": f"q_{uuid.uuid4().hex[:8]}",
@@ -27,7 +29,7 @@ class QueueMessageService:
             "attachments": attachments or [],
             "source": "local_buffer",
             "created_at": time.time(),
-            "status": "queued"
+            "status": "queued",
         }
         self._buffered_queue.append(item)
         return item
@@ -58,41 +60,43 @@ class QueueMessageService:
         ide_items = []
         if antigravity_adapter.active_target_url:
             from integrations.antigravity.cdp_queue_actions import get_ide_queued_messages
+
             ide_items = await get_ide_queued_messages(antigravity_adapter.active_target_url)
 
         # Combine IDE native items + local items
         combined = []
         # IDE items first
         for it in ide_items:
-            combined.append({
-                "id": it["id"],
-                "index": it["index"],
-                "text": it["text"],
-                "source": "ide_native",
-                "can_send_now": it.get("can_send_now", True),
-                "can_edit": it.get("can_edit", True),
-                "can_delete": it.get("can_delete", True)
-            })
+            combined.append(
+                {
+                    "id": it["id"],
+                    "index": it["index"],
+                    "text": it["text"],
+                    "source": "ide_native",
+                    "can_send_now": it.get("can_send_now", True),
+                    "can_edit": it.get("can_edit", True),
+                    "can_delete": it.get("can_delete", True),
+                }
+            )
 
         # Local buffer items
         for it in self._buffered_queue:
-            combined.append({
-                "id": it["id"],
-                "text": it["text"],
-                "attachments": it.get("attachments", []),
-                "source": "local_buffer",
-                "can_send_now": True,
-                "can_edit": True,
-                "can_delete": True
-            })
+            combined.append(
+                {
+                    "id": it["id"],
+                    "text": it["text"],
+                    "attachments": it.get("attachments", []),
+                    "source": "local_buffer",
+                    "can_send_now": True,
+                    "can_edit": True,
+                    "can_delete": True,
+                }
+            )
 
         return combined
 
     async def execute_action(
-        self,
-        item_id: str,
-        action: str,
-        new_text: Optional[str] = None
+        self, item_id: str, action: str, new_text: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Execute an action ('send_now', 'delete', 'edit') on either an IDE queued item or a local buffer item.
@@ -111,11 +115,9 @@ class QueueMessageService:
                 index = 0
 
             from integrations.antigravity.cdp_queue_actions import dispatch_queued_action
+
             return await dispatch_queued_action(
-                antigravity_adapter.active_target_url,
-                act,
-                index=index,
-                text=new_text
+                antigravity_adapter.active_target_url, act, index=index, text=new_text
             )
 
         # Otherwise, local buffer item
@@ -132,7 +134,7 @@ class QueueMessageService:
             item = next((m for m in self._buffered_queue if m.get("id") == item_id), None)
             if not item:
                 return {"success": False, "error": "Item not found in buffer"}
-            
+
             prompt_msg = item["text"]
             attachments = item.get("attachments", [])
             if attachments:

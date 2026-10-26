@@ -28,7 +28,7 @@ class SessionRepository:
         title: Optional[str] = None,
         status: Optional[str] = None,
         mode: Optional[str] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Upsert session tracking document."""
         now = datetime.now(timezone.utc)
@@ -58,16 +58,18 @@ class SessionRepository:
                     "$setOnInsert": {
                         "session_id": session_id,
                         "created_at": now,
-                    }
+                    },
                 },
                 upsert=True,
-                return_document=True
+                return_document=True,
             )
             if doc and "_id" in doc:
                 doc["_id"] = str(doc["_id"])
             return doc or self._fallback_sessions[session_id]
         except (PyMongoError, Exception) as exc:
-            logger.warning("MongoDB unavailable during session upsert (%s). Used fallback.", str(exc))
+            logger.warning(
+                "MongoDB unavailable during session upsert (%s). Used fallback.", str(exc)
+            )
             return self._fallback_sessions[session_id]
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
@@ -101,7 +103,10 @@ class SessionRepository:
         if name:
             update_fields["name"] = name
 
-        self._fallback_agents[agent_id] = {**self._fallback_agents.get(agent_id, {}), **update_fields}
+        self._fallback_agents[agent_id] = {
+            **self._fallback_agents.get(agent_id, {}),
+            **update_fields,
+        }
 
         try:
             doc = self.agents.find_one_and_update(
@@ -112,10 +117,10 @@ class SessionRepository:
                         "agent_id": agent_id,
                         "name": name or "Antigravity Agent",
                         "capabilities": ["observe", "status"],
-                    }
+                    },
                 },
                 upsert=True,
-                return_document=True
+                return_document=True,
             )
             if doc and "_id" in doc:
                 doc["_id"] = str(doc["_id"])

@@ -86,7 +86,8 @@ class AntigravityAdapter:
                 if resp.status_code == 200:
                     targets = resp.json()
                     valid_targets = [
-                        t for t in targets
+                        t
+                        for t in targets
                         if self._is_antigravity_target(t) and t.get("webSocketDebuggerUrl")
                     ]
 
@@ -100,7 +101,7 @@ class AntigravityAdapter:
                             logger.info(
                                 "Antigravity CDP target replaced from '%s' to '%s'",
                                 self.active_target_id,
-                                target_id
+                                target_id,
                             )
 
                         self.active_cdp_port = port
@@ -164,18 +165,25 @@ class AntigravityAdapter:
             import websockets
             import json
             import asyncio
+
             async with websockets.connect(self.active_target_url, close_timeout=2) as ws:
-                await ws.send(json.dumps({
-                    "id": 100,
-                    "method": "Page.captureScreenshot",
-                    "params": {"format": "jpeg", "quality": quality}
-                }))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "id": 100,
+                            "method": "Page.captureScreenshot",
+                            "params": {"format": "jpeg", "quality": quality},
+                        }
+                    )
+                )
                 reply = await asyncio.wait_for(ws.recv(), timeout=2.5)
                 res = json.loads(reply)
                 data = res.get("result", {}).get("data")
                 if data:
                     self._cached_screenshot = data
-                    self._cached_screenshot_hash = hashlib.md5(data.encode("ascii", errors="ignore")).hexdigest()[:16]
+                    self._cached_screenshot_hash = hashlib.md5(
+                        data.encode("ascii", errors="ignore")
+                    ).hexdigest()[:16]
                     self._last_screenshot_time = now
                     return data
         except Exception as e:
@@ -196,6 +204,7 @@ class AntigravityAdapter:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
 
         from integrations.antigravity.cdp_actions import dispatch_send_prompt
+
         res = await dispatch_send_prompt(self.active_target_url, message)
         if not res.get("success"):
             self.discover_cdp(force=True)
@@ -211,6 +220,7 @@ class AntigravityAdapter:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
 
         from integrations.antigravity.cdp_actions import dispatch_stop_generation
+
         return await dispatch_stop_generation(self.active_target_url)
 
     async def inspect_active_popup(self) -> Dict[str, Any]:
@@ -221,6 +231,7 @@ class AntigravityAdapter:
             return {"has_popup": False}
 
         from integrations.antigravity.cdp_actions import dispatch_inspect_active_popup
+
         return await dispatch_inspect_active_popup(self.active_target_url)
 
     async def inspect_active_banners(self) -> Dict[str, Any]:
@@ -231,6 +242,7 @@ class AntigravityAdapter:
             return {"has_banners": False, "banners": []}
 
         from integrations.antigravity.cdp_actions import dispatch_inspect_active_banners
+
         return await dispatch_inspect_active_banners(self.active_target_url)
 
     async def forward_approval(
@@ -244,9 +256,14 @@ class AntigravityAdapter:
         if not self.active_target_url:
             self.discover_cdp()
         if not self.active_target_url:
-            return {"success": False, "requires_native_ide": False, "error": "Antigravity CDP not connected on port 9000"}
+            return {
+                "success": False,
+                "requires_native_ide": False,
+                "error": "Antigravity CDP not connected on port 9000",
+            }
 
         from integrations.antigravity.cdp_actions import dispatch_forward_approval
+
         return await dispatch_forward_approval(
             self.active_target_url,
             request_type=request_type,
@@ -268,6 +285,7 @@ class AntigravityAdapter:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
 
         from integrations.antigravity.cdp_actions import dispatch_answer_question
+
         return await dispatch_answer_question(
             self.active_target_url,
             selected_labels=selected_labels,
@@ -291,16 +309,23 @@ class AntigravityAdapter:
                 "Gemini 3.8 Flash Medium",
                 "Claude Sonnet 4.6 (Thinking)",
                 "Claude Opus 4.6 (Thinking)",
-                "GPT-OSS 120B (Medium)"
+                "GPT-OSS 120B (Medium)",
             ]
             self._cached_available_models = cached_models
 
         now = time.time()
-        if not force_refresh_list and self._cached_active_model and (now - self._last_model_read_time < 30.0):
+        if (
+            not force_refresh_list
+            and self._cached_active_model
+            and (now - self._last_model_read_time < 30.0)
+        ):
             active_model = self._cached_active_model
         else:
             from integrations.antigravity.cdp_actions import dispatch_read_model
-            read_res = await dispatch_read_model(self.active_target_url, force_full_scan=force_refresh_list)
+
+            read_res = await dispatch_read_model(
+                self.active_target_url, force_full_scan=force_refresh_list
+            )
             active_model = read_res.get("model") or self._cached_active_model or cached_models[0]
             self._cached_active_model = active_model
             self._last_model_read_time = now
@@ -311,7 +336,7 @@ class AntigravityAdapter:
         return {
             "model": active_model,
             "available_models": cached_models,
-            "mode": self._current_mode
+            "mode": self._current_mode,
         }
 
     async def set_active_model(self, target_model: str) -> Dict[str, Any]:
@@ -319,6 +344,7 @@ class AntigravityAdapter:
         self._cached_active_model = target_model
         self._last_model_read_time = time.time()
         import os
+
         if os.environ.get("ENVIRONMENT") == "testing":
             return {"success": True, "selected": target_model, "test_mode": True}
 
@@ -328,12 +354,14 @@ class AntigravityAdapter:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
 
         from integrations.antigravity.cdp_actions import dispatch_switch_model
+
         return await dispatch_switch_model(self.active_target_url, target_model)
 
     async def set_active_mode(self, target_mode: str) -> Dict[str, Any]:
         """Switch active agent mode (Fast vs Planning) in Antigravity IDE."""
         self._current_mode = target_mode
         import os
+
         if os.environ.get("ENVIRONMENT") == "testing":
             return {"success": True, "mode": target_mode, "test_mode": True}
 
@@ -343,6 +371,7 @@ class AntigravityAdapter:
             return {"success": True, "mode": target_mode, "cdp_connected": False}
 
         from integrations.antigravity.cdp_actions import dispatch_switch_mode
+
         return await dispatch_switch_mode(self.active_target_url, target_mode)
 
     async def toggle_terminal(self) -> Dict[str, Any]:
@@ -350,8 +379,13 @@ class AntigravityAdapter:
         if not self.active_target_url:
             self.discover_cdp()
         if not self.active_target_url:
-            return {"success": False, "error": "Antigravity CDP not connected on port 9000", "tasks": []}
+            return {
+                "success": False,
+                "error": "Antigravity CDP not connected on port 9000",
+                "tasks": [],
+            }
         from integrations.antigravity.cdp_actions import dispatch_toggle_terminal
+
         return await dispatch_toggle_terminal(self.active_target_url)
 
     async def get_terminal_tasks(self) -> Dict[str, Any]:
@@ -359,18 +393,28 @@ class AntigravityAdapter:
         if not self.active_target_url:
             self.discover_cdp()
         if not self.active_target_url:
-            return {"success": False, "error": "Antigravity CDP not connected on port 9000", "tasks": []}
+            return {
+                "success": False,
+                "error": "Antigravity CDP not connected on port 9000",
+                "tasks": [],
+            }
         from integrations.antigravity.cdp_actions import dispatch_get_terminal_tasks
+
         return await dispatch_get_terminal_tasks(self.active_target_url)
 
-    async def kill_terminal_task(self, index: int = 0, tooltip_id: Optional[str] = None) -> Dict[str, Any]:
+    async def kill_terminal_task(
+        self, index: int = 0, tooltip_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Click close button on a specific terminal task row via CDP."""
         if not self.active_target_url:
             self.discover_cdp()
         if not self.active_target_url:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
         from integrations.antigravity.cdp_actions import dispatch_kill_terminal_task
-        return await dispatch_kill_terminal_task(self.active_target_url, index=index, tooltip_id=tooltip_id)
+
+        return await dispatch_kill_terminal_task(
+            self.active_target_url, index=index, tooltip_id=tooltip_id
+        )
 
     def get_status(self) -> Dict[str, Any]:
         """Return cached or refreshed status of Antigravity connection."""
@@ -387,4 +431,3 @@ class AntigravityAdapter:
 
 
 antigravity_adapter = AntigravityAdapter()
-

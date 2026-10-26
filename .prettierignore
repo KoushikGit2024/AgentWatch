@@ -1,0 +1,32 @@
+# Dependencies & Environment
+node_modules
+**/node_modules/**
+.venv
+**/.venv/**
+env
+venv
+
+# Build Outputs & Generated Assets
+dist
+static/dist
+**/dist/**
+build
+*.egg-info
+
+# Runtime Data, Logs & Uploads
+data
+logs
+uploads
+scratch
+.coverage
+htmlcov
+.pytest_cache
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.sqlite
+*.sqlite3
+*.db

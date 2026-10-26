@@ -37,8 +37,7 @@ async def upload_attachments(files: List[UploadFile] = File(...)) -> Dict[str, A
     """
     if not files:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No files provided in upload payload"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided in upload payload"
         )
 
     results = []
@@ -55,7 +54,7 @@ async def upload_attachments(files: List[UploadFile] = File(...)) -> Dict[str, A
             if len(content) > 25 * 1024 * 1024:
                 raise HTTPException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail=f"File {original_name} exceeds 25MB limit"
+                    detail=f"File {original_name} exceeds 25MB limit",
                 )
 
             with open(dest_path, "wb") as f:
@@ -66,30 +65,28 @@ async def upload_attachments(files: List[UploadFile] = File(...)) -> Dict[str, A
                 (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg")
             )
 
-            results.append({
-                "id": f"att_{ts}_{idx}",
-                "filename": safe_name,
-                "original_name": original_name,
-                "storage_path": str(dest_path).replace("\\", "/"),
-                "relative_path": f"uploads/{unique_name}",
-                "url": f"/uploads/{unique_name}",
-                "content_type": mime_type,
-                "size": len(content),
-                "is_image": is_img
-            })
+            results.append(
+                {
+                    "id": f"att_{ts}_{idx}",
+                    "filename": safe_name,
+                    "original_name": original_name,
+                    "storage_path": str(dest_path).replace("\\", "/"),
+                    "relative_path": f"uploads/{unique_name}",
+                    "url": f"/uploads/{unique_name}",
+                    "content_type": mime_type,
+                    "size": len(content),
+                    "is_image": is_img,
+                }
+            )
         except HTTPException:
             raise
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to save {original_name}: {str(exc)}"
+                detail=f"Failed to save {original_name}: {str(exc)}",
             )
 
-    return {
-        "success": True,
-        "count": len(results),
-        "attachments": results
-    }
+    return {"success": True, "count": len(results), "attachments": results}
 
 
 def _get_file_category(ext: str) -> str:
@@ -98,17 +95,28 @@ def _get_file_category(ext: str) -> str:
         return "image"
     if ext in {".pdf", ".txt", ".md", ".csv", ".docx", ".xlsx", ".json", ".log"}:
         return "document"
-    if ext in {".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".cpp", ".c", ".h", ".java", ".rs", ".go"}:
+    if ext in {
+        ".py",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".html",
+        ".css",
+        ".cpp",
+        ".c",
+        ".h",
+        ".java",
+        ".rs",
+        ".go",
+    }:
         return "code"
     return "other"
 
 
 @router.get("/api/v1/attachments")
 async def list_attachments(
-    search: str = "",
-    category: str = "all",
-    limit: int = 150,
-    offset: int = 0
+    search: str = "", category: str = "all", limit: int = 150, offset: int = 0
 ) -> Dict[str, Any]:
     """
     List all uploaded attachments with metadata, filtering, and storage usage statistics.
@@ -140,35 +148,41 @@ async def list_attachments(
                     continue
 
                 # Filter search query
-                if search_lower and search_lower not in original_name.lower() and search_lower not in entry.name.lower():
+                if (
+                    search_lower
+                    and search_lower not in original_name.lower()
+                    and search_lower not in entry.name.lower()
+                ):
                     continue
 
-                items.append({
-                    "id": entry.name,
-                    "filename": entry.name,
-                    "original_name": original_name,
-                    "category": cat,
-                    "size": size,
-                    "is_image": is_img,
-                    "url": f"/uploads/{entry.name}",
-                    "relative_path": f"uploads/{entry.name}",
-                    "mtime": mtime,
-                    "created_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
-                })
+                items.append(
+                    {
+                        "id": entry.name,
+                        "filename": entry.name,
+                        "original_name": original_name,
+                        "category": cat,
+                        "size": size,
+                        "is_image": is_img,
+                        "url": f"/uploads/{entry.name}",
+                        "relative_path": f"uploads/{entry.name}",
+                        "mtime": mtime,
+                        "created_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime)),
+                    }
+                )
             except OSError:
                 continue
 
     # Sort newest first
     items.sort(key=lambda x: x["mtime"], reverse=True)
     total_count = len(items)
-    paginated = items[offset:offset + limit]
+    paginated = items[offset : offset + limit]
 
     return {
         "success": True,
         "total_count": total_count,
         "total_bytes": total_bytes,
         "total_size_mb": round(total_bytes / (1024 * 1024), 2),
-        "attachments": paginated
+        "attachments": paginated,
     }
 
 
@@ -180,11 +194,15 @@ async def delete_attachment(filename: str) -> Dict[str, Any]:
     """
     safe_name = os.path.basename(filename)
     if safe_name == ".gitkeep":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete system placeholder")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete system placeholder"
+        )
 
     file_path = UPLOAD_DIR / safe_name
     if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment file not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Attachment file not found"
+        )
 
     try:
         size = file_path.stat().st_size
@@ -193,7 +211,7 @@ async def delete_attachment(filename: str) -> Dict[str, Any]:
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete {safe_name}: {str(exc)}"
+            detail=f"Failed to delete {safe_name}: {str(exc)}",
         )
 
 
@@ -204,7 +222,9 @@ async def delete_attachments_batch(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     filenames = payload.get("filenames") or []
     if not filenames or not isinstance(filenames, list):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="filenames list is required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="filenames list is required"
+        )
 
     deleted = []
     failed = []
@@ -232,6 +252,5 @@ async def delete_attachments_batch(payload: Dict[str, Any]) -> Dict[str, Any]:
         "freed_bytes": freed_bytes,
         "freed_mb": round(freed_bytes / (1024 * 1024), 2),
         "deleted": deleted,
-        "failed": failed
+        "failed": failed,
     }
-

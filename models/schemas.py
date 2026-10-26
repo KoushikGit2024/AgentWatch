@@ -58,23 +58,33 @@ class EventType(str, Enum):
 
 class IngestEventRequest(BaseModel):
     """Payload submitted to event ingestion API."""
-    source_event_id: Optional[str] = Field(default=None, description="Deterministic source ID for deduplication")
-    agent_id: str = Field(default="antigravity_agent", description="Identifier of the emitting agent")
+
+    source_event_id: Optional[str] = Field(
+        default=None, description="Deterministic source ID for deduplication"
+    )
+    agent_id: str = Field(
+        default="antigravity_agent", description="Identifier of the emitting agent"
+    )
     session_id: str = Field(description="Conversation or session UUID")
     task_id: Optional[str] = Field(default=None, description="Active task identifier if known")
     event_type: str = Field(description="Event classification, e.g., PreToolUse, PostToolUse, Stop")
     category: Optional[EventCategory] = Field(default=None, description="Normalized event category")
     summary: Optional[str] = Field(default=None, description="Human-readable safe summary")
-    execution_state: Optional[ActionExecutionState] = Field(default=None, description="Observed lifecycle state")
+    execution_state: Optional[ActionExecutionState] = Field(
+        default=None, description="Observed lifecycle state"
+    )
     correlation_id: Optional[str] = Field(default=None, description="Correlation or action ID")
     timestamp: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
     source: str = Field(default="antigravity", description="Originating source system")
     source_confidence: SourceConfidence = Field(default=SourceConfidence.DECLARED)
-    raw_payload: Optional[Dict[str, Any]] = Field(default=None, description="Raw metadata payload before sanitization")
+    raw_payload: Optional[Dict[str, Any]] = Field(
+        default=None, description="Raw metadata payload before sanitization"
+    )
 
 
 class EventDocument(BaseModel):
     """Persisted event document schema."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: Optional[str] = Field(default=None, alias="_id")
@@ -96,6 +106,7 @@ class EventDocument(BaseModel):
 
 class RecoveryItem(BaseModel):
     """Actionable diagnostic item for Recovery Center."""
+
     id: str
     title: str
     severity: str  # critical, warning, info
@@ -111,6 +122,7 @@ class RecoveryItem(BaseModel):
 
 class ReconcileActionRequest(BaseModel):
     """User-reported reconciliation request for uncertain or crashed operations."""
+
     scope: str = Field(..., min_length=1, max_length=128)
     idempotency_key: str = Field(..., min_length=1, max_length=128)
     resolution_notes: str = Field(..., min_length=1, max_length=1000)
@@ -119,6 +131,7 @@ class ReconcileActionRequest(BaseModel):
 
 class SessionDocument(BaseModel):
     """Persisted agent session document."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: Optional[str] = Field(default=None, alias="_id")
@@ -134,6 +147,7 @@ class SessionDocument(BaseModel):
 
 class AgentDocument(BaseModel):
     """Persisted agent metadata."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: Optional[str] = Field(default=None, alias="_id")
@@ -141,7 +155,6 @@ class AgentDocument(BaseModel):
     name: str = "Antigravity Agent"
     capabilities: List[str] = Field(default_factory=list)
     last_seen: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
 
 
 class AgentModeEnum(str, Enum):
@@ -174,13 +187,19 @@ class SetModelRequest(BaseModel):
 
 
 class RemoteScrollRequest(BaseModel):
-    scrollPercent: float = Field(..., ge=0.0, le=100.0, description="Normalized vertical scroll percentage between 0 and 100")
+    scrollPercent: float = Field(
+        ..., ge=0.0, le=100.0, description="Normalized vertical scroll percentage between 0 and 100"
+    )
 
 
 class RemoteClickRequest(BaseModel):
     text: Optional[str] = Field(default="", max_length=500, description="Element text to click")
-    x: Optional[float] = Field(default=None, ge=0.0, le=10000.0, description="Optional X pixel coordinate")
-    y: Optional[float] = Field(default=None, ge=0.0, le=10000.0, description="Optional Y pixel coordinate")
+    x: Optional[float] = Field(
+        default=None, ge=0.0, le=10000.0, description="Optional X pixel coordinate"
+    )
+    y: Optional[float] = Field(
+        default=None, ge=0.0, le=10000.0, description="Optional Y pixel coordinate"
+    )
 
 
 class LoginRequest(BaseModel):
@@ -188,11 +207,24 @@ class LoginRequest(BaseModel):
 
 
 class PromptSubmissionRequest(BaseModel):
-    message: Optional[str] = Field(default=None, max_length=10000, description="Prompt text to dispatch")
-    prompt: Optional[str] = Field(default=None, max_length=10000, exclude=True, description="Prompt text alias")
-    session_id: Optional[str] = Field(default=None, max_length=128, description="Target session UUID if explicitly specified")
-    idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128, description="Client idempotency token to prevent duplicate dispatch")
-    attachments: Optional[List[Dict[str, Any]]] = Field(default=None, description="Attached images or files metadata")
+    message: Optional[str] = Field(
+        default=None, max_length=10000, description="Prompt text to dispatch"
+    )
+    prompt: Optional[str] = Field(
+        default=None, max_length=10000, exclude=True, description="Prompt text alias"
+    )
+    session_id: Optional[str] = Field(
+        default=None, max_length=128, description="Target session UUID if explicitly specified"
+    )
+    idempotency_key: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description="Client idempotency token to prevent duplicate dispatch",
+    )
+    attachments: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="Attached images or files metadata"
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -226,6 +258,7 @@ class ControlActionRequest(BaseModel):
 
 
 # --- Dynamic Interaction Models ---
+
 
 class InteractionKind(str, Enum):
     SINGLE_CHOICE = "single_choice"
@@ -265,6 +298,7 @@ class InteractionFormField(BaseModel):
 
 class QuestionItem(BaseModel):
     """Individual question inside a multi-question ask_question tool call."""
+
     id: str = Field(..., min_length=1, max_length=128)
     question: str = Field(..., min_length=1, max_length=500)
     is_multi_select: bool = False
@@ -273,21 +307,30 @@ class QuestionItem(BaseModel):
 
 class InteractionDocument(BaseModel):
     """Persisted dynamic interaction request schema."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: Optional[str] = Field(default=None, alias="_id")
     interaction_id: str = Field(..., min_length=1, max_length=128)
     session_id: str = Field(..., min_length=1, max_length=128)
     kind: InteractionKind
-    popup_kind: Optional[str] = Field(default=None, description="question, approval, browser_permission")
+    popup_kind: Optional[str] = Field(
+        default=None, description="question, approval, browser_permission"
+    )
     title: str = Field(..., min_length=1, max_length=256)
     description: Optional[str] = Field(default=None, max_length=2000)
-    target_domain: Optional[str] = Field(default=None, max_length=256, description="Target domain for browser permissions")
-    command: Optional[str] = Field(default=None, max_length=2000, description="Command/script target for approval cards")
+    target_domain: Optional[str] = Field(
+        default=None, max_length=256, description="Target domain for browser permissions"
+    )
+    command: Optional[str] = Field(
+        default=None, max_length=2000, description="Command/script target for approval cards"
+    )
     options: List[InteractionOption] = Field(default_factory=list)
     questions: List[QuestionItem] = Field(default_factory=list)
     fields: List[InteractionFormField] = Field(default_factory=list)
-    step_indicator: Optional[str] = Field(default=None, max_length=64, description="Step count, e.g., 1 of 2")
+    step_indicator: Optional[str] = Field(
+        default=None, max_length=64, description="Step count, e.g., 1 of 2"
+    )
     allow_custom_response: bool = False
     custom_response_label: str = "Other / Custom Text"
     status: InteractionStatus = InteractionStatus.PENDING
@@ -298,9 +341,16 @@ class InteractionDocument(BaseModel):
 
 class SubmitInteractionRequest(BaseModel):
     selected_option_ids: List[str] = Field(default_factory=list)
-    custom_response: Optional[str] = Field(default=None, max_length=5000, description="Custom text response when permitted")
+    custom_response: Optional[str] = Field(
+        default=None, max_length=5000, description="Custom text response when permitted"
+    )
     form_values: Optional[Dict[str, Any]] = None
-    idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128, description="Client idempotency token to prevent duplicate responses")
+    idempotency_key: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description="Client idempotency token to prevent duplicate responses",
+    )
 
     @field_validator("idempotency_key")
     @classmethod
@@ -334,6 +384,7 @@ class CapabilityItem(BaseModel):
 
 class OperationalDiagnostics(BaseModel):
     """Sanitized operational system health and readiness diagnostics."""
+
     fastapi_live: bool = True
     mongodb_ready: bool
     mongodb_database: str
@@ -404,7 +455,9 @@ VALID_ACTION_TRANSITIONS = {
 }
 
 
-def validate_action_transition(current: Optional[ActionExecutionState], target: ActionExecutionState) -> bool:
+def validate_action_transition(
+    current: Optional[ActionExecutionState], target: ActionExecutionState
+) -> bool:
     """Validate whether an action execution state transition is permitted."""
     if current is None:
         # Initial transition is valid for entry states
@@ -418,4 +471,3 @@ def validate_action_transition(current: Optional[ActionExecutionState], target: 
         return True  # Idempotent state assertion
     allowed = VALID_ACTION_TRANSITIONS.get(current, set())
     return target in allowed
-

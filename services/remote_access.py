@@ -14,11 +14,15 @@ class RemoteAccessService:
     """Manages and inspects Tailscale Serve status without exposing private identifiers."""
 
     def __init__(self):
-        self.tailscale_path = shutil.which("tailscale") or r"C:\Program Files\Tailscale\tailscale.exe"
+        self.tailscale_path = (
+            shutil.which("tailscale") or r"C:\Program Files\Tailscale\tailscale.exe"
+        )
 
     def is_tailscale_installed(self) -> bool:
         """Check if tailscale binary exists."""
-        return shutil.which("tailscale") is not None or shutil.which(self.tailscale_path) is not None
+        return (
+            shutil.which("tailscale") is not None or shutil.which(self.tailscale_path) is not None
+        )
 
     def get_tailscale_status(self) -> Dict[str, Any]:
         """
@@ -42,7 +46,9 @@ class RemoteAccessService:
 
         # Check connection status
         try:
-            res = subprocess.run([self.tailscale_path, "status"], capture_output=True, text=True, timeout=3)
+            res = subprocess.run(
+                [self.tailscale_path, "status"], capture_output=True, text=True, timeout=3
+            )
             if res.returncode == 0:
                 connected = True
                 # Check if other devices are present
@@ -53,17 +59,25 @@ class RemoteAccessService:
 
         # Check serve status
         try:
-            res = subprocess.run([self.tailscale_path, "serve", "status"], capture_output=True, text=True, timeout=3)
+            res = subprocess.run(
+                [self.tailscale_path, "serve", "status"], capture_output=True, text=True, timeout=3
+            )
             if res.returncode == 0 and res.stdout.strip():
                 output = res.stdout.lower()
-                if "proxy http://127.0.0.1" in output or "proxy http://localhost" in output or "tailnet only" in output:
+                if (
+                    "proxy http://127.0.0.1" in output
+                    or "proxy http://localhost" in output
+                    or "tailnet only" in output
+                ):
                     serve_active = True
         except Exception as e:
             logger.warning("Tailscale serve status command failed: %s", str(e))
 
         # Check funnel status (Must be false/disabled!)
         try:
-            res = subprocess.run([self.tailscale_path, "funnel", "status"], capture_output=True, text=True, timeout=3)
+            res = subprocess.run(
+                [self.tailscale_path, "funnel", "status"], capture_output=True, text=True, timeout=3
+            )
             if res.returncode == 0 and res.stdout.strip():
                 output = res.stdout.lower()
                 # Funnel is active only if it explicitly mentions public or funnel traffic
@@ -78,7 +92,9 @@ class RemoteAccessService:
             "tailnet_devices_detected": tailnet_available,
             "serve_active": serve_active,
             "funnel_active": funnel_active,
-            "private_networking": "tailnet_https_only" if serve_active and not funnel_active else "inactive",
+            "private_networking": "tailnet_https_only"
+            if serve_active and not funnel_active
+            else "inactive",
             "funnel_disabled_verified": not funnel_active,
             "instructions": (
                 "Run 'tailscale serve --bg 8000' to expose the local dashboard privately to your tailnet. "

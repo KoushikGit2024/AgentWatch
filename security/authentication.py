@@ -12,9 +12,7 @@ AUTH_COOKIE_NAME = "cw_auth_token"
 def generate_session_token(password: str) -> str:
     """Generate deterministic HMAC signature for valid authentication password."""
     return hmac.new(
-        settings.jwt_secret.encode("utf-8"),
-        password.encode("utf-8"),
-        hashlib.sha256
+        settings.jwt_secret.encode("utf-8"), password.encode("utf-8"), hashlib.sha256
     ).hexdigest()
 
 
@@ -42,7 +40,7 @@ def check_auth_required(request: Request) -> bool:
     """
     if not settings.app_password:
         return False
-    
+
     if is_local_request(request):
         return False
 
@@ -50,7 +48,7 @@ def check_auth_required(request: Request) -> bool:
     cookie_token = request.cookies.get(AUTH_COOKIE_NAME)
     if cookie_token and verify_session_token(cookie_token):
         return False
-    
+
     # Check Bearer Header
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):

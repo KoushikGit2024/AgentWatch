@@ -17,7 +17,10 @@ SECRET_PATTERNS = [
     (re.compile(r"sk-[a-zA-Z0-9]{32,}"), "OpenAI API Key"),
     (re.compile(r"AIza[0-9A-Za-z-_]{35}"), "Google Cloud API Key"),
     (re.compile(r"-----BEGIN\s+(RSA|OPENSSH|EC|DSA)?\s*PRIVATE KEY-----"), "Private Key"),
-    (re.compile(r"(?i)(password|secret|passwd)\s*[:=]\s*['\"][^'\"]{8,}['\"]"), "Hardcoded Password Assignment"),
+    (
+        re.compile(r"(?i)(password|secret|passwd)\s*[:=]\s*['\"][^'\"]{8,}['\"]"),
+        "Hardcoded Password Assignment",
+    ),
 ]
 
 # Whitelist safe placeholder strings
@@ -32,7 +35,16 @@ SAFE_PLACEHOLDERS = [
 ]
 
 # Directories and files to exclude from scan
-EXCLUDE_DIRS = {".git", ".venv", "venv", "__pycache__", "node_modules", "data", "logs", ".pytest_cache"}
+EXCLUDE_DIRS = {
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "node_modules",
+    "data",
+    "logs",
+    ".pytest_cache",
+}
 EXCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".ico", ".svg", ".cert", ".key", ".pyc"}
 
 

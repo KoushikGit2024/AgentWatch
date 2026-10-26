@@ -4,41 +4,41 @@
    ========================================================================== */
 
 :root {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
 
   /* Core Surface Palette */
   --bg-app: #101113;
-  --bg-surface: #17191C;
-  --bg-elevated: #1D2024;
-  --bg-overlay: #23272D;
+  --bg-surface: #17191c;
+  --bg-elevated: #1d2024;
+  --bg-overlay: #23272d;
   --bg-code: #121417;
 
   /* Borders & Dividers */
-  --border-subtle: #262A30;
-  --border-default: #30343A;
-  --border-strong: #40464F;
+  --border-subtle: #262a30;
+  --border-default: #30343a;
+  --border-strong: #40464f;
 
   /* Typography Hierarchy */
-  --text-primary: #E8EAED;
-  --text-secondary: #A0A6AF;
-  --text-muted: #747C87;
+  --text-primary: #e8eaed;
+  --text-secondary: #a0a6af;
+  --text-muted: #747c87;
 
   /* Semantic Accents */
-  --accent-primary: #7C9FC5;
-  --accent-hover: #8FB0D4;
+  --accent-primary: #7c9fc5;
+  --accent-hover: #8fb0d4;
   --accent-subtle: rgba(124, 159, 197, 0.14);
   --accent-border: rgba(124, 159, 197, 0.38);
 
-  --status-success: #79B89A;
+  --status-success: #79b89a;
   --status-success-bg: rgba(121, 184, 154, 0.12);
   --status-success-border: rgba(121, 184, 154, 0.35);
 
-  --status-warning: #D8B36A;
+  --status-warning: #d8b36a;
   --status-warning-bg: rgba(216, 179, 106, 0.12);
   --status-warning-border: rgba(216, 179, 106, 0.35);
 
-  --status-error: #D77E83;
+  --status-error: #d77e83;
   --status-error-bg: rgba(215, 126, 131, 0.12);
   --status-error-border: rgba(215, 126, 131, 0.35);
 

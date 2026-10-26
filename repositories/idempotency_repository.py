@@ -46,11 +46,7 @@ class IdempotencyRepository:
         self._fallback_store: Dict[str, Dict[str, Any]] = {}
 
     def reserve_or_get(
-        self,
-        scope: str,
-        idempotency_key: str,
-        payload: Any,
-        ttl_minutes: int = 1440
+        self, scope: str, idempotency_key: str, payload: Any, ttl_minutes: int = 1440
     ) -> Tuple[str, Optional[Dict[str, Any]]]:
         """
         Attempt to atomically reserve an idempotency key or retrieve existing outcome.
@@ -77,7 +73,9 @@ class IdempotencyRepository:
         except DuplicateKeyError:
             # Key already exists; inspect existing record
             try:
-                existing = self.collection.find_one({"scope": scope, "idempotency_key": idempotency_key})
+                existing = self.collection.find_one(
+                    {"scope": scope, "idempotency_key": idempotency_key}
+                )
             except Exception:
                 existing = self._fallback_store.get(f"{scope}:{idempotency_key}")
 
@@ -88,7 +86,7 @@ class IdempotencyRepository:
                 logger.warning(
                     "Idempotency key '%s' in scope '%s' reused with mismatched payload fingerprint.",
                     idempotency_key,
-                    scope
+                    scope,
                 )
                 return "conflict_mismatch", None
 
@@ -97,7 +95,10 @@ class IdempotencyRepository:
 
             return "in_progress", None
         except (PyMongoError, Exception) as exc:
-            logger.warning("MongoDB unavailable during idempotency reservation (%s). Using in-memory fallback.", str(exc))
+            logger.warning(
+                "MongoDB unavailable during idempotency reservation (%s). Using in-memory fallback.",
+                str(exc),
+            )
             composite_key = f"{scope}:{idempotency_key}"
             existing = self._fallback_store.get(composite_key)
             if existing:
@@ -128,11 +129,14 @@ class IdempotencyRepository:
                         "response": response,
                         "updated_at": now,
                     }
-                }
+                },
             )
             return res.modified_count > 0 or composite_key in self._fallback_store
         except (PyMongoError, Exception) as exc:
-            logger.warning("MongoDB unavailable during idempotency completion (%s). Updated in-memory fallback.", str(exc))
+            logger.warning(
+                "MongoDB unavailable during idempotency completion (%s). Updated in-memory fallback.",
+                str(exc),
+            )
             if composite_key in self._fallback_store:
                 self._fallback_store[composite_key]["status"] = "completed"
                 self._fallback_store[composite_key]["response"] = response
@@ -156,7 +160,7 @@ class IdempotencyRepository:
                         "error": error_detail,
                         "updated_at": now,
                     }
-                }
+                },
             )
             return res.modified_count > 0 or composite_key in self._fallback_store
         except (PyMongoError, Exception) as exc:
@@ -186,7 +190,7 @@ class IdempotencyRepository:
                         "updated_at": now,
                         "expires_at": safe_extended_expiry,
                     }
-                }
+                },
             )
             return res.modified_count > 0 or composite_key in self._fallback_store
         except (PyMongoError, Exception) as exc:

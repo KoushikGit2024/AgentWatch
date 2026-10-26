@@ -13,6 +13,7 @@ logger = logging.getLogger("agentwatch.push")
 try:
     from py_vapid import Vapid
     from pywebpush import webpush, WebPushException
+
     PYWEBPUSH_AVAILABLE = True
 except ImportError:
     PYWEBPUSH_AVAILABLE = False
@@ -44,8 +45,11 @@ class WebPushService:
                 # Save raw URL-safe base64 public key (uncompressed point, 65 bytes) for browser applicationServerKey
                 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
                 import base64
-                raw_pub = vapid.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
-                b64_pub = base64.urlsafe_b64encode(raw_pub).rstrip(b'=').decode('utf-8')
+
+                raw_pub = vapid.public_key.public_bytes(
+                    Encoding.X962, PublicFormat.UncompressedPoint
+                )
+                b64_pub = base64.urlsafe_b64encode(raw_pub).rstrip(b"=").decode("utf-8")
                 with open(self.vapid_public_path, "w", encoding="utf-8") as f:
                     f.write(b64_pub)
                 logger.info("Generated fresh VAPID keys for Web Push.")
@@ -107,7 +111,7 @@ class WebPushService:
         tag: Optional[str] = None,
         url: str = "/",
         data: Optional[Dict[str, Any]] = None,
-        ttl: int = 3600
+        ttl: int = 3600,
     ) -> int:
         """
         Send a web push message to all active subscriptions.
@@ -121,13 +125,15 @@ class WebPushService:
         if not subs:
             return 0
 
-        payload = json.dumps({
-            "title": title,
-            "body": body,
-            "tag": tag or "agentwatch-alert",
-            "url": url,
-            "data": data or {},
-        })
+        payload = json.dumps(
+            {
+                "title": title,
+                "body": body,
+                "tag": tag or "agentwatch-alert",
+                "url": url,
+                "data": data or {},
+            }
+        )
 
         success_count = 0
         stale_endpoints = []
@@ -148,7 +154,9 @@ class WebPushService:
                 )
                 success_count += 1
             except WebPushException as ex:
-                status_code = getattr(ex.response, "status_code", None) if hasattr(ex, "response") else None
+                status_code = (
+                    getattr(ex.response, "status_code", None) if hasattr(ex, "response") else None
+                )
                 # 404 Not Found or 410 Gone means device unsubscribed
                 if status_code in (404, 410):
                     stale_endpoints.append(endpoint)

@@ -30,6 +30,7 @@ def _resolve_target_path(clean_path: str) -> Path:
         clean_path = clean_path.split("#")[0]
 
     import re
+
     if re.match(r"^/[a-zA-Z]:", clean_path):
         clean_path = clean_path.lstrip("/")
 
@@ -57,8 +58,11 @@ def _resolve_target_path(clean_path: str) -> Path:
             if not target.exists():
                 candidates = list(repo_root.glob(f"**/{basename}"))
                 valid_candidates = [
-                    c for c in candidates 
-                    if ".git" not in c.parts and ".venv" not in c.parts and "node_modules" not in c.parts
+                    c
+                    for c in candidates
+                    if ".git" not in c.parts
+                    and ".venv" not in c.parts
+                    and "node_modules" not in c.parts
                 ]
                 if valid_candidates:
                     target = valid_candidates[0]
@@ -82,7 +86,6 @@ def get_file_content(path: str = Query(..., description="File path to read")):
         raise HTTPException(status_code=404, detail=f"File not found: {Path(clean_path).name}")
 
     if not target.is_file():
-
         raise HTTPException(status_code=400, detail=f"Path is not a regular file: {target.name}")
 
     try:
@@ -122,18 +125,36 @@ def get_file_content(path: str = Query(..., description="File path to read")):
                 "size_bytes": size_bytes,
                 "total_lines": len(svg_lines),
                 "content": svg_content,
-                "lines": svg_lines
+                "lines": svg_lines,
             }
 
         if size_bytes > MAX_VIEW_SIZE_BYTES:
             raise HTTPException(
                 status_code=413,
-                detail=f"File is too large to preview ({round(size_bytes / (1024 * 1024), 2)} MB). Max limit is 3 MB."
+                detail=f"File is too large to preview ({round(size_bytes / (1024 * 1024), 2)} MB). Max limit is 3 MB.",
             )
 
         binary_exts = {
-            "exe", "dll", "so", "dylib", "bin", "dat", "iso", "tar", "gz", "zip",
-            "7z", "rar", "pdf", "docx", "xlsx", "pptx", "pyc", "pyd", "db", "sqlite"
+            "exe",
+            "dll",
+            "so",
+            "dylib",
+            "bin",
+            "dat",
+            "iso",
+            "tar",
+            "gz",
+            "zip",
+            "7z",
+            "rar",
+            "pdf",
+            "docx",
+            "xlsx",
+            "pptx",
+            "pyc",
+            "pyd",
+            "db",
+            "sqlite",
         }
         if ext in binary_exts:
             return {
@@ -175,7 +196,7 @@ def get_file_content(path: str = Query(..., description="File path to read")):
             except UnicodeDecodeError:
                 raise HTTPException(
                     status_code=415,
-                    detail=f"This binary or non-UTF-8 encoded file cannot be displayed as text. Use 'Download Raw' to view it."
+                    detail=f"This binary or non-UTF-8 encoded file cannot be displayed as text. Use 'Download Raw' to view it.",
                 )
 
         lines = content.splitlines()
@@ -231,13 +252,26 @@ def get_raw_file(path: str = Query(..., description="File path to stream directl
 
 
 EXCLUDED_TREE_DIRS = {
-    ".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache",
-    ".idea", ".vscode", "dist", ".cache", ".turbo", ".next", "coverage"
+    ".git",
+    "node_modules",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".idea",
+    ".vscode",
+    "dist",
+    ".cache",
+    ".turbo",
+    ".next",
+    "coverage",
 }
 
 
 @router.get("/api/v1/files/tree")
-def get_project_file_tree(subpath: str = Query(default="", description="Optional subfolder relative to repo root")):
+def get_project_file_tree(
+    subpath: str = Query(default="", description="Optional subfolder relative to repo root"),
+):
     """
     Safely traverse and return a hierarchical tree of files and directories
     in the project workspace, ignoring heavy build/cache folders.
@@ -253,19 +287,23 @@ def get_project_file_tree(subpath: str = Query(default="", description="Optional
 
     def build_tree(current_path: Path, max_depth: int = 5) -> dict:
         is_dir = current_path.is_dir()
-        rel_path = current_path.relative_to(repo_root).as_posix() if current_path != repo_root else ""
+        rel_path = (
+            current_path.relative_to(repo_root).as_posix() if current_path != repo_root else ""
+        )
         node = {
             "name": current_path.name or repo_root.name,
             "path": rel_path,
             "full_path": current_path.as_posix(),
-            "type": "directory" if is_dir else "file"
+            "type": "directory" if is_dir else "file",
         }
 
         if is_dir:
             children = []
             if max_depth > 0:
                 try:
-                    entries = sorted(list(current_path.iterdir()), key=lambda p: (not p.is_dir(), p.name.lower()))
+                    entries = sorted(
+                        list(current_path.iterdir()), key=lambda p: (not p.is_dir(), p.name.lower())
+                    )
                     for entry in entries:
                         if entry.name in EXCLUDED_TREE_DIRS or entry.name.startswith("."):
                             continue
@@ -284,12 +322,7 @@ def get_project_file_tree(subpath: str = Query(default="", description="Optional
         return node
 
     tree = build_tree(base_dir, max_depth=6)
-    return {
-        "tree": tree,
-        "root_name": repo_root.name,
-        "root_path": repo_root.as_posix()
-    }
-
+    return {"tree": tree, "root_name": repo_root.name, "root_path": repo_root.as_posix()}
 
 
 @router.get("/api/v1/artifacts")
@@ -314,6 +347,7 @@ def get_artifacts():
     # 1. Look for user-facing markdown artifacts (.md) and companion .metadata.json in session root
     try:
         import json
+
         for md_file in active_session_dir.glob("*.md"):
             try:
                 st = md_file.stat()
@@ -325,16 +359,18 @@ def get_artifacts():
                     except Exception:
                         pass
 
-                artifacts.append({
-                    "id": md_file.stem,
-                    "title": md_file.name.replace("_", " ").replace(".md", "").title(),
-                    "filename": md_file.name,
-                    "path": str(md_file).replace("\\", "/"),
-                    "type": "markdown",
-                    "summary": meta_info.get("summary", ""),
-                    "size_bytes": st.st_size,
-                    "mtime": st.st_mtime,
-                })
+                artifacts.append(
+                    {
+                        "id": md_file.stem,
+                        "title": md_file.name.replace("_", " ").replace(".md", "").title(),
+                        "filename": md_file.name,
+                        "path": str(md_file).replace("\\", "/"),
+                        "type": "markdown",
+                        "summary": meta_info.get("summary", ""),
+                        "size_bytes": st.st_size,
+                        "mtime": st.st_mtime,
+                    }
+                )
             except Exception:
                 continue
     except Exception:
@@ -362,33 +398,34 @@ def get_artifacts():
                         is_video = ext in video_exts
                         artifact_type = "video" if is_video else "image"
                         size_kb = round(st.st_size / 1024, 1)
-                        summary_label = f"Video artifact ({size_kb} KB)" if is_video else f"Image artifact ({size_kb} KB)"
+                        summary_label = (
+                            f"Video artifact ({size_kb} KB)"
+                            if is_video
+                            else f"Image artifact ({size_kb} KB)"
+                        )
 
-                        artifacts.append({
-                            "id": file_path.stem,
-                            "title": file_path.name,
-                            "filename": file_path.name,
-                            "path": normalized_path,
-                            "type": artifact_type,
-                            "summary": summary_label,
-                            "size_bytes": st.st_size,
-                            "mtime": st.st_mtime,
-                        })
+                        artifacts.append(
+                            {
+                                "id": file_path.stem,
+                                "title": file_path.name,
+                                "filename": file_path.name,
+                                "path": normalized_path,
+                                "type": artifact_type,
+                                "summary": summary_label,
+                                "size_bytes": st.st_size,
+                                "mtime": st.st_mtime,
+                            }
+                        )
                         seen_paths.add(normalized_path)
                     except Exception:
                         continue
     except Exception:
         pass
 
-
     # Sort descending by last modified time
     artifacts.sort(key=lambda a: a.get("mtime", 0), reverse=True)
 
-    return {
-        "artifacts": artifacts,
-        "total": len(artifacts),
-        "session_id": active_session_dir.name
-    }
+    return {"artifacts": artifacts, "total": len(artifacts), "session_id": active_session_dir.name}
 
 
 class KillTerminalTaskRequest(BaseModel):
@@ -400,6 +437,7 @@ class KillTerminalTaskRequest(BaseModel):
 async def toggle_terminal():
     """Trigger native IDE terminal toggle button via CDP and return live tasks."""
     from integrations.antigravity.adapter import antigravity_adapter
+
     res = await antigravity_adapter.toggle_terminal()
     return res
 
@@ -408,6 +446,7 @@ async def toggle_terminal():
 async def get_terminal_tasks():
     """Query currently running terminal tasks from IDE workbench via CDP."""
     from integrations.antigravity.adapter import antigravity_adapter
+
     res = await antigravity_adapter.get_terminal_tasks()
     return res
 
@@ -416,7 +455,8 @@ async def get_terminal_tasks():
 async def kill_terminal_task(payload: KillTerminalTaskRequest):
     """Click individual close button for a specific terminal command via CDP."""
     from integrations.antigravity.adapter import antigravity_adapter
-    res = await antigravity_adapter.kill_terminal_task(index=payload.index, tooltip_id=payload.tooltip_id)
+
+    res = await antigravity_adapter.kill_terminal_task(
+        index=payload.index, tooltip_id=payload.tooltip_id
+    )
     return res
-
-

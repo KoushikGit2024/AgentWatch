@@ -57,6 +57,7 @@ def get_operational_diagnostics():
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+
 class TerminateProcessRequest(BaseModel):
     pids: List[int] = Field(..., description="Target process PIDs to terminate")
     name: Optional[str] = Field(default="", description="Friendly process name")
@@ -89,23 +90,29 @@ def terminate_system_process(payload: TerminateProcessRequest):
     result = system_metrics_service.terminate_processes(payload.pids, payload.name)
 
     try:
-        EventRepository().insert_event(EventDocument(
-            session_id="default_session",
-            event_type="ProcessTerminated" if result.get("success") else "ProcessTerminationFailed",
-            category="system",
-            summary=f"User requested End Task for {payload.name or payload.pids}: {len(result.get('killed_pids', []))} killed",
-            execution_state="execution_observed" if result.get("success") else "failure_diagnosed",
-            timestamp=datetime.datetime.now(datetime.timezone.utc),
-            source="mobile_user",
-            source_confidence="observed",
-            sanitized_payload={
-                "target_name": payload.name,
-                "requested_pids": payload.pids,
-                "killed_pids": result.get("killed_pids", []),
-                "failed_pids": result.get("failed_pids", []),
-                "error": result.get("error")
-            }
-        ))
+        EventRepository().insert_event(
+            EventDocument(
+                session_id="default_session",
+                event_type="ProcessTerminated"
+                if result.get("success")
+                else "ProcessTerminationFailed",
+                category="system",
+                summary=f"User requested End Task for {payload.name or payload.pids}: {len(result.get('killed_pids', []))} killed",
+                execution_state="execution_observed"
+                if result.get("success")
+                else "failure_diagnosed",
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
+                source="mobile_user",
+                source_confidence="observed",
+                sanitized_payload={
+                    "target_name": payload.name,
+                    "requested_pids": payload.pids,
+                    "killed_pids": result.get("killed_pids", []),
+                    "failed_pids": result.get("failed_pids", []),
+                    "error": result.get("error"),
+                },
+            )
+        )
     except Exception:
         pass
 
@@ -116,15 +123,15 @@ def terminate_system_process(payload: TerminateProcessRequest):
 def get_log_files():
     """List all date-segregated log files available on disk."""
     from services.log_analytics_service import log_analytics_service
-    return {
-        "files": log_analytics_service.list_log_files()
-    }
+
+    return {"files": log_analytics_service.list_log_files()}
 
 
 @router.get("/api/v1/logs/analytics")
 def get_log_analytics(date_or_file: str):
     """Compute and return visual analytics, graphs, and breakdown metrics for a selected log file."""
     from services.log_analytics_service import log_analytics_service
+
     return log_analytics_service.analyze_log_file(date_or_file)
 
 
@@ -132,8 +139,8 @@ def get_log_analytics(date_or_file: str):
 def delete_log_file(filename: str):
     """Safely delete or truncate a log file."""
     from services.log_analytics_service import log_analytics_service
+
     res = log_analytics_service.delete_log_file(filename)
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed deleting log file"))
     return res
-

@@ -39,7 +39,7 @@ def get_vapid_public_key():
     if not key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="VAPID keys not configured or pywebpush unavailable."
+            detail="VAPID keys not configured or pywebpush unavailable.",
         )
     return {"publicKey": key}
 
@@ -51,7 +51,7 @@ def subscribe_device(payload: PushSubscriptionPayload):
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid subscription payload; endpoint required."
+            detail="Invalid subscription payload; endpoint required.",
         )
     return {"status": "subscribed"}
 
@@ -70,7 +70,7 @@ def send_test_push(payload: PushTestPayload):
         title=payload.title or "AgentWatch Test Alert",
         body=payload.body or "Push notifications are working smoothly!",
         tag="agentwatch-test",
-        url="/"
+        url="/",
     )
     return {
         "status": "sent",

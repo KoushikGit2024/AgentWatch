@@ -52,13 +52,10 @@ def list_events(
         search=search,
         correlation_id=correlation_id,
         limit=limit,
-        skip=skip
+        skip=skip,
     )
     total = event_repo.count_events(
-        session_id=session_id,
-        event_type=event_type,
-        category=category,
-        search=search
+        session_id=session_id, event_type=event_type, category=category, search=search
     )
     return {
         "total": total,
@@ -98,55 +95,61 @@ def list_recovery_items(session_id: Optional[str] = Query(None)):
     # 1. Check pending interactions awaiting user choice
     pending_interactions = interaction_repo.list_pending_interactions(session_id=session_id)
     for p in pending_interactions:
-        items.append(RecoveryItem(
-            id=f"rec-pending-{p['interaction_id']}",
-            title="Pending Agent Decision Required",
-            severity="warning",
-            description=f"Agent is awaiting user input for: '{p.get('title', 'Question')}'",
-            what_happened="The agent paused execution and issued a choice or input question.",
-            what_is_known="The question schema and choices are persisted in MongoDB awaiting submission.",
-            what_is_unknown="Whether the user wishes to approve an option or provide custom guidance.",
-            is_retry_safe=True,
-            recommended_action="Open the decision card and submit your response.",
-            action_type="open_interaction",
-            context={"interaction_id": p["interaction_id"], "kind": p.get("kind")}
-        ))
+        items.append(
+            RecoveryItem(
+                id=f"rec-pending-{p['interaction_id']}",
+                title="Pending Agent Decision Required",
+                severity="warning",
+                description=f"Agent is awaiting user input for: '{p.get('title', 'Question')}'",
+                what_happened="The agent paused execution and issued a choice or input question.",
+                what_is_known="The question schema and choices are persisted in MongoDB awaiting submission.",
+                what_is_unknown="Whether the user wishes to approve an option or provide custom guidance.",
+                is_retry_safe=True,
+                recommended_action="Open the decision card and submit your response.",
+                action_type="open_interaction",
+                context={"interaction_id": p["interaction_id"], "kind": p.get("kind")},
+            )
+        )
 
     # 2. Check Antigravity CDP connection state
     ag_status = antigravity_adapter.get_status()
     if not ag_status.get("cdp", {}).get("connected", False):
-        items.append(RecoveryItem(
-            id="rec-cdp-disconnected",
-            title="Antigravity CDP Disconnected",
-            severity="critical",
-            description="Antigravity remote debugging port (9000) is not responding.",
-            what_happened="AgentWatch cannot communicate with the desktop IDE via Chrome DevTools Protocol.",
-            what_is_known="FastAPI and MongoDB are online, but viewport capture and live dispatch are paused.",
-            what_is_unknown="Whether Antigravity is running without '--remote-debugging-port=9000' or closed.",
-            is_retry_safe=True,
-            recommended_action="Restart Antigravity with '--remote-debugging-port=9000' and recheck.",
-            action_type="recheck_connection",
-            context={"configured_ports": "9000"}
-        ))
+        items.append(
+            RecoveryItem(
+                id="rec-cdp-disconnected",
+                title="Antigravity CDP Disconnected",
+                severity="critical",
+                description="Antigravity remote debugging port (9000) is not responding.",
+                what_happened="AgentWatch cannot communicate with the desktop IDE via Chrome DevTools Protocol.",
+                what_is_known="FastAPI and MongoDB are online, but viewport capture and live dispatch are paused.",
+                what_is_unknown="Whether Antigravity is running without '--remote-debugging-port=9000' or closed.",
+                is_retry_safe=True,
+                recommended_action="Restart Antigravity with '--remote-debugging-port=9000' and recheck.",
+                action_type="recheck_connection",
+                context={"configured_ports": "9000"},
+            )
+        )
 
     # 3. Check for crashed / in-progress idempotency records
     crashed_keys = list(idemp_repo.collection.find({"status": "in_progress"}).limit(10))
     for k in crashed_keys:
         key_name = k.get("idempotency_key", "unknown")
         scope = k.get("scope", "unknown")
-        items.append(RecoveryItem(
-            id=f"rec-in-progress-{key_name}",
-            title="Interrupted Operation in Progress",
-            severity="warning",
-            description=f"Operation in scope '{scope}' was reserved but outcome is unconfirmed.",
-            what_happened="A request reserved an idempotency key, but a server restart or timeout occurred before completion.",
-            what_is_known="The request payload was fingerprinted and stored in MongoDB.",
-            what_is_unknown="Whether the operation reached Antigravity or was dropped before execution.",
-            is_retry_safe=False,
-            recommended_action="Inspect desktop IDE to verify if action executed, then mark reconciled.",
-            action_type="reconcile_manual",
-            context={"scope": scope, "idempotency_key": key_name}
-        ))
+        items.append(
+            RecoveryItem(
+                id=f"rec-in-progress-{key_name}",
+                title="Interrupted Operation in Progress",
+                severity="warning",
+                description=f"Operation in scope '{scope}' was reserved but outcome is unconfirmed.",
+                what_happened="A request reserved an idempotency key, but a server restart or timeout occurred before completion.",
+                what_is_known="The request payload was fingerprinted and stored in MongoDB.",
+                what_is_unknown="Whether the operation reached Antigravity or was dropped before execution.",
+                is_retry_safe=False,
+                recommended_action="Inspect desktop IDE to verify if action executed, then mark reconciled.",
+                action_type="reconcile_manual",
+                context={"scope": scope, "idempotency_key": key_name},
+            )
+        )
 
     return items
 
@@ -168,24 +171,28 @@ def reconcile_action(payload: ReconcileActionRequest):
                 "reconciled_at": now,
                 "updated_at": now,
             }
-        }
+        },
     )
     if res.matched_count == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Idempotency record not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Idempotency record not found"
+        )
 
     # Record reconciliation audit event in timeline
-    event_repo.insert_event(EventDocument(
-        session_id="default_session",
-        event_type="RecoveryAction",
-        category="recovery",
-        summary=f"Manual reconciliation for {payload.scope}: {payload.reported_outcome}",
-        execution_state="completion_confirmed",
-        correlation_id=payload.idempotency_key,
-        timestamp=now,
-        source="mobile_user",
-        source_confidence="declared",
-        sanitized_payload={"notes": payload.resolution_notes, "scope": payload.scope}
-    ))
+    event_repo.insert_event(
+        EventDocument(
+            session_id="default_session",
+            event_type="RecoveryAction",
+            category="recovery",
+            summary=f"Manual reconciliation for {payload.scope}: {payload.reported_outcome}",
+            execution_state="completion_confirmed",
+            correlation_id=payload.idempotency_key,
+            timestamp=now,
+            source="mobile_user",
+            source_confidence="declared",
+            sanitized_payload={"notes": payload.resolution_notes, "scope": payload.scope},
+        )
+    )
 
     return {
         "success": True,

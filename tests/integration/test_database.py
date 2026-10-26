@@ -58,7 +58,9 @@ def test_session_repository(test_db):
     repo = SessionRepository(db=test_db)
     session_id = f"session_{uuid.uuid4().hex}"
 
-    doc = repo.upsert_session(session_id=session_id, agent_id="agent_1", title="Test Title", mode="Fast")
+    doc = repo.upsert_session(
+        session_id=session_id, agent_id="agent_1", title="Test Title", mode="Fast"
+    )
     assert doc is not None
     assert doc["session_id"] == session_id
     assert doc["title"] == "Test Title"
