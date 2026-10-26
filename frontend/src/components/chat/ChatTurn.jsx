@@ -24,7 +24,7 @@ const ChatTurn = memo(function ChatTurn({
     const [copied, setCopied] = useState(false);
     const [reaction, setReaction] = useState(null);
     const [previewItem, setPreviewItem] = useState(null);
-    const [isUserTextExpanded, setIsUserTextExpanded] = useState(false);
+    const [isUserTextExpanded, setIsUserTextExpanded] = useState(true);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(turn.text || '');
@@ -106,6 +106,18 @@ const ChatTurn = memo(function ChatTurn({
                                     >
                                         <span>{isUserTextExpanded ? 'Collapse message' : 'Expand full message'}</span>
                                     </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopy}
+                                        className="px-1.5 py-0.5 rounded hover:bg-[#23272D] text-[11px] transition flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <div className="w-3 h-3 text-blue-400">{copied ? Icon.check : Icon.copy}</div>
+                                        <span>{copied ? 'Copied' : 'Copy'}</span>
+                                    </button>
+                                </div>
+                            )}
+                            {!isLongUserText && (
+                                <div className="flex items-center justify-end pt-1 border-t border-[#262A30] text-xs text-[#A0A6AF]">
                                     <button
                                         type="button"
                                         onClick={handleCopy}
@@ -208,7 +220,7 @@ const ChatTurn = memo(function ChatTurn({
                                     <div className="flex select-none flex-row items-center justify-between gap-x-2 border border-blue-500/30 bg-[#101113] rounded-lg p-2 px-3 shadow-inner">
                                         <div className="flex min-w-0 flex-1 items-center gap-x-2">
                                             <span className="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin shrink-0" />
-                                            <span className="truncate font-mono text-xs text-cyan-200">
+                                            <span className="break-all font-mono text-xs text-cyan-200 leading-relaxed">
                                                 {turn.active_command}
                                             </span>
                                         </div>

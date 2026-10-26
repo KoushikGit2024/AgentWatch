@@ -47,15 +47,23 @@ class ConversationService:
         return self._latest_pending_approval
 
     def get_latest_transcript_path(self) -> Optional[Path]:
-        """Find the active conversation's transcript file based on recent modification time."""
+        """Find the active conversation's transcript file based on recent modification time.
+        Prefers transcript_full.jsonl to ensure full, untruncated messages are parsed.
+        """
         try:
             if not self.brain_base.exists():
                 return None
-            transcripts = list(self.brain_base.glob("*/.system_generated/logs/transcript.jsonl"))
+            transcripts = list(self.brain_base.glob("*/.system_generated/logs/transcript*.jsonl"))
             if not transcripts:
                 return None
             transcripts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-            return transcripts[0]
+            candidate = transcripts[0]
+            # If transcript.jsonl was picked, check if sibling transcript_full.jsonl exists with full content
+            if candidate.name == "transcript.jsonl":
+                full_sibling = candidate.parent / "transcript_full.jsonl"
+                if full_sibling.exists() and full_sibling.stat().st_size > 0:
+                    return full_sibling
+            return candidate
         except Exception:
             return None
 
@@ -297,7 +305,7 @@ class ConversationService:
                                         cwd = args.get("Cwd") or args.get("cwd") or ""
                                         cwd_parts = re.split(r"[\\/]", cwd) if cwd else []
                                         cwd_short = f".../{cwd_parts[-1]}" if cwd_parts and cwd_parts[-1] else ".../workspace"
-                                        target = command[:60] + "..." if len(command) > 60 else command
+                                        target = command
 
                                         safe_val = args.get("SafeToAutoRun")
                                         not_safe_auto = (safe_val is False) or (str(safe_val).lower() == "false")
@@ -372,7 +380,7 @@ class ConversationService:
                                             verb = "Asked"
                                             kind = "question"
                                             requires_perm = False
-                                            target = q_text[:60] + "..." if len(q_text) > 60 else (q_text or "Agent Question")
+                                            target = q_text or "Agent Question"
                                             summary = f"Question: {target}"
                                             extra = f"{len(norm_opts)} choices" if norm_opts else "Custom input"
                                             question_payload = {
