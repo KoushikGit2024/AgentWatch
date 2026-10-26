@@ -4,28 +4,24 @@ import { Icon } from '../constants/icons';
 
 const TOAST_THEMES = {
     error: {
-        bg: 'bg-rose-950/90 border-rose-800/80 text-rose-100 shadow-rose-950/40',
-        iconColor: 'text-rose-400',
-        icon: Icon.alertTriangle,
-        badge: 'bg-rose-900/60 text-rose-300 border-rose-700/50'
+        bg: 'bg-[#17191C] border-[#D77E83]/50 text-[#E8EAED]',
+        iconColor: 'text-[#D77E83]',
+        icon: Icon.alertTriangle
     },
     warning: {
-        bg: 'bg-amber-950/90 border-amber-800/80 text-amber-100 shadow-amber-950/40',
-        iconColor: 'text-amber-400',
-        icon: Icon.alertCircle,
-        badge: 'bg-amber-900/60 text-amber-300 border-amber-700/50'
+        bg: 'bg-[#17191C] border-[#D8B36A]/50 text-[#E8EAED]',
+        iconColor: 'text-[#D8B36A]',
+        icon: Icon.alertCircle
     },
     success: {
-        bg: 'bg-emerald-950/90 border-emerald-800/80 text-emerald-100 shadow-emerald-950/40',
-        iconColor: 'text-emerald-400',
-        icon: Icon.check,
-        badge: 'bg-emerald-900/60 text-emerald-300 border-emerald-700/50'
+        bg: 'bg-[#17191C] border-[#79B89A]/50 text-[#E8EAED]',
+        iconColor: 'text-[#79B89A]',
+        icon: Icon.check
     },
     info: {
-        bg: 'bg-zinc-900/90 border-zinc-750 text-zinc-100 shadow-black/50',
-        iconColor: 'text-blue-400',
-        icon: Icon.info,
-        badge: 'bg-zinc-800 text-zinc-300 border-zinc-700'
+        bg: 'bg-[#17191C] border-[#30343A] text-[#E8EAED]',
+        iconColor: 'text-[#7C9FC5]',
+        icon: Icon.info
     }
 };
 
@@ -40,7 +36,7 @@ export default function ToastContainer() {
 
     return (
         <div
-            className="fixed top-4 right-4 z-[9999] max-w-sm w-[calc(100%-2rem)] flex flex-col gap-2 pointer-events-none select-none transition-all"
+            className="fixed top-3 right-3 z-[9999] max-w-sm w-[calc(100%-1.5rem)] flex flex-col gap-2 pointer-events-none select-none"
             aria-live="polite"
         >
             {toasts.map(t => {
@@ -48,21 +44,21 @@ export default function ToastContainer() {
                 return (
                     <div
                         key={t.id}
-                        className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl border shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-top-3 duration-200 ${theme.bg}`}
+                        className={`pointer-events-auto flex items-start gap-2.5 p-3 rounded-lg border shadow-xl transition-all ${theme.bg}`}
                         role="alert"
                     >
-                        <div className={`w-5 h-5 shrink-0 mt-0.5 ${theme.iconColor}`}>
+                        <div className={`w-4 h-4 shrink-0 mt-0.5 ${theme.iconColor}`}>
                             {theme.icon}
                         </div>
 
                         <div className="flex-1 min-w-0 pr-1">
                             {t.title && (
-                                <div className="text-xs font-semibold leading-tight mb-0.5 tracking-tight flex items-center gap-1.5">
+                                <div className="text-xs font-semibold leading-tight mb-0.5 text-[#E8EAED]">
                                     <span>{t.title}</span>
                                 </div>
                             )}
                             {t.message && (
-                                <p className="text-[11px] leading-relaxed opacity-90 break-words [overflow-wrap:anywhere]">
+                                <p className="text-[11px] leading-relaxed text-[#A0A6AF] break-words [overflow-wrap:anywhere]">
                                     {t.message}
                                 </p>
                             )}
@@ -71,8 +67,8 @@ export default function ToastContainer() {
                         <button
                             type="button"
                             onClick={() => toastService.dismiss(t.id)}
-                            className="p-1 -mr-1 -mt-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer shrink-0"
-                            title="Dismiss notification"
+                            aria-label="Dismiss notification"
+                            className="p-1 -mr-1 -mt-1 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer shrink-0"
                         >
                             <div className="w-3.5 h-3.5">{Icon.x}</div>
                         </button>

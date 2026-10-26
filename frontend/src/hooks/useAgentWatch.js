@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
-import { WebSocketClient } from '../services/websocket';
 import { toast } from '../services/toastService';
+import { useAgentAuxData } from './useAgentAuxData';
+import { useAgentSocket } from './useAgentSocket';
 
 const PAGE_BLOCK_SIZE = 15;
 
-/**
- * Merge newly streamed recent turns with any older history blocks that the user
- * has already lazy-loaded by scrolling up, preserving all loaded blocks in memory.
- */
 function mergeTurnsPreservingHistory(existingTurns, incomingRecentTurns) {
     if (!Array.isArray(incomingRecentTurns) || incomingRecentTurns.length === 0) {
         return existingTurns;
@@ -32,9 +29,8 @@ function mergeTurnsPreservingHistory(existingTurns, incomingRecentTurns) {
 }
 
 export function useAgentWatch({ isScreenActive = false } = {}) {
-    // Core Server & Stream State
     const [appState, setAppState] = useState({
-        status: 'Connecting…',
+        status: 'Connecting...',
         connected: false,
         mode: 'Fast',
         model: null,
@@ -54,34 +50,20 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [isSendingPrompt, setIsSendingPrompt] = useState(false);
 
-    // Timeline, Logs, Recovery, History
-    const [timelineEvents, setTimelineEvents] = useState([]);
-    const [isTimelineLoading, setIsTimelineLoading] = useState(false);
-    const [systemLogs, setSystemLogs] = useState([]);
-    const [isLogsLoading, setIsLogsLoading] = useState(false);
-    const [recoveryItems, setRecoveryItems] = useState([]);
-    const [isRecoveryLoading, setIsRecoveryLoading] = useState(false);
-    const [diagnostics, setDiagnostics] = useState(null);
-    const [historyChats, setHistoryChats] = useState([]);
-    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-
-    // Approvals State
     const [approvals, setApprovals] = useState({});
     const [pendingApproval, setPendingApproval] = useState(null);
     const [isApprovalMinimized, setIsApprovalMinimized] = useState(false);
     const [isApprovaling, setIsApprovaling] = useState(false);
 
-    // References
     const isMountedRef = useRef(true);
     const snapshotSeqRef = useRef(0);
     const lastSnapshotHashRef = useRef(null);
-    const wsClientRef = useRef(null);
-    const wsConnectedRef = useRef(false);
     const dismissedApprovalStepRef = useRef(null);
     const oldestTurnIndexRef = useRef(null);
     const isLoadingOlderRef = useRef(false);
 
-    // ─── Fetchers ─────────────────────────────────────────────────────────────
+    const auxData = useAgentAuxData(isMountedRef);
+
     const fetchAppState = useCallback(async () => {
         if (typeof document !== 'undefined' && document.hidden) return;
         try {
@@ -101,12 +83,8 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         try {
             const data = await api.getSnapshot(lastSnapshotHashRef.current);
             if (isMountedRef.current && seq === snapshotSeqRef.current) {
-                if (data.status === 'unchanged') {
-                    return;
-                }
-                if (data.hash) {
-                    lastSnapshotHashRef.current = data.hash;
-                }
+                if (data.status === 'unchanged') return;
+                if (data.hash) lastSnapshotHashRef.current = data.hash;
                 setSnapshotData(data);
             }
         } catch {}
@@ -123,9 +101,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
                         setIsInteractionMinimized(false);
                         return null;
                     }
-                    if (prev && prev.interaction_id === item.interaction_id) {
-                        return prev;
-                    }
+                    if (prev && prev.interaction_id === item.interaction_id) return prev;
                     setSelectedOptions(new Set());
                     setCustomResponse('');
                     setIsInteractionMinimized(false);
@@ -148,9 +124,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
                     }
                     const incomingKey = incoming.step_id || incoming.target;
                     const prevKey = prev ? (prev.step_id || prev.target) : null;
-                    if (prev && prevKey === incomingKey) {
-                        return prev;
-                    }
+                    if (prev && prevKey === incomingKey) return prev;
                     if (dismissedApprovalStepRef.current !== incomingKey) {
                         setIsApprovalMinimized(false);
                     }
@@ -174,11 +148,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         } catch {}
     }, []);
 
-    /**
-     * Request-based upward lazy-loading: fetches the next block of older turns
-     * preceding `oldestTurnIndexRef.current` and prepends them to `chatMessages`.
-     * Once loaded, the block stays in memory; scrolling up again loads the next block.
-     */
     const loadOlderMessages = useCallback(async () => {
         if (isLoadingOlderRef.current) return false;
         const cursor = oldestTurnIndexRef.current;
@@ -209,69 +178,11 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
             console.warn('Failed to load older messages:', err);
         } finally {
             isLoadingOlderRef.current = false;
-            if (isMountedRef.current) {
-                setIsLoadingOlder(false);
-            }
+            if (isMountedRef.current) setIsLoadingOlder(false);
         }
         return false;
     }, []);
 
-    const fetchTimelineEvents = useCallback(async () => {
-        setIsTimelineLoading(true);
-        try {
-            const data = await api.getTimeline(80);
-            if (isMountedRef.current) {
-                setTimelineEvents(data.events || []);
-            }
-        } catch {} finally {
-            if (isMountedRef.current) setIsTimelineLoading(false);
-        }
-    }, []);
-
-    const fetchSystemLogs = useCallback(async () => {
-        setIsLogsLoading(true);
-        try {
-            const data = await api.getLogs(250);
-            if (isMountedRef.current) {
-                setSystemLogs(data.logs || []);
-            }
-        } catch {} finally {
-            if (isMountedRef.current) setIsLogsLoading(false);
-        }
-    }, []);
-
-    const fetchRecoveryItems = useCallback(async () => {
-        setIsRecoveryLoading(true);
-        try {
-            const [recData, diagData] = await Promise.all([
-                api.getRecoveryItems().catch(() => ({ recovery_items: [] })),
-                api.getDiagnostics().catch(() => null)
-            ]);
-            if (isMountedRef.current) {
-                const items = Array.isArray(recData) ? recData : (recData.recovery_items || []);
-                setRecoveryItems(items);
-                setDiagnostics(diagData);
-            }
-        } catch {} finally {
-            if (isMountedRef.current) setIsRecoveryLoading(false);
-        }
-    }, []);
-
-    const fetchHistoryChats = useCallback(async () => {
-        setIsHistoryLoading(true);
-        try {
-            const data = await api.getHistoryChats();
-            if (isMountedRef.current) {
-                setHistoryChats(data.chats || []);
-            }
-        } catch {
-            if (isMountedRef.current) setHistoryChats([]);
-        } finally {
-            if (isMountedRef.current) setIsHistoryLoading(false);
-        }
-    }, []);
-
-    // ─── Actions ──────────────────────────────────────────────────────────────
     const handleApproval = useCallback(async (requestType, target, decision, stepId, customInstructions = '', optionLabel = '') => {
         setIsApprovaling(true);
         try {
@@ -304,7 +215,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
 
             return res;
         } catch (err) {
-            console.error('Failed to submit approval:', err);
             toast.error(err.message || 'Failed to submit approval decision', 'Approval Error');
             throw err;
         } finally {
@@ -319,13 +229,9 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         setIsApprovalMinimized(true);
     }, [pendingApproval]);
 
-    const handleReopenApproval = useCallback(() => {
-        setIsApprovalMinimized(false);
-    }, []);
-
-    const handleDismissInteraction = useCallback(() => {
-        setIsInteractionMinimized(true);
-    }, []);
+    const handleReopenApproval = useCallback(() => setIsApprovalMinimized(false), []);
+    const handleDismissInteraction = useCallback(() => setIsInteractionMinimized(true), []);
+    const handleReopenInteraction = useCallback(() => setIsInteractionMinimized(false), []);
 
     const handleCancelInteraction = useCallback(async () => {
         if (!pendingInteraction) return;
@@ -341,10 +247,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
             console.warn('Failed to dismiss interaction on server:', err);
         }
     }, [pendingInteraction]);
-
-    const handleReopenInteraction = useCallback(() => {
-        setIsInteractionMinimized(false);
-    }, []);
 
     const handleSendPrompt = useCallback(async (prompt, attachments = []) => {
         if (!prompt?.trim() && (!attachments || attachments.length === 0)) return;
@@ -400,9 +302,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
                 return updated;
             });
         } finally {
-            if (isMountedRef.current) {
-                setIsSendingPrompt(false);
-            }
+            if (isMountedRef.current) setIsSendingPrompt(false);
         }
     }, [fetchChatMessages]);
 
@@ -435,9 +335,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         } catch (e) {
             toast.error(e.message || 'Failed to submit response', 'Interaction Error');
         } finally {
-            if (isMountedRef.current) {
-                setIsSubmitting(false);
-            }
+            if (isMountedRef.current) setIsSubmitting(false);
         }
     }, [pendingInteraction, isSubmitting, selectedOptions, customResponse, fetchChatMessages]);
 
@@ -445,19 +343,16 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         setSelectedOptions(prev => {
             const next = new Set(prev);
             if (questionContext) {
-                // Per-question selection logic
                 const siblingIds = new Set((questionContext.options || []).map(o => o.id));
                 if (next.has(id)) {
                     next.delete(id);
                 } else {
                     if (!questionContext.is_multi_select) {
-                        // Single-select: clear other options from this question only
                         for (const sid of siblingIds) next.delete(sid);
                     }
                     next.add(id);
                 }
             } else {
-                // Top-level single or multi-choice
                 const isMulti = pendingInteraction?.kind === 'multiple_choice' || Boolean(pendingInteraction?.is_multi_select);
                 if (isMulti) {
                     if (next.has(id)) next.delete(id);
@@ -513,7 +408,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         }
     }, [fetchChatMessages]);
 
-    // ─── Screen Viewport Polling (Only when Screen view is open) ──────────────
     useEffect(() => {
         if (!isScreenActive) return;
         fetchSnapshot();
@@ -521,103 +415,24 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         return () => clearInterval(timer);
     }, [isScreenActive, fetchSnapshot]);
 
-    // ─── Lifecycle & WebSocket Streaming ──────────────────────────────────────
-    useEffect(() => {
-        isMountedRef.current = true;
-
-        fetchAppState();
-        fetchInteractions();
-        fetchPendingApprovals();
-        fetchChatMessages();
-
-        const client = new WebSocketClient({
-            onOpen: () => {
-                wsConnectedRef.current = true;
-            },
-            onClose: () => {
-                wsConnectedRef.current = false;
-            },
-            onMessage: (data) => {
-                if (!isMountedRef.current) return;
-                if (data.type === 'init' || data.type === 'chat_update') {
-                    if (Array.isArray(data.messages)) {
-                        setChatMessages(prev => mergeTurnsPreservingHistory(prev, data.messages));
-                        if (oldestTurnIndexRef.current === null && typeof data.oldest_index === 'number') {
-                            oldestTurnIndexRef.current = data.oldest_index;
-                            setHasMoreHistory(Boolean(data.has_more));
-                        }
-                    }
-                }
-                if (data.type === 'interaction_prompt' && data.interaction) {
-                    setPendingInteraction(prev => {
-                        if (prev && prev.interaction_id === data.interaction.interaction_id) {
-                            return prev;
-                        }
-                        setSelectedOptions(new Set());
-                        setCustomResponse('');
-                        setIsInteractionMinimized(false);
-                        return data.interaction;
-                    });
-                }
-                if (data.type === 'interaction_resolved') {
-                    setPendingInteraction(prev => (prev?.interaction_id === data.interaction_id ? null : prev));
-                    setIsInteractionMinimized(false);
-                }
-                if (data.type === 'approval_resolved') {
-                    if (data.data?.step_id) {
-                        setApprovals(prev => ({ ...prev, [data.data.step_id]: data.data.decision }));
-                    }
-                    setPendingApproval(null);
-                    setIsApprovalMinimized(false);
-                }
-                if (data.type === 'pending_approval' && data.approval) {
-                    setPendingApproval(prev => {
-                        const incomingKey = data.approval.step_id || data.approval.target;
-                        const prevKey = prev ? (prev.step_id || prev.target) : null;
-                        if (prev && prevKey === incomingKey) {
-                            return prev;
-                        }
-                        setIsApprovalMinimized(false);
-                        return data.approval;
-                    });
-                }
-                if (data.type === 'approval_dismissed') {
-                    setPendingApproval(null);
-                    setIsApprovalMinimized(false);
-                }
-            }
-        });
-        client.connect();
-        wsClientRef.current = client;
-
-        // Low-frequency adaptive polling: 1.2s for active popups so IDE actions reflect immediately
-        const appStateTimer = setInterval(fetchAppState, 8000);
-        const interactionsTimer = setInterval(() => {
-            fetchInteractions();
-            fetchPendingApprovals();
-            if (!wsConnectedRef.current) {
-                fetchChatMessages();
-            }
-        }, 1200);
-
-        const handleVisibilityChange = () => {
-            if (!document.hidden && isMountedRef.current) {
-                fetchAppState();
-                fetchInteractions();
-                fetchPendingApprovals();
-                fetchChatMessages();
-            }
-        };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-            isMountedRef.current = false;
-            clearInterval(appStateTimer);
-            clearInterval(interactionsTimer);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            client.disconnect();
-        };
-    }, [fetchAppState, fetchInteractions, fetchPendingApprovals, fetchChatMessages]);
+    useAgentSocket({
+        isMountedRef,
+        oldestTurnIndexRef,
+        mergeTurnsPreservingHistory,
+        setChatMessages,
+        setHasMoreHistory,
+        setPendingInteraction,
+        setSelectedOptions,
+        setCustomResponse,
+        setIsInteractionMinimized,
+        setApprovals,
+        setPendingApproval,
+        setIsApprovalMinimized,
+        fetchAppState,
+        fetchInteractions,
+        fetchPendingApprovals,
+        fetchChatMessages
+    });
 
     return {
         appState,
@@ -633,15 +448,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         isSubmitting,
         submitSuccess,
         isSendingPrompt,
-        timelineEvents,
-        isTimelineLoading,
-        systemLogs,
-        isLogsLoading,
-        recoveryItems,
-        isRecoveryLoading,
-        diagnostics,
-        historyChats,
-        isHistoryLoading,
+        ...auxData,
         approvals,
         pendingApproval,
         isApprovalMinimized,
@@ -660,10 +467,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         handleSetModel,
         handleSetMode,
         handleStopAgent,
-        fetchSnapshot,
-        fetchTimelineEvents,
-        fetchSystemLogs,
-        fetchRecoveryItems,
-        fetchHistoryChats
+        fetchSnapshot
     };
 }

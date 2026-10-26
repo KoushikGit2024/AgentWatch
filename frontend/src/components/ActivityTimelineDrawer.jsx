@@ -48,19 +48,21 @@ export function ActivityTimelineDrawer({
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs select-none">
             <div className="w-full max-w-md bg-zinc-900 border-l border-zinc-800 flex flex-col h-full shadow-2xl">
                 {/* Header */}
-                <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        <h2 className="text-sm font-semibold text-zinc-100">Activity Timeline & Trace</h2>
+                <div className="p-3.5 sm:p-4 border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0 bg-zinc-950/70">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="p-1.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                        </span>
+                        <h2 className="text-sm font-semibold text-zinc-100 truncate">Activity Timeline & Trace</h2>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <button
                             onClick={onRefresh}
                             title="Refresh Events"
-                            className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition"
+                            className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition cursor-pointer"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                                 <path d="M23 4v6h-6" />
@@ -70,7 +72,9 @@ export function ActivityTimelineDrawer({
                         </button>
                         <button
                             onClick={onClose}
-                            className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition"
+                            aria-label="Close timeline"
+                            title="Close"
+                            className="p-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/90 rounded-lg border border-zinc-700/60 sm:border-transparent transition cursor-pointer"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                                 <line x1={18} y1={6} x2={6} y2={18} />

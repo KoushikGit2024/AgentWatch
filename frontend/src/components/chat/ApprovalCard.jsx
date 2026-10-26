@@ -33,14 +33,14 @@ export default function ApprovalCard({
     };
 
     return (
-        <div className="my-1.5 p-3 rounded-xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-850 border border-amber-500/30 flex flex-col gap-2.5 shadow-sm font-sans">
+        <div className="my-1.5 p-3 rounded-lg bg-[#101113] border border-[#D8B36A]/40 flex flex-col gap-2.5 font-sans">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-amber-300 text-xs flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                    <div className="font-semibold text-[#D8B36A] text-xs flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-[#D8B36A] shrink-0" />
                         <span>{item.permission_title || 'Command Approval Required'}</span>
                     </div>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 font-mono break-all">
+                    <p className="text-[11px] text-[#A0A6AF] mt-0.5 font-mono break-all">
                         {item.command
                             ? `${item.cwd_short || '.../workspace'} > ${item.command}`
                             : (item.permission_desc || 'Allow the agent to proceed with this action.')}
@@ -59,12 +59,12 @@ export default function ApprovalCard({
                                     key={optId}
                                     type="button"
                                     onClick={() => onApprove(permType, target, optId, stepId, '', optLabel)}
-                                    className={`px-2.5 py-1 rounded-lg font-medium text-[11px] transition active:scale-95 cursor-pointer ${
+                                    className={`px-2.5 py-1 rounded font-medium text-[11px] transition cursor-pointer ${
                                         isDeny
-                                            ? 'bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300'
+                                            ? 'bg-[#D77E83]/15 hover:bg-[#D77E83]/25 border border-[#D77E83]/40 text-[#D77E83]'
                                             : isAlways
-                                                ? 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200'
-                                                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                                                ? 'bg-[#1D2024] hover:bg-[#23272D] border border-[#30343A] text-[#E8EAED]'
+                                                : 'bg-[#79B89A] hover:opacity-90 text-[#101113] font-semibold'
                                     }`}
                                 >
                                     {optLabel}
@@ -74,16 +74,16 @@ export default function ApprovalCard({
                         <button
                             type="button"
                             onClick={() => setShowCustom(v => !v)}
-                            className="px-2 py-1 rounded-lg bg-zinc-850 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-medium text-[11px] transition active:scale-95 cursor-pointer"
+                            className="px-2 py-1 rounded bg-[#17191C] hover:bg-[#1D2024] border border-[#30343A] text-[#A0A6AF] hover:text-[#E8EAED] font-medium text-[11px] transition cursor-pointer"
                         >
-                            {showCustom ? 'Hide input' : 'Type something else…'}
+                            {showCustom ? 'Hide input' : 'Custom instructions...'}
                         </button>
                     </div>
                 ) : (
-                    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-md shrink-0 ${
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded shrink-0 border ${
                         effectiveDecision === 'deny'
-                            ? 'text-rose-400 bg-rose-950/60 border border-rose-800/60'
-                            : 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/60'
+                            ? 'text-[#D77E83] bg-[#D77E83]/12 border-[#D77E83]/35'
+                            : 'text-[#79B89A] bg-[#79B89A]/12 border-[#79B89A]/35'
                     }`}>
                         <div className="w-3 h-3">
                             {effectiveDecision === 'deny' ? Icon.x : Icon.check}
@@ -96,7 +96,7 @@ export default function ApprovalCard({
             </div>
 
             {!effectiveDecision && showCustom && (
-                <div className="pt-2 border-t border-zinc-800 flex flex-col sm:flex-row gap-2">
+                <div className="pt-2 border-t border-[#262A30] flex flex-col sm:flex-row gap-2">
                     <input
                         type="text"
                         value={customText}
@@ -108,18 +108,16 @@ export default function ApprovalCard({
                             }
                         }}
                         placeholder="Type custom instructions for the agent instead..."
-                        className="flex-1 bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 outline-none"
+                        className="flex-1 bg-[#17191C] border border-[#30343A] focus:border-[#7C9FC5] rounded px-3 py-1.5 text-xs text-[#E8EAED] placeholder-[#747C87] outline-none"
                     />
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                            type="button"
-                            disabled={!customText.trim()}
-                            onClick={() => handleCustomSubmit('deny')}
-                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition disabled:opacity-40 cursor-pointer shadow-sm"
-                        >
-                            Send Instructions
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        disabled={!customText.trim()}
+                        onClick={() => handleCustomSubmit('deny')}
+                        className="px-3 py-1.5 rounded bg-[#7C9FC5] hover:bg-[#8FB0D4] text-[#101113] text-[11px] font-semibold transition disabled:opacity-40 cursor-pointer shrink-0"
+                    >
+                        Send Instructions
+                    </button>
                 </div>
             )}
         </div>

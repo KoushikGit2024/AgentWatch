@@ -24,6 +24,10 @@ export const handleAuthFailure = (status) => {
 };
 
 const request = async (url, options = {}) => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        throw new Error('Device is currently offline (navigator.onLine is false)');
+    }
+
     const headers = {
         ...getAuthHeaders(),
         ...(options.headers || {})
@@ -274,6 +278,33 @@ export const api = {
     async deleteQueuedMessage(itemId) {
         const res = await request(`/api/v1/queue/messages/${encodeURIComponent(itemId)}`, {
             method: 'DELETE'
+        });
+        return res.json();
+    },
+
+    async getAttachments(params = {}) {
+        const query = new URLSearchParams();
+        if (params.search) query.set('search', params.search);
+        if (params.category && params.category !== 'all') query.set('category', params.category);
+        if (params.limit) query.set('limit', String(params.limit));
+        if (params.offset) query.set('offset', String(params.offset));
+        const qs = query.toString() ? `?${query.toString()}` : '';
+        const res = await request(`/api/v1/attachments${qs}`);
+        return res.json();
+    },
+
+    async deleteAttachment(filename) {
+        const res = await request(`/api/v1/attachments/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+        return res.json();
+    },
+
+    async deleteBatchAttachments(filenames = []) {
+        const res = await request('/api/v1/attachments/delete-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filenames })
         });
         return res.json();
     }

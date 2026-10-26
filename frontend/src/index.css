@@ -1,13 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
+@import "./styles/tokens.css";
+@import "./styles/layout.css";
 
 @layer base {
-  :root {
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    color-scheme: dark;
-  }
-
   *, *::before, *::after {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
@@ -16,14 +12,18 @@
   html, body, #root {
     height: 100%;
     width: 100%;
+    margin: 0;
+    padding: 0;
     overflow: hidden;
-    background: #09090b;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
   }
 
   body {
     font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   code, pre, .font-mono {
@@ -31,48 +31,126 @@
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #52525b; }
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #30343A;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #40464F;
+}
 
-/* Hide scrollbar but keep scroll */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
-/* Off-screen rendering optimization for long lazy-loaded chat streams */
 .chat-turn-item {
   content-visibility: auto;
-  contain-intrinsic-size: auto 120px;
+  contain-intrinsic-size: auto 96px;
 }
 
-/* Chat content rendered from Antigravity IDE snapshot */
-.chat-content p { margin-bottom: 0.75rem; color: #d4d4d8; font-size: 0.875rem; line-height: 1.6; }
-.chat-content h1, .chat-content h2, .chat-content h3 { color: #f4f4f5; font-weight: 600; margin: 1.25rem 0 0.5rem; }
-.chat-content h1 { font-size: 1.125rem; }
-.chat-content h2 { font-size: 1rem; }
-.chat-content h3 { font-size: 0.9rem; }
-.chat-content code { font-family: var(--font-mono); font-size: 0.8rem; background: #18181b; color: #a1a1aa; padding: 0.1rem 0.35rem; border-radius: 4px; border: 1px solid #27272a; }
-.chat-content pre { background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 1rem; overflow-x: auto; margin-bottom: 1rem; }
-.chat-content pre code { background: none; border: none; padding: 0; color: #e4e4e7; }
-.chat-content ul, .chat-content ol { padding-left: 1.25rem; margin-bottom: 0.75rem; color: #d4d4d8; font-size: 0.875rem; }
-.chat-content li { margin-bottom: 0.25rem; line-height: 1.5; }
-.chat-content blockquote { border-left: 3px solid #3b82f6; padding: 0.5rem 1rem; background: #1e3a5f20; color: #a1a1aa; border-radius: 0 6px 6px 0; margin-bottom: 0.75rem; }
-.chat-content a { color: #60a5fa; text-decoration: underline; text-underline-offset: 2px; }
-.chat-content strong { color: #f4f4f5; font-weight: 600; }
-.chat-content table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 1rem; }
-.chat-content th { background: #27272a; color: #a1a1aa; padding: 0.5rem 0.75rem; text-align: left; font-weight: 500; border: 1px solid #3f3f46; }
-.chat-content td { padding: 0.5rem 0.75rem; border: 1px solid #27272a; color: #d4d4d8; }
+.chat-content p {
+  margin-bottom: 0.65rem;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+.chat-content h1, .chat-content h2, .chat-content h3 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 1rem 0 0.4rem;
+}
+.chat-content h1 { font-size: 1.05rem; }
+.chat-content h2 { font-size: 0.95rem; }
+.chat-content h3 { font-size: 0.875rem; }
+.chat-content code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: var(--bg-code);
+  color: var(--text-secondary);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+}
+.chat-content pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  overflow-x: auto;
+  margin-bottom: 0.85rem;
+}
+.chat-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+}
+.chat-content ul, .chat-content ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.65rem;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+.chat-content li {
+  margin-bottom: 0.25rem;
+  line-height: 1.5;
+}
+.chat-content blockquote {
+  border-left: 2px solid var(--accent-primary);
+  padding: 0.4rem 0.85rem;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  margin-bottom: 0.65rem;
+}
+.chat-content a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.chat-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-bottom: 0.85rem;
+}
+.chat-content th {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+  font-weight: 600;
+  border: 1px solid var(--border-default);
+}
+.chat-content td {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
 
-/* Pulse animation for live indicator */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.45; }
 }
-.pulse-live { animation: pulse-dot 1.5s ease-in-out infinite; }
+.pulse-live {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
 
-/* Tab active indicator */
 .tab-active-bar {
   position: absolute;
   top: 0;
@@ -80,21 +158,17 @@
   transform: translateX(-50%);
   width: 20px;
   height: 2px;
-  background: #3b82f6;
+  background: var(--accent-primary);
   border-radius: 0 0 2px 2px;
 }
 
-/* Safe area for mobile bottom */
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
-
-/* Monaco Editor Highlighted Line Range (Clean White Highlighter) */
 .monaco-highlight-line {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-left: 3px solid #ffffff !important;
+  background: rgba(124, 159, 197, 0.14) !important;
+  border-left: 2px solid #7C9FC5 !important;
 }
 
 .monaco-highlight-glyph {
-  background: #ffffff !important;
-  width: 10px !important;
-  border-radius: 2px !important;
+  background: #7C9FC5 !important;
+  width: 6px !important;
+  border-radius: 1px !important;
 }
