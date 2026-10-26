@@ -4,6 +4,7 @@ import ChatTurn from './ChatTurn';
 
 const ChatStream = forwardRef(function ChatStream({
     chatMessages,
+    isChatLoading,
     hasMoreHistory,
     isLoadingOlder,
     onLoadOlder,
@@ -93,17 +94,36 @@ const ChatStream = forwardRef(function ChatStream({
                         )}
 
                         {chatMessages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-16 text-center space-y-2.5">
-                                <div className="w-9 h-9 rounded-md bg-[#17191C] border border-[#30343A] flex items-center justify-center text-[#7C9FC5]">
-                                    <div className="w-4 h-4">{Icon.terminal}</div>
+                            isChatLoading ? (
+                                <div className="space-y-4 py-8 px-2 max-w-2xl mx-auto w-full">
+                                    <div className="flex items-center gap-3 p-4 rounded-xl bg-[#17191C]/70 border border-[#2B323F] animate-pulse">
+                                        <div className="w-8 h-8 rounded-lg bg-sky-500/20 shrink-0" />
+                                        <div className="space-y-2 flex-1">
+                                            <div className="h-3.5 bg-[#2B323F] rounded w-1/3" />
+                                            <div className="h-2.5 bg-[#20252E] rounded w-2/3" />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-4 rounded-xl bg-[#17191C]/40 border border-[#2B323F]/50 animate-pulse">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/15 shrink-0" />
+                                        <div className="space-y-2 flex-1">
+                                            <div className="h-3.5 bg-[#2B323F] rounded w-1/4" />
+                                            <div className="h-2.5 bg-[#20252E] rounded w-1/2" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <h2 className="text-sm font-semibold text-[#E8EAED]">Antigravity Agent Ready</h2>
-                                    <p className="text-xs text-[#A0A6AF] max-w-sm">
-                                        Connected to your live Antigravity IDE workspace. Real-time execution traces, interactive decision prompts, and conversation turns appear here.
-                                    </p>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-16 text-center space-y-2.5">
+                                    <div className="w-9 h-9 rounded-md bg-[#17191C] border border-[#30343A] flex items-center justify-center text-[#7C9FC5]">
+                                        <div className="w-4 h-4">{Icon.terminal}</div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h2 className="text-sm font-semibold text-[#E8EAED]">Antigravity Agent Ready</h2>
+                                        <p className="text-xs text-[#A0A6AF] max-w-sm">
+                                            Connected to your live Antigravity IDE workspace. Real-time execution traces, interactive decision prompts, and conversation turns appear here.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                            )
                         )}
 
                         {chatMessages.map((turn, idx) => (

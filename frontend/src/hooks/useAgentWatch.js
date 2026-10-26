@@ -38,7 +38,9 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         available_modes: ['Fast', 'Planning']
     });
     const [snapshotData, setSnapshotData] = useState(null);
+    const [isSnapshotLoading, setIsSnapshotLoading] = useState(false);
     const [chatMessages, setChatMessages] = useState([]);
+    const [isChatLoading, setIsChatLoading] = useState(true);
     const [hasMoreHistory, setHasMoreHistory] = useState(false);
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
 
@@ -77,17 +79,29 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         } catch {}
     }, []);
 
-    const fetchSnapshot = useCallback(async () => {
+    const fetchSnapshot = useCallback(async (force = false) => {
         if (typeof document !== 'undefined' && document.hidden) return;
         const seq = ++snapshotSeqRef.current;
+        if (force || !lastSnapshotHashRef.current) {
+            setIsSnapshotLoading(true);
+        }
         try {
-            const data = await api.getSnapshot(lastSnapshotHashRef.current);
+            const hashToPass = force ? null : lastSnapshotHashRef.current;
+            const data = await api.getSnapshot(hashToPass);
             if (isMountedRef.current && seq === snapshotSeqRef.current) {
-                if (data.status === 'unchanged') return;
+                if (data.status === 'unchanged') {
+                    setIsSnapshotLoading(false);
+                    return;
+                }
                 if (data.hash) lastSnapshotHashRef.current = data.hash;
                 setSnapshotData(data);
+                setIsSnapshotLoading(false);
             }
-        } catch {}
+        } catch {
+            if (isMountedRef.current && seq === snapshotSeqRef.current) {
+                setIsSnapshotLoading(false);
+            }
+        }
     }, []);
 
     const fetchInteractions = useCallback(async () => {
@@ -144,8 +158,13 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
                     oldestTurnIndexRef.current = data.oldest_index;
                     setHasMoreHistory(Boolean(data.has_more));
                 }
+                setIsChatLoading(false);
             }
-        } catch {}
+        } catch {
+            if (isMountedRef.current) {
+                setIsChatLoading(false);
+            }
+        }
     }, []);
 
     const loadOlderMessages = useCallback(async () => {
@@ -410,8 +429,9 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
 
     useEffect(() => {
         if (!isScreenActive) return;
-        fetchSnapshot();
-        const timer = setInterval(fetchSnapshot, 2500);
+        // Immediate force refresh without stale hash comparison so screen appears instantly on tab switch
+        fetchSnapshot(true);
+        const timer = setInterval(() => fetchSnapshot(false), 1300);
         return () => clearInterval(timer);
     }, [isScreenActive, fetchSnapshot]);
 
@@ -437,7 +457,9 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     return {
         appState,
         snapshotData,
+        isSnapshotLoading,
         chatMessages,
+        isChatLoading,
         hasMoreHistory,
         isLoadingOlder,
         loadOlderMessages,
