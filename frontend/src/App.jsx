@@ -371,7 +371,14 @@ export default function App() {
                 onRefresh={fetchTimelineEvents}
             />
 
-            <SystemLogsDrawer isOpen={logsOpen} onClose={() => setLogsOpen(false)} logs={systemLogs} isLoading={isLogsLoading} onRefresh={fetchSystemLogs} />
+            <SystemLogsDrawer 
+                isOpen={logsOpen} 
+                onClose={() => setLogsOpen(false)} 
+                logs={systemLogs} 
+                isLoading={isLogsLoading} 
+                onRefresh={fetchSystemLogs} 
+                onOpenFile={handleOpenFile}
+            />
             <TaskManagerDrawer isOpen={taskManagerOpen} onClose={() => setTaskManagerOpen(false)} />
 
             <RecoveryCenterModal

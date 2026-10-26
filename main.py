@@ -176,9 +176,16 @@ async def watch_transcript_loop():
                                     }
                         else:
                             dom_miss_count += 1
-                            # Require 2 consecutive misses (~1.4s) before dismissing live popup to prevent transient flicker
-                            if dom_miss_count >= 2:
+                            # Require 4 consecutive misses (~2.8s) before dismissing live popup to prevent transient flicker
+                            if dom_miss_count >= 4:
                                 cached_dom_approval = None
+                                if conversation_service._latest_pending_approval and conversation_service._latest_pending_approval.get("step_id", "").startswith("dom-"):
+                                    conversation_service._latest_pending_approval = None
+                                # Clear stale DOM approvals so future prompts for the same command/URL can pop up again
+                                conversation_service._resolved_approvals = {
+                                    k: v for k, v in conversation_service._resolved_approvals.items()
+                                    if not k.startswith("dom-") and not k.startswith("cmd-")
+                                }
                                 interaction_service.sync_question_from_transcript(
                                     session_id="cdp_live_session",
                                     question_data=None,
@@ -188,6 +195,7 @@ async def watch_transcript_loop():
                 # Use cached dom approval if transcript doesn't specify one
                 if not pending_approval and cached_dom_approval:
                     pending_approval = cached_dom_approval
+                    conversation_service._latest_pending_approval = cached_dom_approval
 
                 cur_approval_key = pending_approval.get("step_id") if pending_approval else None
                 now = time.time()

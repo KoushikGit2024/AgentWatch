@@ -166,6 +166,28 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
                 }))
                 await asyncio.wait_for(ws.recv(), timeout=2.0)
 
+            # 6. Immediate check: if Antigravity queued the message while generating, trigger 'Send Now' immediately
+            await asyncio.sleep(0.15)
+            send_now_js = """
+            (() => {
+                const card = document.querySelector('[data-testid="queued-messages-card"]');
+                if (card) {
+                    const sendNowBtn = card.querySelector('button[aria-label="Send Now"], button:has(svg)');
+                    if (sendNowBtn) {
+                        sendNowBtn.click();
+                        return { auto_sent: true };
+                    }
+                }
+                return { auto_sent: false };
+            })()
+            """
+            await ws.send(json.dumps({
+                "id": 210,
+                "method": "Runtime.evaluate",
+                "params": {"expression": send_now_js, "returnByValue": True}
+            }))
+            await asyncio.sleep(0.05)
+
             return {"success": True, "message_length": len(message), "submitted_via": sub_res.get("via", "enter_key")}
     except Exception as exc:
         logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
@@ -362,7 +384,7 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                 );
                 if (questionContainer && isVisible(questionContainer)) {
                     const card = questionContainer.closest('.bg-ide-editor-background, [class*="rounded-2xl"]') || questionContainer;
-                    const questionEl = card.querySelector('p[node], p, .leading-relaxed') || card;
+                    const questionEl = card.querySelector('p[node], p, .leading-relaxed, span.text-sm.font-medium, h3, h4') || card;
                     const questionTitle = (questionEl.innerText || questionEl.textContent || 'Agent Question').trim().split('\n')[0];
 
                     // Check multi-select badge: <span ...>Multi-select</span> or input[type="checkbox"]
@@ -727,10 +749,11 @@ async def dispatch_forward_approval(
                     '[class*="tool"]'
                 ];
                 // Priority 1: Check native Antigravity IDE approval card ([role="radiogroup"])
-                const radioGroup = document.querySelector('[role="radiogroup"]');
-                if (radioGroup && isVisible(radioGroup)) {{
+                const allGroups = Array.from(document.querySelectorAll('[role="radiogroup"]'));
+                const radioGroup = allGroups.reverse().find(rg => isVisible(rg)) || document.querySelector('[role="radiogroup"]');
+                if (radioGroup) {{
                     const card = radioGroup.closest('.bg-ide-editor-background, [class*="rounded-2xl"]') || radioGroup.parentElement;
-                    const radioLabels = Array.from(radioGroup.querySelectorAll('label')).filter(isVisible);
+                    const radioLabels = Array.from(radioGroup.querySelectorAll('label'));
 
                     let targetRadio = null;
                     if (explicitLabel) {{
@@ -745,10 +768,16 @@ async def dispatch_forward_approval(
                                 return (txt.includes('allow this time') || txt.includes('yes, allow') || txt.startsWith('yes')) && !txt.includes('always allow');
                             }});
                         }} else if (isDeny) {{
-                            targetRadio = radioLabels.find(l => {{
-                                const txt = (l.innerText || '').toLowerCase();
-                                return txt.startsWith('no') || txt.includes('tell the agent');
-                            }});
+                            // Priority match for write_in (Option 4) if custom instructions are provided
+                            if (custom_response && custom_response.trim()) {{
+                                targetRadio = radioLabels.find(l => Boolean(l.querySelector('textarea, [data-testid="ask-question-writein"], input[value*="write_in"]')));
+                            }}
+                            if (!targetRadio) {{
+                                targetRadio = radioLabels.find(l => {{
+                                    const txt = (l.innerText || '').toLowerCase();
+                                    return txt.startsWith('no') || txt.includes('tell the agent');
+                                }});
+                            }}
                         }}
                     }}
 
@@ -762,15 +791,19 @@ async def dispatch_forward_approval(
                         }} catch (e) {{}}
                         await new Promise(r => setTimeout(r, 150));
 
-                        // If user provided custom denial instructions or alternative commands
-                        if (isDeny && custom_response && custom_response.trim()) {{
-                            const writeIn = targetRadio.querySelector('textarea, [data-testid="ask-question-writein"]') || card.querySelector('textarea[data-testid="ask-question-writein"]');
+                        // If user provided custom denial instructions or alternative commands (Option 4 write-in)
+                        let writeInInjected = false;
+                        if (custom_response && custom_response.trim()) {{
+                            const writeIn = targetRadio.querySelector('textarea, [data-testid="ask-question-writein"]') || 
+                                            card.querySelector('textarea[data-testid="ask-question-writein"]') ||
+                                            card.querySelector('label:has(input[value*="write_in"]) textarea, textarea');
                             if (writeIn) {{
                                 writeIn.focus();
                                 writeIn.value = custom_response.trim();
                                 writeIn.dispatchEvent(new Event('input', {{ bubbles: true }}));
                                 writeIn.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                                await new Promise(r => setTimeout(r, 100));
+                                writeInInjected = true;
+                                await new Promise(r => setTimeout(r, 120));
                             }}
                         }}
 
@@ -794,6 +827,7 @@ async def dispatch_forward_approval(
                                 clicked: true,
                                 receipt_confirmed: receiptConfirmed,
                                 via: 'native_approval_card',
+                                writein_injected: writeInInjected,
                                 target: (targetRadio.innerText || '').trim().split('\n')[0]
                             }};
                         }}
@@ -957,9 +991,10 @@ async def dispatch_forward_approval(
                     key, res.get("found_buttons", [])
                 )
 
-        # If the user also provided custom instructions (e.g., "Deny & tell agent what to do instead" or "Type something else")
+        # If the user also provided custom instructions, only fall back to typing in the composer
+        # if the card didn't already have an inline Option 4 write-in textarea
         custom_dispatch = None
-        if custom_response and custom_response.strip():
+        if custom_response and custom_response.strip() and not res.get("writein_injected"):
             await asyncio.sleep(0.25)
             custom_dispatch = await dispatch_send_prompt(target_url, custom_response.strip())
 

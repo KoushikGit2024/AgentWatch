@@ -1,6 +1,6 @@
 """Operational Diagnostics Route."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from integrations.antigravity.adapter import antigravity_adapter
 
 router = APIRouter(tags=["Diagnostics"])
@@ -110,3 +110,30 @@ def terminate_system_process(payload: TerminateProcessRequest):
         pass
 
     return result
+
+
+@router.get("/api/v1/logs/files")
+def get_log_files():
+    """List all date-segregated log files available on disk."""
+    from services.log_analytics_service import log_analytics_service
+    return {
+        "files": log_analytics_service.list_log_files()
+    }
+
+
+@router.get("/api/v1/logs/analytics")
+def get_log_analytics(date_or_file: str):
+    """Compute and return visual analytics, graphs, and breakdown metrics for a selected log file."""
+    from services.log_analytics_service import log_analytics_service
+    return log_analytics_service.analyze_log_file(date_or_file)
+
+
+@router.delete("/api/v1/logs/files")
+def delete_log_file(filename: str):
+    """Safely delete or truncate a log file."""
+    from services.log_analytics_service import log_analytics_service
+    res = log_analytics_service.delete_log_file(filename)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed deleting log file"))
+    return res
+

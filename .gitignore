@@ -51,7 +51,7 @@ data/
 *.db
 *.db-shm
 *.db-wal
-logs/
+/logs/
 *.log
 
 # IDE & OS
