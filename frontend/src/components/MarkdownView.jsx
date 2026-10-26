@@ -43,8 +43,17 @@ marked.use({
         },
 
         link(token) {
-            const href = token.href || '#';
-            const rawText = token.text || token.href;
+            let href = token.href || '#';
+            let rawText = token.text || token.href || '';
+
+            // Clean accidental trailing punctuation/parenthesis (e.g. from markdown wrapping "...[file](url))")
+            if (rawText.endsWith(')') && !rawText.includes('(')) {
+                rawText = rawText.slice(0, -1).trim();
+            }
+            if (href.endsWith(')') && !href.includes('(')) {
+                href = href.slice(0, -1).trim();
+            }
+
             const isFileUri = href.startsWith('file://') || href.startsWith('file:/');
 
             // Check if href is a file URI or a direct file path (e.g. "frontend/src/App.jsx")
