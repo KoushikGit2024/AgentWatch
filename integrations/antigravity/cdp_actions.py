@@ -338,15 +338,20 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                         }).filter(o => o.label);
 
                         if (options.length > 0) {
-                            const promptText = (titleEl ? titleEl.innerText : '') || (inputEl ? inputEl.placeholder : '') || 'Select an option in Antigravity';
-                            const isApprovalLike = options.some(o => /^(allow|always allow|run|accept|deny|reject)/i.test(o.label));
-                            return {
-                                has_popup: true,
-                                popup_kind: isApprovalLike ? 'approval' : 'question',
-                                title: promptText.trim(),
-                                options: options,
-                                allow_custom_response: Boolean(inputEl)
-                            };
+                            const promptText = ((titleEl ? titleEl.innerText : '') || (inputEl ? inputEl.placeholder : '') || '').trim();
+                            // Require explicit permission/decision/command approval keywords to avoid capturing benign file-pickers or command palette
+                            const isApprovalLike = options.some(o => /^(allow|always allow|run|run in terminal|accept|deny|reject|proceed|approve|continue)/i.test(o.label));
+                            const hasPromptApprovalCue = /permission|approval|allow|proceed|run in terminal|execute|security/i.test(promptText);
+
+                            if (isApprovalLike || hasPromptApprovalCue) {
+                                return {
+                                    has_popup: true,
+                                    popup_kind: isApprovalLike ? 'approval' : 'question',
+                                    title: promptText || 'Antigravity Approval Required',
+                                    options: options,
+                                    allow_custom_response: Boolean(inputEl)
+                                };
+                            }
                         }
                     }
                 }

@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import logging
 import os
+import time
 from typing import Optional
 
 from config.settings import settings
@@ -106,6 +107,9 @@ async def watch_transcript_loop():
     cached_dom_approval = None
     dom_miss_count = 0
 
+    approval_candidate_key = None
+    approval_candidate_time = 0.0
+
     while True:
         try:
             p = conversation_service.get_latest_transcript_path()
@@ -186,17 +190,28 @@ async def watch_transcript_loop():
                     pending_approval = cached_dom_approval
 
                 cur_approval_key = pending_approval.get("step_id") if pending_approval else None
+                now = time.time()
+
+                # Debounce / grace period (500ms): verify candidate stays active before broadcasting to prevent fast auto-running commands from flashing
                 if cur_approval_key and cur_approval_key != last_approval_key:
-                    last_approval_key = cur_approval_key
-                    await websocket_manager.broadcast({
-                        "type": "pending_approval",
-                        "approval": pending_approval,
-                    })
-                elif not cur_approval_key and last_approval_key is not None:
-                    last_approval_key = None
-                    await websocket_manager.broadcast({
-                        "type": "approval_dismissed",
-                    })
+                    if approval_candidate_key != cur_approval_key:
+                        approval_candidate_key = cur_approval_key
+                        approval_candidate_time = now
+                    elif (now - approval_candidate_time) >= 0.5:
+                        last_approval_key = cur_approval_key
+                        approval_candidate_key = None
+                        await websocket_manager.broadcast({
+                            "type": "pending_approval",
+                            "approval": pending_approval,
+                        })
+                else:
+                    if not cur_approval_key:
+                        approval_candidate_key = None
+                        if last_approval_key is not None:
+                            last_approval_key = None
+                            await websocket_manager.broadcast({
+                                "type": "approval_dismissed",
+                            })
 
                 pending_list = interaction_service.list_pending()
                 active_interaction = pending_list[0] if pending_list else None
