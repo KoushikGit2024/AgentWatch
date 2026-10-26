@@ -17,7 +17,14 @@ logger = logging.getLogger(__name__)
 # Constants
 PROCESS_QUERY_INFORMATION = 0x0400
 PROCESS_VM_READ = 0x0010
+PROCESS_TERMINATE = 0x0001
 MAX_PATH = 260
+
+PROTECTED_PROCESS_NAMES = {
+    "system", "system idle process", "csrss.exe", "smss.exe", "wininit.exe",
+    "winlogon.exe", "services.exe", "lsass.exe", "svchost.exe", "explorer.exe",
+    "runtimebroker.exe", "dwm.exe"
+}
 
 # Ctypes structures
 class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
@@ -225,16 +232,22 @@ class SystemMetricsService:
         total_cpu = sum(g["cpu_percent"] for g in grouped.values())
 
         process_list = []
+        current_pid = os.getpid()
         for g in grouped.values():
             mem_mb = round(g["memory_bytes"] / (1024 * 1024), 1)
             mem_pct = round((mem_mb / total_system_mb) * 100.0, 1)
+            is_self = current_pid in g["pids"]
+            is_sys = g["name"].lower() in PROTECTED_PROCESS_NAMES
             process_list.append({
                 "name": g["name"],
                 "count": g["count"],
                 "pid": g["pids"][0] if g["count"] == 1 else None,
+                "pids": g["pids"],
                 "memory_mb": mem_mb,
                 "memory_percent": mem_pct,
                 "cpu_percent": round(g["cpu_percent"], 1),
+                "is_protected": is_self or is_sys,
+                "is_self": is_self,
             })
 
         # Sort by selected column
@@ -252,10 +265,66 @@ class SystemMetricsService:
                 "memory_percent": mem_info["percent"],
                 "total_cpu_percent": round(min(total_cpu, 100.0), 1),
                 "process_count": len(raw_procs),
+                "current_pid": current_pid,
             },
             "processes": sliced,
             "sort_by": sort_by,
             "limit": limit,
+        }
+
+    def terminate_processes(self, pids: List[int], name: str = "") -> Dict[str, Any]:
+        """
+        Safely terminate target host process(es) by PID.
+        Guards against terminating current AgentWatch server PID or core OS processes.
+        """
+        current_pid = os.getpid()
+        lower_name = (name or "").lower().strip()
+        if lower_name in PROTECTED_PROCESS_NAMES:
+            return {
+                "success": False,
+                "error": f"Cannot terminate protected system process: {name}",
+                "killed_pids": [],
+                "failed_pids": pids
+            }
+
+        killed_pids = []
+        failed_pids = []
+        errors = []
+
+        if not self._is_windows or not self._kernel32:
+            return {"success": False, "error": "Process termination only supported on Windows host", "killed_pids": [], "failed_pids": pids}
+
+        for pid in pids:
+            if not isinstance(pid, int) or pid <= 4:
+                failed_pids.append(pid)
+                continue
+            if pid == current_pid:
+                errors.append(f"PID {pid} is the active AgentWatch server process (protected)")
+                failed_pids.append(pid)
+                continue
+
+            h_proc = self._kernel32.OpenProcess(PROCESS_TERMINATE, False, pid)
+            if not h_proc:
+                err_code = self._kernel32.GetLastError()
+                errors.append(f"OpenProcess failed for PID {pid} (code {err_code})")
+                failed_pids.append(pid)
+                continue
+
+            try:
+                if self._kernel32.TerminateProcess(h_proc, 1):
+                    killed_pids.append(pid)
+                else:
+                    err_code = self._kernel32.GetLastError()
+                    errors.append(f"TerminateProcess failed for PID {pid} (code {err_code})")
+                    failed_pids.append(pid)
+            finally:
+                self._kernel32.CloseHandle(h_proc)
+
+        return {
+            "success": len(killed_pids) > 0,
+            "killed_pids": killed_pids,
+            "failed_pids": failed_pids,
+            "error": "; ".join(errors) if errors and not killed_pids else None
         }
 
 system_metrics_service = SystemMetricsService()

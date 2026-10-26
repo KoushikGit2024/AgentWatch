@@ -54,6 +54,14 @@ def get_operational_diagnostics():
     }
 
 
+from typing import List, Optional
+from pydantic import BaseModel, Field
+
+class TerminateProcessRequest(BaseModel):
+    pids: List[int] = Field(..., description="Target process PIDs to terminate")
+    name: Optional[str] = Field(default="", description="Friendly process name")
+
+
 @router.get("/api/v1/system/processes")
 def get_system_processes(sort_by: str = "memory", limit: int = 15):
     """
@@ -65,3 +73,40 @@ def get_system_processes(sort_by: str = "memory", limit: int = 15):
     bounded_limit = max(5, min(int(limit), 35))
     clean_sort = "cpu" if sort_by.lower() == "cpu" else "memory"
     return system_metrics_service.get_task_manager_snapshot(sort_by=clean_sort, limit=bounded_limit)
+
+
+@router.post("/api/v1/system/processes/terminate")
+def terminate_system_process(payload: TerminateProcessRequest):
+    """
+    Safely terminate selected process(es) by PID.
+    Guarded against terminating core system processes or the active AgentWatch server PID.
+    """
+    from services.system_metrics_service import system_metrics_service
+    from repositories.event_repository import EventRepository
+    from models.schemas import EventDocument
+    import datetime
+
+    result = system_metrics_service.terminate_processes(payload.pids, payload.name)
+
+    try:
+        EventRepository().insert_event(EventDocument(
+            session_id="default_session",
+            event_type="ProcessTerminated" if result.get("success") else "ProcessTerminationFailed",
+            category="system",
+            summary=f"User requested End Task for {payload.name or payload.pids}: {len(result.get('killed_pids', []))} killed",
+            execution_state="execution_observed" if result.get("success") else "failure_diagnosed",
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            source="mobile_user",
+            source_confidence="observed",
+            sanitized_payload={
+                "target_name": payload.name,
+                "requested_pids": payload.pids,
+                "killed_pids": result.get("killed_pids", []),
+                "failed_pids": result.get("failed_pids", []),
+                "error": result.get("error")
+            }
+        ))
+    except Exception:
+        pass
+
+    return result

@@ -11,7 +11,8 @@ export default function Navbar({
     onOpenTaskManager,
     onOpenRecovery,
     recoveryCount = 0,
-    onOpenHistory
+    onOpenHistory,
+    onOpenFiles
 }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const menuRef = useRef(null);
@@ -111,6 +112,18 @@ export default function Navbar({
                 <nav aria-label="Diagnostic Tools" className="hidden md:flex items-center gap-1">
                     <button
                         type="button"
+                        onClick={onOpenFiles}
+                        title="Project Files & Explorer"
+                        className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
+                    >
+                        <div className="w-4 h-4 p-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 group-hover:border-amber-500/40 shrink-0 transition-all">
+                            {Icon.folder}
+                        </div>
+                        <span className="hidden xl:inline">Files</span>
+                    </button>
+
+                    <button
+                        type="button"
                         onClick={onOpenTaskManager}
                         title="Task Manager & Process Monitor"
                         className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
@@ -195,6 +208,17 @@ export default function Navbar({
                             role="menu"
                             className="absolute right-2.5 top-full mt-1.5 w-60 bg-[#17191C] border border-[#30343A] rounded-lg shadow-xl p-1.5 space-y-0.5 z-50"
                         >
+                            <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => handleAction(onOpenFiles)}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer text-left"
+                            >
+                                <div className="w-5 h-5 p-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                                    {Icon.folder}
+                                </div>
+                                <span>Project Files Explorer</span>
+                            </button>
                             <button
                                 type="button"
                                 role="menuitem"

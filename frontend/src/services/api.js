@@ -220,9 +220,27 @@ export const api = {
         return res.json();
     },
 
+    async terminateProcess(pids, name = '') {
+        const res = await request('/api/v1/system/processes/terminate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pids: Array.isArray(pids) ? pids : [pids],
+                name
+            })
+        });
+        return res.json();
+    },
+
     async getFileContent(filePath) {
         const encoded = encodeURIComponent(filePath);
         const res = await request(`/api/v1/files/content?path=${encoded}`);
+        return res.json();
+    },
+
+    async getFileTree(subpath = '') {
+        const query = subpath ? `?subpath=${encodeURIComponent(subpath)}` : '';
+        const res = await request(`/api/v1/files/tree${query}`);
         return res.json();
     },
 

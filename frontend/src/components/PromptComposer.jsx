@@ -6,6 +6,7 @@ import AttachmentPreview from './chat/AttachmentPreview';
 import WorkbenchBar from './composer/WorkbenchBar';
 import AttachmentLightbox from './composer/AttachmentLightbox';
 import AssetManagerModal from './modals/AssetManagerModal';
+import { FileIcon } from '../constants/fileIcons';
 
 export function PromptComposer({
     promptText,
@@ -26,6 +27,7 @@ export function PromptComposer({
     const [isDragging, setIsDragging] = useState(false);
     const [previewItem, setPreviewItem] = useState(null);
     const [isAssetManagerOpen, setIsAssetManagerOpen] = useState(false);
+    const [minimizedViewerStatus, setMinimizedViewerStatus] = useState(null);
 
     const [activeAttachedTab, setActiveAttachedTab] = useState(null);
     const [artifactsList, setArtifactsList] = useState([]);
@@ -35,6 +37,16 @@ export function PromptComposer({
 
     const imageInputRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        const onViewerStatus = (e) => {
+            if (e.detail) {
+                setMinimizedViewerStatus(e.detail);
+            }
+        };
+        window.addEventListener('agentwatch:file-viewer-status', onViewerStatus);
+        return () => window.removeEventListener('agentwatch:file-viewer-status', onViewerStatus);
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -313,6 +325,44 @@ export function PromptComposer({
                             >
                                 <div className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform">{Icon.folderOpen}</div>
                             </button>
+
+                            {/* Distinguishable Minimized File Viewer Button in Toolbar */}
+                            {minimizedViewerStatus?.isMinimized && minimizedViewerStatus?.hasTabs && (
+                                <div className="inline-flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-md bg-[#7C9FC5]/15 border border-[#7C9FC5]/40 text-[#7C9FC5] hover:bg-[#7C9FC5]/25 transition-all shadow-xs animate-in fade-in duration-150">
+                                    <button
+                                        type="button"
+                                        onClick={() => window.dispatchEvent(new CustomEvent('agentwatch:file-viewer-restore'))}
+                                        title={`Restore File Viewer: ${minimizedViewerStatus.activeTab?.filename || 'File'}`}
+                                        className="aw-focus-ring flex items-center gap-1.5 cursor-pointer max-w-[120px] xs:max-w-[160px]"
+                                    >
+                                        <div className="w-3.5 h-3.5 shrink-0 text-[#7C9FC5]">
+                                            <FileIcon path={minimizedViewerStatus.activeTab?.path || ''} className="w-3.5 h-3.5" />
+                                        </div>
+                                        <span className="text-[11px] font-mono font-medium text-[#E8EAED] truncate">
+                                            {minimizedViewerStatus.activeTab?.filename || 'File Viewer'}
+                                        </span>
+                                        <span className="text-[9px] px-1 rounded bg-[#7C9FC5]/20 text-[#7C9FC5] font-mono shrink-0">
+                                            {minimizedViewerStatus.tabsCount}
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.dispatchEvent(new CustomEvent('agentwatch:file-viewer-restore'))}
+                                        title="Expand Window"
+                                        className="p-0.5 rounded hover:bg-[#7C9FC5]/30 text-[#A0A6AF] hover:text-[#E8EAED] transition cursor-pointer"
+                                    >
+                                        <div className="w-3 h-3">{Icon.maximize}</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.dispatchEvent(new CustomEvent('agentwatch:file-viewer-close'))}
+                                        title="Close File Viewer"
+                                        className="p-0.5 rounded hover:bg-rose-500/30 text-[#A0A6AF] hover:text-rose-300 transition cursor-pointer"
+                                    >
+                                        <div className="w-3 h-3">{Icon.x}</div>
+                                    </button>
+                                </div>
+                            )}
 
                             {isUploading && (
                                 <span className="inline-flex items-center gap-1.5 text-[10px] text-blue-400 font-mono">

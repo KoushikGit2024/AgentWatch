@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Icon } from '../constants/icons';
 import { api } from '../services/api';
+import { toast } from '../services/toastService';
 
 export function TaskManagerDrawer({ isOpen, onClose }) {
     const [sortBy, setSortBy] = useState('memory'); // 'memory' | 'cpu'
@@ -9,6 +10,8 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
     const [isLoading, setIsLoading] = useState(false);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [error, setError] = useState(null);
+    const [terminatingPid, setTerminatingPid] = useState(null);
+    const [confirmProcess, setConfirmProcess] = useState(null); // Process targeted for confirmation
     const timerRef = useRef(null);
 
     const fetchProcesses = useCallback(async (showLoading = false) => {
@@ -23,6 +26,32 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
             if (showLoading) setIsLoading(false);
         }
     }, [sortBy, limit]);
+
+    const handleConfirmEndTask = async () => {
+        if (!confirmProcess) return;
+        const target = confirmProcess;
+        setConfirmProcess(null);
+        const pids = target.pids && target.pids.length > 0 ? target.pids : target.pid ? [target.pid] : [];
+        if (pids.length === 0) return;
+
+        setTerminatingPid(pids[0]);
+        try {
+            const res = await api.terminateProcess(pids, target.name);
+            if (res.success) {
+                toast.success(
+                    `Terminated ${target.name} (${res.killed_pids?.length || pids.length} process${(res.killed_pids?.length || pids.length) > 1 ? 'es' : ''})`,
+                    'Task Ended'
+                );
+                await fetchProcesses(false);
+            } else {
+                toast.error(res.error || 'Failed to terminate process', 'End Task Error');
+            }
+        } catch (err) {
+            toast.error(err.message || 'Termination request failed', 'End Task Error');
+        } finally {
+            setTerminatingPid(null);
+        }
+    };
 
     // Initial load on open or sort/limit change
     useEffect(() => {
@@ -215,13 +244,13 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
                 {/* Process List Header & Table */}
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-800/50">
                     <div className="sticky top-0 z-10 grid grid-cols-12 gap-2 px-4 py-2 bg-zinc-950 border-b border-zinc-800 text-[11px] font-medium text-zinc-400 select-none">
-                        <div className="col-span-6 flex items-center gap-1">
+                        <div className="col-span-5 flex items-center gap-1">
                             <span>Process Name</span>
                         </div>
                         {/* CPU Sort Toggle */}
                         <div
                             onClick={() => setSortBy('cpu')}
-                            className={`col-span-3 flex items-center justify-end gap-1 cursor-pointer py-0.5 px-1.5 rounded transition ${
+                            className={`col-span-2 flex items-center justify-end gap-1 cursor-pointer py-0.5 px-1.5 rounded transition ${
                                 sortBy === 'cpu'
                                     ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60 font-semibold'
                                     : 'hover:text-zinc-200'
@@ -250,6 +279,10 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
                                 </svg>
                             )}
                         </div>
+                        {/* Action Column */}
+                        <div className="col-span-2 text-right">
+                            <span>Action</span>
+                        </div>
                     </div>
 
                     {/* Process Rows */}
@@ -262,6 +295,7 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
                         processes.map((proc, idx) => {
                             const isAntigravity = proc.name.toLowerCase().includes('antigravity');
                             const isChrome = proc.name.toLowerCase().includes('chrome');
+                            const isTerminating = terminatingPid && (proc.pids?.includes(terminatingPid) || proc.pid === terminatingPid);
 
                             return (
                                 <div
@@ -271,7 +305,7 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
                                     }`}
                                 >
                                     {/* Name and Group Count */}
-                                    <div className="col-span-6 flex items-center gap-2 min-w-0">
+                                    <div className="col-span-5 flex items-center gap-2 min-w-0">
                                         <span className="w-5 text-[10px] font-mono text-zinc-500 shrink-0">
                                             #{idx + 1}
                                         </span>
@@ -291,11 +325,16 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
                                                     PID: {proc.pid}
                                                 </span>
                                             )}
+                                            {proc.is_self && (
+                                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-950/70 text-cyan-400 border border-cyan-800/40 ml-1">
+                                                    AgentWatch
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
                                     {/* CPU Column */}
-                                    <div className="col-span-3 text-right">
+                                    <div className="col-span-2 text-right">
                                         <span className={`font-mono text-xs ${
                                             proc.cpu_percent > 15 ? 'text-amber-400 font-semibold' : proc.cpu_percent > 0 ? 'text-zinc-200' : 'text-zinc-500'
                                         }`}>
@@ -314,6 +353,30 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
                                             {proc.memory_percent}%
                                         </div>
                                     </div>
+
+                                    {/* End Task Button */}
+                                    <div className="col-span-2 flex items-center justify-end">
+                                        {proc.is_protected ? (
+                                            <span className="text-[10px] text-zinc-600 font-mono select-none" title="Protected system or server process">
+                                                Locked
+                                            </span>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                disabled={Boolean(terminatingPid)}
+                                                onClick={() => setConfirmProcess(proc)}
+                                                title={`End Task for ${proc.name}`}
+                                                className="aw-focus-ring inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-rose-950/30 text-rose-300 border border-rose-800/40 hover:bg-rose-900/40 hover:border-rose-700/60 transition disabled:opacity-40 cursor-pointer"
+                                            >
+                                                {isTerminating ? (
+                                                    <span className="w-3 h-3 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
+                                                ) : (
+                                                    <div className="w-3 h-3 text-rose-400">{Icon.stop}</div>
+                                                )}
+                                                <span className="hidden sm:inline">End</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })
@@ -325,6 +388,48 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
                     <span>Sorted by: <strong className="text-zinc-300">{sortBy === 'memory' ? 'Memory (RAM)' : 'Processor (CPU)'}</strong></span>
                     <span>Displaying top {limit} processes</span>
                 </div>
+
+                {/* Confirmation Modal */}
+                {confirmProcess && (
+                    <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+                        <div className="w-full max-w-sm bg-[#17191C] border border-rose-500/40 rounded-xl shadow-2xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center gap-2.5 text-rose-400">
+                                <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0">
+                                    <div className="w-4 h-4 text-rose-400">{Icon.alertCircle}</div>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-semibold text-[#E8EAED]">End Process?</h4>
+                                    <p className="text-[11px] text-zinc-400">Terminating may cause unsaved work to be lost.</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-[#121316] border border-[#262A30] rounded-lg p-2.5 text-xs space-y-1 font-mono">
+                                <div className="text-[#E8EAED] font-medium truncate">{confirmProcess.name}</div>
+                                <div className="text-[11px] text-zinc-500 flex items-center justify-between">
+                                    <span>Instances: {confirmProcess.count || 1}</span>
+                                    <span>RAM: {confirmProcess.memory_mb} MB</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmProcess(null)}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:bg-zinc-800 transition cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmEndTask}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-md transition cursor-pointer"
+                                >
+                                    End Process
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

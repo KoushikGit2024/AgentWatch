@@ -189,6 +189,67 @@ def get_raw_file(path: str = Query(..., description="File path to stream directl
     return FileResponse(path=str(target), media_type=mime_type, filename=target.name)
 
 
+EXCLUDED_TREE_DIRS = {
+    ".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache",
+    ".idea", ".vscode", "dist", ".cache", ".turbo", ".next", "coverage"
+}
+
+
+@router.get("/api/v1/files/tree")
+def get_project_file_tree(subpath: str = Query(default="", description="Optional subfolder relative to repo root")):
+    """
+    Safely traverse and return a hierarchical tree of files and directories
+    in the project workspace, ignoring heavy build/cache folders.
+    """
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    base_dir = repo_root
+    if subpath.strip():
+        clean_sub = subpath.strip().lstrip("/\\")
+        candidate = (repo_root / clean_sub).resolve()
+        # Path traversal guard
+        if candidate.is_relative_to(repo_root) and candidate.exists() and candidate.is_dir():
+            base_dir = candidate
+
+    def build_tree(current_path: Path, max_depth: int = 5) -> dict:
+        is_dir = current_path.is_dir()
+        rel_path = current_path.relative_to(repo_root).as_posix() if current_path != repo_root else ""
+        node = {
+            "name": current_path.name or repo_root.name,
+            "path": rel_path,
+            "full_path": current_path.as_posix(),
+            "type": "directory" if is_dir else "file"
+        }
+
+        if is_dir:
+            children = []
+            if max_depth > 0:
+                try:
+                    entries = sorted(list(current_path.iterdir()), key=lambda p: (not p.is_dir(), p.name.lower()))
+                    for entry in entries:
+                        if entry.name in EXCLUDED_TREE_DIRS or entry.name.startswith("."):
+                            continue
+                        children.append(build_tree(entry, max_depth - 1))
+                except (PermissionError, OSError):
+                    pass
+            node["children"] = children
+        else:
+            try:
+                st = current_path.stat()
+                node["size"] = st.st_size
+                node["mtime"] = st.st_mtime
+                node["extension"] = current_path.suffix.lower().lstrip(".")
+            except Exception:
+                node["size"] = 0
+        return node
+
+    tree = build_tree(base_dir, max_depth=6)
+    return {
+        "tree": tree,
+        "root_name": repo_root.name,
+        "root_path": repo_root.as_posix()
+    }
+
+
 
 @router.get("/api/v1/artifacts")
 def get_artifacts():

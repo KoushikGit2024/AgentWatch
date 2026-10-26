@@ -16,6 +16,7 @@ import LightboxModal from './components/modals/LightboxModal';
 import InteractionModal from './components/modals/InteractionModal';
 import ApprovalModal from './components/modals/ApprovalModal';
 import FileViewerModal from './components/modals/FileViewerModal';
+import FileTreeDrawer from './components/FileTreeDrawer';
 import ToastContainer from './components/ToastContainer';
 import { toast } from './services/toastService';
 import { useAgentWatch } from './hooks/useAgentWatch';
@@ -35,6 +36,7 @@ export default function App() {
     const [taskManagerOpen, setTaskManagerOpen] = useState(false);
     const [recoveryOpen, setRecoveryOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
+    const [fileTreeOpen, setFileTreeOpen] = useState(false);
     const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
     const [activeFileViewer, setActiveFileViewer] = useState(null);
 
@@ -208,6 +210,7 @@ export default function App() {
                 onOpenRecovery={() => { setRecoveryOpen(true); fetchRecoveryItems(); }}
                 recoveryCount={recoveryItems.length}
                 onOpenHistory={() => { setHistoryOpen(true); fetchHistoryChats(); }}
+                onOpenFiles={() => setFileTreeOpen(true)}
             />
 
             <main className="aw-main-viewport">
@@ -399,7 +402,17 @@ export default function App() {
                 onDismiss={handleDismissApproval}
             />
 
-            <FileViewerModal targetFile={activeFileViewer} onClose={() => setActiveFileViewer(null)} />
+            <FileTreeDrawer
+                isOpen={fileTreeOpen}
+                onClose={() => setFileTreeOpen(false)}
+                onOpenFile={handleOpenFile}
+            />
+
+            <FileViewerModal
+                targetFile={activeFileViewer}
+                onClose={() => setActiveFileViewer(null)}
+                onToggleTreeDrawer={() => setFileTreeOpen(prev => !prev)}
+            />
         </div>
     );
 }
