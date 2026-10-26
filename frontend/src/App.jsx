@@ -236,6 +236,7 @@ export default function App() {
                             onScroll={handleChatScroll}
                             onScrollToBottom={scrollToBottom}
                             messagesEndRef={messagesEndRef}
+                            onStop={handleStopAgent}
                         />
 
                         {/* Minimized Pending Interaction / Approval Banner */}
@@ -282,7 +283,10 @@ export default function App() {
                             onOpenReviewChanges={() => setReviewChangesOpen(true)}
                             onOpenLogs={() => { setLogsOpen(true); fetchSystemLogs(); }}
                             onOpenRecovery={() => { setRecoveryOpen(true); fetchRecoveryItems(); }}
+                            onOpenTaskManager={() => setTaskManagerOpen(true)}
                             onToggleViewMode={() => setViewMode(v => (v === 'chat' ? 'screen' : 'chat'))}
+                            onOpenFile={handleOpenFile}
+                            chatMessages={chatMessages}
                             viewMode={viewMode}
                             recoveryCount={recoveryItems.length}
                             onStop={handleStopAgent}

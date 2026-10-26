@@ -15,7 +15,8 @@ const ChatStream = forwardRef(function ChatStream({
     onOpenFile,
     onScroll,
     onScrollToBottom,
-    messagesEndRef
+    messagesEndRef,
+    onStop
 }, ref) {
     const prevScrollHeightRef = useRef(0);
     const prevScrollTopRef = useRef(0);
@@ -120,6 +121,7 @@ const ChatStream = forwardRef(function ChatStream({
                                 onToggleItem={onToggleItem}
                                 onApprove={onApprove}
                                 onOpenFile={onOpenFile}
+                                onStop={onStop}
                             />
                         ))}
 

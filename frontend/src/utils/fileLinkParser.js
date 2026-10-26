@@ -11,15 +11,18 @@
  * rather than a git commit hash, shell command, or generic description.
  */
 
-// Extensions known to be readable files
+// Extensions known to be readable files or media
 const VALID_FILE_EXTENSIONS = new Set([
     'py', 'pyw', 'ipynb', 'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs',
     'html', 'htm', 'css', 'scss', 'sass', 'less', 'json', 'jsonc', 'json5', 'yaml', 'yml',
     'md', 'markdown', 'txt', 'log', 'sh', 'bash', 'zsh', 'ps1', 'bat', 'cmd',
     'toml', 'xml', 'svg', 'ini', 'cfg', 'conf', 'env', 'sql', 'graphql',
     'rs', 'go', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'php', 'rb', 'dockerfile',
-    'lock', 'lockb', 'mod', 'sum', 'gradle', 'properties', 'rst'
+    'lock', 'lockb', 'mod', 'sum', 'gradle', 'properties', 'rst',
+    'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico',
+    'mp4', 'webm', 'mov', 'm4v', 'ogg', 'mp3', 'wav', 'pdf'
 ]);
+
 
 // Special dotfiles and exact basenames that are files
 const VALID_EXACT_FILES = new Set([

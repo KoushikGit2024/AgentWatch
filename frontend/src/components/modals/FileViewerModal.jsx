@@ -93,24 +93,33 @@ export default function FileViewerModal({ targetFile, onClose }) {
     const startLine = targetFile?.startLine || null;
     const endLine = targetFile?.endLine || startLine;
     const hasHighlight = startLine !== null && startLine > 0;
+    const ext = (filePath.split('.').pop() || '').toLowerCase();
+    const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext) || fileData?.media_type === 'image';
+    const isVideo = ['mp4', 'webm', 'mov', 'm4v', 'ogg'].includes(ext) || fileData?.media_type === 'video';
+    const isAudio = ['mp3', 'wav', 'm4a', 'flac'].includes(ext) || fileData?.media_type === 'audio';
+    const isMedia = isImage || isVideo || isAudio || fileData?.is_media;
+
 
     const isMarkdown = Boolean(
-        filePath.endsWith('.md') ||
-        filePath.endsWith('.markdown') ||
-        filePath.toLowerCase().includes('plan') ||
-        fileData?.extension === 'md'
+        !isMedia && (
+            filePath.endsWith('.md') ||
+            filePath.endsWith('.markdown') ||
+            filePath.toLowerCase().includes('plan') ||
+            fileData?.extension === 'md'
+        )
     );
 
-    // Default to 'preview' for Markdown documents, 'code' for code files
+    // Default to 'preview' for Markdown documents & media, 'code' for code files
     useEffect(() => {
         if (hasHighlight) {
             setViewMode('code');
-        } else if (isMarkdown) {
+        } else if (isMedia || isMarkdown) {
             setViewMode('preview');
         } else {
             setViewMode('code');
         }
-    }, [filePath, hasHighlight, isMarkdown]);
+    }, [filePath, hasHighlight, isMarkdown, isMedia]);
+
 
     useEffect(() => {
         if (!filePath) {
@@ -254,11 +263,14 @@ export default function FileViewerModal({ targetFile, onClose }) {
 
                             {fileData && (
                                 <span className="text-[11px] font-mono text-zinc-500">
-                                    ({fileData.total_lines} lines · {(fileData.size_bytes / 1024).toFixed(1)} KB)
+                                    ({isMedia
+                                        ? `${(fileData.size_bytes / 1024).toFixed(1)} KB · ${ext.toUpperCase()}`
+                                        : `${fileData.total_lines} lines · ${(fileData.size_bytes / 1024).toFixed(1)} KB`})
                                 </span>
                             )}
                         </div>
                     </div>
+
 
                     {/* Action controls & Markdown preview toggle */}
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -356,6 +368,49 @@ export default function FileViewerModal({ targetFile, onClose }) {
                             <p className="text-sm font-semibold">{error}</p>
                             <p className="text-xs text-zinc-500 font-mono break-all">{filePath}</p>
                         </div>
+                    ) : isMedia ? (
+                        /* Direct Media Viewer for Images, Videos & Audio */
+                        <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-zinc-950/90 relative">
+                            {isImage && (
+                                <div className="max-w-full max-h-full flex items-center justify-center p-2">
+                                    <img
+                                        src={fileData?.raw_url || `/api/v1/files/raw?path=${encodeURIComponent(filePath)}`}
+                                        alt={fileData?.filename || 'Image Artifact'}
+                                        className="max-w-full max-h-[75vh] object-contain rounded-lg border border-zinc-800 shadow-2xl bg-zinc-900/50"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            )}
+                            {isVideo && (
+                                <div className="max-w-4xl w-full flex flex-col items-center justify-center p-2">
+                                    <video
+                                        controls
+                                        autoPlay={false}
+                                        src={fileData?.raw_url || `/api/v1/files/raw?path=${encodeURIComponent(filePath)}`}
+                                        className="max-w-full max-h-[75vh] rounded-xl border border-zinc-800 shadow-2xl bg-black"
+                                    >
+                                        Your browser does not support the video tag.
+                                    </video>
+                                </div>
+                            )}
+                            {isAudio && (
+                                <div className="p-8 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col items-center gap-4 shadow-xl">
+                                    <div className="w-12 h-12 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                            <path d="M9 18V5l12-2v13"/>
+                                            <circle cx="6" cy="18" r="3"/>
+                                            <circle cx="18" cy="16" r="3"/>
+                                        </svg>
+                                    </div>
+                                    <div className="text-sm font-mono text-zinc-300">{fileData?.filename || 'Audio Track'}</div>
+                                    <audio
+                                        controls
+                                        src={fileData?.raw_url || `/api/v1/files/raw?path=${encodeURIComponent(filePath)}`}
+                                        className="w-72"
+                                    />
+                                </div>
+                            )}
+                        </div>
                     ) : viewMode === 'preview' && isMarkdown ? (
                         /* Beautiful Rendered Markdown Preview for Plans & Specs */
                         <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full">
@@ -392,12 +447,18 @@ export default function FileViewerModal({ targetFile, onClose }) {
                     )}
                 </div>
 
+
                 {/* ─── Footer Status ─── */}
                 <div className="px-4 py-2 bg-zinc-950/90 border-t border-zinc-850 text-[11px] font-mono text-zinc-400 flex items-center justify-between select-none">
                     {hasHighlight ? (
                         <span className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-white" />
                             Highlighted: <strong className="text-white">Lines {startLine}–{endLine}</strong> ({endLine - startLine + 1} lines)
+                        </span>
+                    ) : isMedia ? (
+                        <span className="flex items-center gap-1.5 text-zinc-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                            Format: <strong className="text-zinc-200 uppercase">{fileData?.media_type || 'Media'} ({ext.toUpperCase()})</strong>
                         </span>
                     ) : isMarkdown ? (
                         <span className="flex items-center gap-1.5 text-zinc-400">
@@ -407,6 +468,7 @@ export default function FileViewerModal({ targetFile, onClose }) {
                     ) : (
                         <span>Language: <strong className="text-zinc-200 uppercase">{getMonacoLanguage(fileData?.extension, fileData?.filename || filePath)}</strong> · {fileData?.total_lines || 0} lines</span>
                     )}
+
 
                     {hasHighlight && viewMode === 'code' && (
                         <button

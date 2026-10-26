@@ -12,7 +12,8 @@ const ChatTurn = memo(function ChatTurn({
     approvals,
     onToggleItem,
     onApprove,
-    onOpenFile
+    onOpenFile,
+    onStop
 }) {
     const isUser = turn.role === 'user';
     const timeStr = turn.timestamp
@@ -248,19 +249,34 @@ const ChatTurn = memo(function ChatTurn({
                             );
                         })}
 
-                        {/* Working Indicator with Active Executing Command Preview */}
+                        {/* Working Indicator with Active Executing Command Preview matching IDE workbench */}
                         {turn.is_working && (
                             <div className="pt-1.5 space-y-1.5 font-sans">
-                                <div className="flex items-center gap-2 text-zinc-400 text-xs">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-                                    <span className="text-zinc-300 font-medium">
-                                        {turn.active_command ? 'Executing command…' : 'Working…'}
-                                    </span>
-                                </div>
-                                {turn.active_command && (
-                                    <div className="p-2 rounded-xl bg-zinc-950/90 border border-amber-500/30 font-mono text-[11px] text-amber-200/90 overflow-x-auto flex items-center gap-2">
-                                        <span className="text-amber-500 font-bold select-none">$</span>
-                                        <span className="break-all">{turn.active_command}</span>
+                                {turn.active_command ? (
+                                    <div className="flex select-none flex-row items-center justify-between gap-x-2 border border-zinc-800 bg-zinc-950/90 rounded-lg p-1.5 px-2.5">
+                                        <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                                            <span className="w-3 h-3 rounded-full border-2 border-blue-400 border-t-transparent animate-spin shrink-0" />
+                                            <span className="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-xs text-zinc-300">
+                                                {turn.active_command}
+                                            </span>
+                                        </div>
+                                        {onStop && (
+                                            <div className="text-zinc-400 hover:text-zinc-200 flex items-center shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={onStop}
+                                                    title="Close / Cancel running command"
+                                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
+                                                >
+                                                    <div className="w-3.5 h-3.5">{Icon.x}</div>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-zinc-400 text-xs">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                                        <span className="text-zinc-300 font-medium">Working…</span>
                                     </div>
                                 )}
                             </div>

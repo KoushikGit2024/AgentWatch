@@ -245,6 +245,32 @@ export const api = {
         return res.json();
     },
 
+    async getArtifacts() {
+        const res = await request('/api/v1/artifacts');
+        return res.json();
+    },
+
+    async toggleTerminal() {
+        const res = await request('/api/v1/controls/terminal/toggle', {
+            method: 'POST'
+        });
+        return res.json();
+    },
+
+    async getTerminalTasks() {
+        const res = await request('/api/v1/controls/terminal/tasks');
+        return res.json();
+    },
+
+    async killTerminalTask(index = 0, tooltipId = null) {
+        const res = await request('/api/v1/controls/terminal/kill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index, tooltip_id: tooltipId })
+        });
+        return res.json();
+    },
+
     async deleteQueuedMessage(itemId) {
         const res = await request(`/api/v1/queue/messages/${encodeURIComponent(itemId)}`, {
             method: 'DELETE'
@@ -252,3 +278,4 @@ export const api = {
         return res.json();
     }
 };
+
