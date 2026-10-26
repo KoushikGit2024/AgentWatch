@@ -4,6 +4,7 @@ import { FileIcon } from '../../constants/fileIcons';
 import { formatFileSize } from './AttachmentPreview';
 import StreamItem from './StreamItem';
 import MarkdownView from '../MarkdownView';
+import AttachmentLightbox from '../composer/AttachmentLightbox';
 
 const ChatTurn = memo(function ChatTurn({
     turn,
@@ -22,6 +23,8 @@ const ChatTurn = memo(function ChatTurn({
 
     const [copied, setCopied] = useState(false);
     const [reaction, setReaction] = useState(null);
+    const [previewItem, setPreviewItem] = useState(null);
+    const [isUserTextExpanded, setIsUserTextExpanded] = useState(false);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(turn.text || '');
@@ -29,17 +32,21 @@ const ChatTurn = memo(function ChatTurn({
         setTimeout(() => setCopied(false), 1800);
     };
 
-    const [previewItem, setPreviewItem] = useState(null);
-
-    const [isUserTextExpanded, setIsUserTextExpanded] = useState(false);
     const userText = turn.text || '';
     const isLongUserText = userText.length > 280 || (userText.match(/\n/g) || []).length >= 4;
 
     if (isUser) {
         return (
-            <div className="chat-turn-item flex justify-end w-full min-w-0 max-w-full animate-in fade-in duration-150">
-                <div className="max-w-[88%] md:max-w-[85%] min-w-0 rounded-2xl rounded-br-sm bg-blue-600 px-4 py-3 text-sm text-white shadow-md break-words [overflow-wrap:anywhere] [word-break:break-word] overflow-hidden space-y-2">
-                    {/* Attached Images */}
+            <div className="chat-turn-item flex justify-end w-full min-w-0 max-w-full">
+                <div className="max-w-[90%] sm:max-w-[82%] min-w-0 rounded-xl bg-[#1D2024]/90 border border-[#30343A] shadow-sm px-4 py-3 text-xs sm:text-sm text-[#E8EAED] break-words [overflow-wrap:anywhere] overflow-hidden space-y-2.5">
+                    <div className="flex items-center justify-between gap-3 text-[10px] text-[#A0A6AF] font-mono border-b border-[#262A30] pb-1.5">
+                        <span className="font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            User Prompt
+                        </span>
+                        {timeStr && <span className="tabular-nums text-zinc-400">{timeStr}</span>}
+                    </div>
+
                     {turn.attachments && turn.attachments.some(a => a.is_image) && (
                         <div className="flex flex-wrap gap-2 pt-0.5">
                             {turn.attachments.filter(a => a.is_image).map((att, idx) => (
@@ -47,21 +54,20 @@ const ChatTurn = memo(function ChatTurn({
                                     key={att.id || idx}
                                     type="button"
                                     onClick={() => setPreviewItem(att)}
-                                    title="Click to maximize image"
-                                    className="block rounded-xl overflow-hidden border border-blue-400/40 max-w-[200px] max-h-48 shadow cursor-zoom-in text-left group"
+                                    title="Click to inspect image"
+                                    className="block rounded-lg overflow-hidden border border-[#30343A] hover:border-blue-500/50 max-w-[180px] max-h-44 cursor-zoom-in text-left transition"
                                 >
                                     <img
                                         src={att.url}
                                         alt={att.original_name || att.filename}
                                         loading="lazy"
-                                        className="w-full h-full object-cover group-hover:scale-105 transition"
+                                        className="w-full h-full object-cover"
                                     />
                                 </button>
                             ))}
                         </div>
                     )}
 
-                    {/* Attached Non-Image Files */}
                     {turn.attachments && turn.attachments.some(a => !a.is_image) && (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
                             {turn.attachments.filter(a => !a.is_image).map((att, idx) => (
@@ -70,12 +76,12 @@ const ChatTurn = memo(function ChatTurn({
                                     href={att.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-700/80 hover:bg-blue-750 border border-blue-400/30 text-xs text-white transition max-w-full truncate"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#101113] hover:bg-[#17191C] border border-[#30343A] hover:border-cyan-500/30 text-xs text-[#E8EAED] transition max-w-full truncate"
                                 >
                                     <FileIcon path={att.original_name || att.filename} className="w-3.5 h-3.5 shrink-0" />
                                     <span className="truncate font-mono text-[11px]">{att.original_name || att.filename}</span>
                                     {att.size && (
-                                        <span className="text-[9px] text-blue-200 shrink-0 font-sans">
+                                        <span className="text-[9px] text-[#A0A6AF] shrink-0 font-mono tabular-nums">
                                             ({formatFileSize(att.size)})
                                         </span>
                                     )}
@@ -86,95 +92,39 @@ const ChatTurn = memo(function ChatTurn({
 
                     {userText && (
                         <div className="space-y-1.5">
-                            <div className={`whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere] transition-all ${
+                            <div className={`whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere] ${
                                 !isUserTextExpanded && isLongUserText ? 'max-h-28 overflow-hidden relative' : ''
                             }`}>
                                 <p>{userText}</p>
-                                {!isUserTextExpanded && isLongUserText && (
-                                    <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-blue-600 to-transparent pointer-events-none" />
-                                )}
                             </div>
                             {isLongUserText && (
-                                <div className="flex items-center justify-between pt-0.5 text-xs text-blue-100">
+                                <div className="flex items-center justify-between pt-1 border-t border-[#262A30] text-xs text-[#A0A6AF]">
                                     <button
                                         type="button"
                                         onClick={() => setIsUserTextExpanded(v => !v)}
-                                        className="font-medium hover:text-white underline underline-offset-2 cursor-pointer transition flex items-center gap-1"
+                                        className="font-medium text-blue-400 hover:text-blue-300 hover:underline cursor-pointer transition flex items-center gap-1"
                                     >
-                                        <span>{isUserTextExpanded ? 'Show less' : 'Expand full message'}</span>
-                                        <div className={`w-3 h-3 transition-transform ${isUserTextExpanded ? 'rotate-180' : ''}`}>
-                                            {Icon.chevronDown || Icon.chevronRight}
-                                        </div>
+                                        <span>{isUserTextExpanded ? 'Collapse message' : 'Expand full message'}</span>
                                     </button>
                                     <button
                                         type="button"
                                         onClick={handleCopy}
-                                        title="Copy full message"
-                                        className="px-1.5 py-0.5 rounded hover:bg-blue-700/70 text-[11px] transition flex items-center gap-1"
+                                        className="px-1.5 py-0.5 rounded hover:bg-[#23272D] text-[11px] transition flex items-center gap-1 cursor-pointer"
                                     >
-                                        <div className="w-3 h-3">{copied ? Icon.check : Icon.copy}</div>
+                                        <div className="w-3 h-3 text-blue-400">{copied ? Icon.check : Icon.copy}</div>
                                         <span>{copied ? 'Copied' : 'Copy'}</span>
                                     </button>
                                 </div>
                             )}
                         </div>
                     )}
-                    {timeStr && (
-                        <span className="block text-right text-[10px] text-blue-200 mt-1">{timeStr}</span>
-                    )}
                 </div>
 
-                {/* Maximized Lightbox Modal for ChatTurn */}
-                {previewItem && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
-                        onClick={() => setPreviewItem(null)}
-                    >
-                        <div
-                            className="relative max-w-4xl max-h-[92vh] w-full overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl flex flex-col"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between pb-2 border-b border-zinc-850 px-1 text-xs">
-                                <span className="font-mono text-zinc-200 font-medium truncate">
-                                    {previewItem.original_name || previewItem.filename || 'Attached Image'}
-                                </span>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    {previewItem.url && (
-                                        <a
-                                            href={previewItem.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            title="Open full size in new tab"
-                                            className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
-                                        >
-                                            <div className="w-4 h-4">{Icon.maximize}</div>
-                                        </a>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => setPreviewItem(null)}
-                                        title="Close preview (Esc)"
-                                        className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
-                                    >
-                                        <div className="w-4 h-4">{Icon.x}</div>
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center overflow-hidden p-2 min-h-0">
-                                <img
-                                    src={previewItem.url}
-                                    alt={previewItem.original_name || previewItem.filename}
-                                    className="max-h-[78vh] max-w-full rounded-lg object-contain shadow-md"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <AttachmentLightbox item={previewItem} onClose={() => setPreviewItem(null)} />
             </div>
         );
     }
 
-    // Agent Turn
     let streamItems = turn.items;
     if (!streamItems || streamItems.length === 0) {
         streamItems = [];
@@ -217,20 +167,23 @@ const ChatTurn = memo(function ChatTurn({
     const hasStream = streamItems.length > 0 || turn.is_working;
 
     return (
-        <div className="chat-turn-item flex justify-start w-full min-w-0 max-w-full overflow-hidden animate-in fade-in duration-150">
-            <div className="max-w-[95%] md:max-w-[88%] w-full min-w-0 rounded-2xl rounded-bl-sm bg-zinc-850 border border-zinc-750/70 p-3.5 sm:p-4 text-sm text-zinc-100 shadow-md space-y-2.5 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word]">
-                {/* Agent Header */}
-                <div className="flex items-center gap-2 pb-1 border-b border-zinc-750/40 text-xs text-zinc-400">
-                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                    <span className="font-semibold text-zinc-300">Antigravity Agent</span>
+        <div className="chat-turn-item flex justify-start w-full min-w-0 max-w-full overflow-hidden">
+            <div className="w-full min-w-0 rounded-xl bg-[#17191C]/90 border border-[#30343A] shadow-sm p-3.5 sm:p-4 text-xs sm:text-sm text-[#E8EAED] space-y-3 overflow-hidden break-words [overflow-wrap:anywhere]">
+                <div className="flex items-center gap-2 pb-2 border-b border-[#262A30] text-xs text-[#A0A6AF]">
+                    <span className={`w-2 h-2 rounded-full ${turn.is_working ? 'bg-cyan-400 pulse-live ring-2 ring-cyan-400/30' : 'bg-emerald-400 ring-2 ring-emerald-400/20'}`} />
+                    <span className="font-semibold text-[#E8EAED] tracking-tight">Antigravity Agent</span>
+                    {turn.is_working && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-800/40">
+                            streaming
+                        </span>
+                    )}
                     {timeStr && (
-                        <span className="text-[10px] text-zinc-500 font-mono ml-auto">{timeStr}</span>
+                        <span className="text-[10px] text-[#747C87] font-mono tabular-nums ml-auto">{timeStr}</span>
                     )}
                 </div>
 
-                {/* Chronological Stream */}
                 {hasStream && (
-                    <div className="space-y-1.5 py-1 select-text">
+                    <div className="space-y-1.5 py-0.5 select-text">
                         {streamItems.map((item, itemIdx) => {
                             const itemKey = item.step_id || `${turn.id || turnIndex}-${item.id || itemIdx}`;
                             const isLiveExecuting = item.kind === 'command' && item.exit_code === undefined && (item.status !== 'done' || turn.is_working);
@@ -249,34 +202,31 @@ const ChatTurn = memo(function ChatTurn({
                             );
                         })}
 
-                        {/* Working Indicator with Active Executing Command Preview matching IDE workbench */}
                         {turn.is_working && (
                             <div className="pt-1.5 space-y-1.5 font-sans">
                                 {turn.active_command ? (
-                                    <div className="flex select-none flex-row items-center justify-between gap-x-2 border border-zinc-800 bg-zinc-950/90 rounded-lg p-1.5 px-2.5">
+                                    <div className="flex select-none flex-row items-center justify-between gap-x-2 border border-blue-500/30 bg-[#101113] rounded-lg p-2 px-3 shadow-inner">
                                         <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                                            <span className="w-3 h-3 rounded-full border-2 border-blue-400 border-t-transparent animate-spin shrink-0" />
-                                            <span className="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-xs text-zinc-300">
+                                            <span className="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin shrink-0" />
+                                            <span className="truncate font-mono text-xs text-cyan-200">
                                                 {turn.active_command}
                                             </span>
                                         </div>
                                         {onStop && (
-                                            <div className="text-zinc-400 hover:text-zinc-200 flex items-center shrink-0">
-                                                <button
-                                                    type="button"
-                                                    onClick={onStop}
-                                                    title="Close / Cancel running command"
-                                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
-                                                >
-                                                    <div className="w-3.5 h-3.5">{Icon.x}</div>
-                                                </button>
-                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={onStop}
+                                                title="Cancel running command"
+                                                className="p-1 rounded hover:bg-rose-500/15 text-[#A0A6AF] hover:text-rose-400 transition cursor-pointer shrink-0"
+                                            >
+                                                <div className="w-3.5 h-3.5">{Icon.x}</div>
+                                            </button>
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-2 text-zinc-400 text-xs">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-                                        <span className="text-zinc-300 font-medium">Working…</span>
+                                    <div className="flex items-center gap-2 text-cyan-400/90 text-xs py-0.5 font-medium">
+                                        <span className="w-2 h-2 rounded-full bg-cyan-400 pulse-live" />
+                                        <span>Working on solution...</span>
                                     </div>
                                 )}
                             </div>
@@ -284,19 +234,17 @@ const ChatTurn = memo(function ChatTurn({
                     </div>
                 )}
 
-                {/* Markdown Agent Response */}
                 {turn.text && (
                     <MarkdownView content={turn.text} onOpenFile={onOpenFile} />
                 )}
 
-                {/* Response Action Buttons */}
                 {turn.text && (
-                    <div className="flex items-center justify-end gap-1 pt-1 text-zinc-500">
+                    <div className="flex items-center justify-end gap-1 pt-1.5 border-t border-[#262A30] text-[#747C87]">
                         <button
                             type="button"
                             onClick={handleCopy}
-                            title="Copy text"
-                            className="p-1 rounded-md hover:text-zinc-200 hover:bg-zinc-800 transition"
+                            title="Copy response"
+                            className="p-1.5 rounded hover:text-emerald-400 hover:bg-[#1D2024] transition cursor-pointer"
                         >
                             {copied ? (
                                 <div className="w-3.5 h-3.5 text-emerald-400">{Icon.check}</div>
@@ -307,16 +255,16 @@ const ChatTurn = memo(function ChatTurn({
                         <button
                             type="button"
                             onClick={() => setReaction(prev => (prev === 'up' ? null : 'up'))}
-                            title="Good response"
-                            className={`p-1 rounded-md transition ${reaction === 'up' ? 'text-blue-400 bg-blue-950/40' : 'hover:text-zinc-200 hover:bg-zinc-800'}`}
+                            title="Helpful response"
+                            className={`p-1.5 rounded transition cursor-pointer ${reaction === 'up' ? 'text-blue-400 bg-blue-500/15' : 'hover:text-[#E8EAED] hover:bg-[#1D2024]'}`}
                         >
                             <div className="w-3.5 h-3.5">{Icon.thumbsUp}</div>
                         </button>
                         <button
                             type="button"
                             onClick={() => setReaction(prev => (prev === 'down' ? null : 'down'))}
-                            title="Bad response"
-                            className={`p-1 rounded-md transition ${reaction === 'down' ? 'text-rose-400 bg-rose-950/40' : 'hover:text-zinc-200 hover:bg-zinc-800'}`}
+                            title="Needs improvement"
+                            className={`p-1.5 rounded transition cursor-pointer ${reaction === 'down' ? 'text-rose-400 bg-rose-500/15' : 'hover:text-[#E8EAED] hover:bg-[#1D2024]'}`}
                         >
                             <div className="w-3.5 h-3.5">{Icon.thumbsDown}</div>
                         </button>

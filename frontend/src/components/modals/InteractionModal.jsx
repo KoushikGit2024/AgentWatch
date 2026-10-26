@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../constants/icons';
 
-/**
- * InteractionModal — Full-screen overlay for dynamic Antigravity agent questions.
- * Shows all predefined options (single-choice or multi-choice) AND a clean
- * "Type something else..." option so users can either pick options, type custom
- * instructions, or combine both without mobile keyboard focus glitches.
- */
 export default function InteractionModal({
     interaction,
     selectedOptions,
@@ -37,7 +31,6 @@ export default function InteractionModal({
     const hasOptions = Array.isArray(interaction.options) && interaction.options.length > 0;
     const hasQuestions = Array.isArray(interaction.questions) && interaction.questions.length > 0;
     const totalQuestions = hasQuestions ? interaction.questions.length : 0;
-    // Count how many questions have at least one option selected
     const answeredQuestions = hasQuestions
         ? interaction.questions.filter(q =>
             q.options && q.options.some(opt => selectedOptions.has(opt.id))
@@ -52,159 +45,137 @@ export default function InteractionModal({
 
     return (
         <div
-            className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md transition-opacity duration-150 opacity-100"
+            role="dialog"
+            aria-modal="true"
+            aria-label={interaction.title || 'Agent Decision Request'}
+            className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4"
         >
-            {/* Dark overlay */}
             <div
                 className="absolute inset-0 bg-black/75 cursor-pointer"
                 onClick={!isSubmitting ? (onCancel || onDismiss) : undefined}
             />
 
-            {/* Modal Card */}
-            <div
-                className="relative w-full sm:max-w-lg bg-zinc-900 border border-blue-500/40 rounded-t-3xl sm:rounded-2xl shadow-2xl shadow-blue-950/60 transition-all duration-200 overflow-hidden translate-y-0 scale-100"
-                style={{
-                    boxShadow: '0 0 0 1px rgba(59,130,246,0.3), 0 32px 80px rgba(0,0,0,0.8), 0 0 60px rgba(59,130,246,0.15)'
-                }}
-            >
-                {/* Animated glow stripe at top */}
-                <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-indigo-400 to-blue-600 opacity-90" />
+            <div className="relative w-full sm:max-w-lg bg-[#17191C] border border-[#30343A] rounded-t-xl sm:rounded-lg shadow-2xl overflow-hidden">
+                <div className="h-0.5 w-full bg-[#7C9FC5]" />
 
-                {/* Scrollable body */}
-                <div className="overflow-y-auto max-h-[86dvh] p-5 space-y-4">
-
-                    {/* Header */}
+                <div className="aw-modal-scroll-region overflow-y-auto max-h-[86dvh] p-4 sm:p-5 space-y-4">
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0 flex-1">
-                            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-                                <div className="w-5 h-5">{Icon.brain}</div>
+                            <div className="w-9 h-9 rounded-md bg-[#7C9FC5]/12 border border-[#7C9FC5]/35 flex items-center justify-center text-[#7C9FC5] shrink-0">
+                                <div className="w-4 h-4">{Icon.cpu}</div>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400 bg-blue-950/70 border border-blue-800/60 px-2.5 py-0.5 rounded-full animate-pulse">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7C9FC5] bg-[#7C9FC5]/12 border border-[#7C9FC5]/35 px-2 py-0.5 rounded">
                                         {interaction.popup_kind === 'browser_permission' ? 'Browser Permission' : interaction.type === 'approval' ? 'Command Approval' : 'Agent Question'}
                                     </span>
-                                    {hasQuestions ? (
-                                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-violet-950/70 border border-violet-700/60 text-violet-300">
+                                    {hasQuestions && (
+                                        <span className="text-[10px] font-mono tabular-nums px-2 py-0.5 rounded bg-[#1D2024] border border-[#30343A] text-[#A0A6AF]">
                                             {answeredQuestions}/{totalQuestions} Answered
-                                        </span>
-                                    ) : (
-                                        <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">
-                                            {interaction.popup_kind === 'browser_permission' ? `Allow access to ${interaction.target || 'target domain'}` : !hasOptions ? 'Free Text Response' : isMulti ? 'Select one or more' : 'Choose an option or type below'}
                                         </span>
                                     )}
                                 </div>
-                                <h2 className="text-base font-bold text-zinc-50 mt-1.5 leading-snug">
+                                <h2 className="text-sm sm:text-base font-semibold text-[#E8EAED] mt-1.5 leading-snug">
                                     {interaction.title}
                                 </h2>
                                 {interaction.target_domain && (
-                                    <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/80 border border-zinc-700/80 text-xs font-mono text-blue-300">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                    <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#101113] border border-[#30343A] text-xs font-mono text-[#7C9FC5]">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#79B89A]" />
                                         <span>Target: <strong>{interaction.target_domain}</strong></span>
                                     </div>
                                 )}
                                 {interaction.description && (
-                                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                                    <p className="text-xs text-[#A0A6AF] mt-1 leading-relaxed">
                                         {interaction.description}
                                     </p>
                                 )}
                                 {interaction.command && (
-                                    <div className="mt-2 p-2.5 rounded-xl bg-zinc-950/90 border border-zinc-800 font-mono text-xs text-emerald-300 overflow-x-auto">
+                                    <div className="mt-2 p-2.5 rounded-md bg-[#101113] border border-[#30343A] font-mono text-xs text-[#79B89A] overflow-x-auto">
                                         <code>{interaction.command}</code>
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Dismiss / Close Button */}
                         <button
                             type="button"
                             onClick={onCancel || onDismiss}
                             disabled={isSubmitting}
-                            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer shrink-0 disabled:opacity-40"
+                            className="p-1.5 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer shrink-0 disabled:opacity-40"
                             title="Dismiss Question"
                             aria-label="Dismiss Question"
                         >
-                            <div className="w-5 h-5">{Icon.x}</div>
+                            <div className="w-4 h-4">{Icon.x}</div>
                         </button>
                     </div>
 
-                    {/* Multi-Question Sections (when ask_question contains multiple questions) */}
-                    {Array.isArray(interaction.questions) && interaction.questions.length > 0 ? (
-                        <div className="space-y-4">
+                    {hasQuestions ? (
+                        <div className="space-y-3">
                             {interaction.questions.map((q, qIdx) => {
                                 const qAnswered = (q.options || []).some(opt => selectedOptions.has(opt.id));
                                 return (
-                                <div key={q.id || qIdx} className={`p-3.5 rounded-2xl border space-y-2.5 transition-all ${
-                                    qAnswered
-                                        ? 'bg-emerald-950/20 border-emerald-700/50'
-                                        : 'bg-zinc-800/40 border-zinc-700/60'
-                                }`}>
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
-                                                qAnswered
-                                                    ? 'bg-emerald-950/80 border border-emerald-700/60 text-emerald-300'
-                                                    : 'bg-blue-950/80 border border-blue-700/60 text-blue-300'
-                                            }`}>
-                                                Q{qIdx + 1} of {totalQuestions}
-                                            </span>
-                                            <h3 className="text-xs font-bold text-zinc-100 leading-snug">{q.question}</h3>
+                                    <div
+                                        key={q.id || qIdx}
+                                        className={`p-3 rounded-lg border space-y-2 transition ${
+                                            qAnswered
+                                                ? 'bg-[#79B89A]/10 border-[#79B89A]/40'
+                                                : 'bg-[#101113] border-[#30343A]'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <span className="text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded bg-[#17191C] border border-[#30343A] text-[#A0A6AF] shrink-0">
+                                                    Q{qIdx + 1}/{totalQuestions}
+                                                </span>
+                                                <h3 className="text-xs font-semibold text-[#E8EAED] leading-snug">{q.question}</h3>
+                                            </div>
+                                            {qAnswered && (
+                                                <div className="shrink-0 w-4 h-4 text-[#79B89A]">{Icon.check}</div>
+                                            )}
                                         </div>
-                                        {qAnswered && (
-                                            <div className="shrink-0 w-4 h-4 text-emerald-400">{Icon.check}</div>
-                                        )}
-                                    </div>
-                                    <div className="space-y-1.5 pl-1">
-                                        {(q.options || []).map((opt, optIdx) => {
-                                            const isSelected = selectedOptions.has(opt.id);
-                                            return (
-                                                <button
-                                                    key={opt.id || optIdx}
-                                                    type="button"
-                                                    onClick={() => onToggleOption(opt.id, q)}
-                                                    className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-xl border transition-all text-xs cursor-pointer ${
-                                                        isSelected
-                                                            ? 'bg-blue-950/80 border-blue-500 text-blue-100 shadow-md shadow-blue-950/40'
-                                                            : 'bg-zinc-850/60 border-zinc-700/60 hover:border-zinc-600 hover:bg-zinc-800 text-zinc-250'
-                                                    }`}
-                                                >
-                                                    <div className={`w-4 h-4 mt-0.5 ${q.is_multi_select ? 'rounded-md' : 'rounded-full'} flex items-center justify-center border shrink-0 text-[9px] font-bold ${
-                                                        isSelected
-                                                            ? 'bg-blue-600 border-blue-400 text-white'
-                                                            : 'border-zinc-600 bg-zinc-900 text-zinc-400'
-                                                    }`}>
-                                                        {isSelected ? (
-                                                            <div className="w-2.5 h-2.5 text-white">{Icon.check}</div>
-                                                        ) : (
-                                                            <span>{optIdx + 1}</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                            <span className="font-semibold text-zinc-100">{opt.label}</span>
-                                                            {opt.is_recommended && (
-                                                                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-400">
-                                                                    Recommended
-                                                                </span>
+                                        <div className="space-y-1.5">
+                                            {(q.options || []).map((opt, optIdx) => {
+                                                const isSelected = selectedOptions.has(opt.id);
+                                                return (
+                                                    <button
+                                                        key={opt.id || optIdx}
+                                                        type="button"
+                                                        onClick={() => onToggleOption(opt.id, q)}
+                                                        className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-md border transition text-xs cursor-pointer ${
+                                                            isSelected
+                                                                ? 'bg-[#7C9FC5]/15 border-[#7C9FC5] text-[#E8EAED]'
+                                                                : 'bg-[#17191C] border-[#30343A] hover:border-[#40464F] text-[#A0A6AF]'
+                                                        }`}
+                                                    >
+                                                        <div className={`w-4 h-4 mt-0.5 ${q.is_multi_select ? 'rounded-xs' : 'rounded-full'} flex items-center justify-center border shrink-0 text-[9px] font-mono ${
+                                                            isSelected
+                                                                ? 'bg-[#7C9FC5] border-[#7C9FC5] text-[#101113] font-bold'
+                                                                : 'border-[#30343A] bg-[#101113] text-[#747C87]'
+                                                        }`}>
+                                                            {isSelected ? <div className="w-2.5 h-2.5">{Icon.check}</div> : <span>{optIdx + 1}</span>}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <span className="font-semibold text-[#E8EAED]">{opt.label}</span>
+                                                                {opt.is_recommended && (
+                                                                    <span className="text-[9px] font-semibold uppercase px-1.5 py-0.2 rounded bg-[#79B89A]/15 border border-[#79B89A]/40 text-[#79B89A]">
+                                                                        Recommended
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {opt.description && (
+                                                                <p className="text-[11px] text-[#A0A6AF] mt-0.5 leading-relaxed">{opt.description}</p>
                                                             )}
                                                         </div>
-                                                        {opt.description && (
-                                                            <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                                                                {opt.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
                                 );
                             })}
                         </div>
                     ) : (
-                        /* Single Question Options List */
                         hasOptions && (
                             <div className="space-y-2">
                                 {interaction.options.map((opt, idx) => {
@@ -214,40 +185,33 @@ export default function InteractionModal({
                                             key={opt.id || idx}
                                             type="button"
                                             onClick={() => onToggleOption(opt.id)}
-                                            className={`w-full text-left flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-150 cursor-pointer group ${
+                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-md border transition cursor-pointer ${
                                                 isSelected
-                                                    ? 'bg-blue-950/70 border-blue-500 shadow-lg shadow-blue-950/50'
-                                                    : 'bg-zinc-800/60 border-zinc-700/80 hover:border-zinc-600 hover:bg-zinc-800'
+                                                    ? 'bg-[#7C9FC5]/15 border-[#7C9FC5]'
+                                                    : 'bg-[#101113] border-[#30343A] hover:border-[#40464F]'
                                             }`}
                                         >
-                                            {/* Selection Indicator: Checkbox for multi-select, Radio for single-select */}
-                                            <div className={`w-5 h-5 mt-0.5 ${isMulti ? 'rounded-md' : 'rounded-full'} flex items-center justify-center border shrink-0 transition-all text-[10px] font-bold ${
+                                            <div className={`w-5 h-5 mt-0.5 ${isMulti ? 'rounded-xs' : 'rounded-full'} flex items-center justify-center border shrink-0 text-[10px] font-mono ${
                                                 isSelected
-                                                    ? 'bg-blue-600 border-blue-400 text-white shadow-md shadow-blue-800/60'
-                                                    : 'border-zinc-600 bg-zinc-900 text-zinc-400 group-hover:border-zinc-500'
+                                                    ? 'bg-[#7C9FC5] border-[#7C9FC5] text-[#101113] font-bold'
+                                                    : 'border-[#30343A] bg-[#17191C] text-[#A0A6AF]'
                                             }`}>
-                                                {isSelected ? (
-                                                    <div className="w-3 h-3 text-white">{Icon.check}</div>
-                                                ) : (
-                                                    <span>{idx + 1}</span>
-                                                )}
+                                                {isSelected ? <div className="w-3 h-3">{Icon.check}</div> : <span>{idx + 1}</span>}
                                             </div>
 
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className={`text-sm font-semibold transition-colors ${
-                                                        isSelected ? 'text-blue-100' : 'text-zinc-100'
-                                                    }`}>
+                                                    <span className="text-xs sm:text-sm font-semibold text-[#E8EAED]">
                                                         {opt.label}
                                                     </span>
                                                     {opt.is_recommended && (
-                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-400">
+                                                        <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-[#79B89A]/15 border border-[#79B89A]/40 text-[#79B89A]">
                                                             Recommended
                                                         </span>
                                                     )}
                                                 </div>
                                                 {opt.description && (
-                                                    <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                                                    <p className="text-[11px] text-[#A0A6AF] mt-0.5 leading-relaxed">
                                                         {opt.description}
                                                     </p>
                                                 )}
@@ -256,38 +220,25 @@ export default function InteractionModal({
                                     );
                                 })}
 
-                                {/* Explicit "Type something else..." option row */}
                                 {interaction.allow_custom_response !== false && !useCustomMode && (
                                     <button
                                         type="button"
                                         onClick={handleSelectCustomMode}
-                                        className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-dashed border-zinc-700 hover:border-blue-500/60 bg-zinc-900/60 hover:bg-zinc-800/60 text-zinc-300 transition cursor-pointer"
+                                        className="w-full text-left flex items-center gap-2.5 p-2.5 rounded-md border border-dashed border-[#30343A] hover:border-[#7C9FC5] bg-[#101113] text-[#A0A6AF] hover:text-[#E8EAED] transition cursor-pointer"
                                     >
-                                        <div className="w-5 h-5 rounded-full border border-zinc-600 bg-zinc-950 flex items-center justify-center text-xs text-blue-400 shrink-0">
-                                            +
-                                        </div>
-                                        <span className="text-xs font-semibold text-zinc-300">
-                                            Type something else / Provide custom instructions…
-                                        </span>
+                                        <div className="w-4 h-4 text-[#7C9FC5] shrink-0">{Icon.plus}</div>
+                                        <span className="text-xs font-medium">Provide custom instructions...</span>
                                     </button>
                                 )}
                             </div>
                         )
                     )}
 
-                    {/* Custom Response ("Type something else") */}
                     {(interaction.allow_custom_response !== false && (useCustomMode || !hasOptions || customResponse.length > 0)) && (
                         <div className="space-y-1.5 pt-1">
-                            <div className="flex items-center justify-between">
-                                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-                                    {interaction.custom_response_label || 'Type something else / Custom instructions'}
-                                </label>
-                                {hasOptions && selectedOptions.size > 0 && (
-                                    <span className="text-[10px] text-blue-400">
-                                        Will be sent alongside your selected option
-                                    </span>
-                                )}
-                            </div>
+                            <label className="block text-[11px] font-semibold text-[#A0A6AF] uppercase tracking-wider">
+                                {interaction.custom_response_label || 'Custom instructions'}
+                            </label>
                             <textarea
                                 ref={inputRef}
                                 value={customResponse}
@@ -300,59 +251,50 @@ export default function InteractionModal({
                                 }}
                                 placeholder="Type your own answer or instructions for the agent..."
                                 rows={3}
-                                className="w-full bg-zinc-950 border border-zinc-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none resize-none transition-all"
+                                className="w-full bg-[#101113] border border-[#30343A] focus:border-[#7C9FC5] rounded-md px-3 py-2 text-xs sm:text-sm text-[#E8EAED] placeholder-[#747C87] outline-none resize-none"
                             />
                         </div>
                     )}
 
-                    {/* Footer: action buttons */}
-                    <div className="flex items-center justify-between gap-3 pt-2 border-t border-zinc-800">
+                    <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#262A30]">
                         <div className="flex items-center gap-2">
                             <button
                                 type="button"
                                 onClick={onDismiss}
-                                className="text-xs text-zinc-400 hover:text-zinc-200 transition px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 cursor-pointer"
+                                className="text-xs text-[#A0A6AF] hover:text-[#E8EAED] transition px-2.5 py-1.5 rounded hover:bg-[#1D2024] cursor-pointer"
                             >
-                                Minimize to chat
+                                Minimize
                             </button>
                             {onCancel && (
                                 <button
                                     type="button"
                                     onClick={onCancel}
                                     disabled={isSubmitting}
-                                    className="text-xs text-rose-400/80 hover:text-rose-300 transition px-2.5 py-1.5 rounded-lg hover:bg-rose-950/40 cursor-pointer disabled:opacity-40"
+                                    className="text-xs text-[#D77E83] hover:bg-[#D77E83]/15 transition px-2.5 py-1.5 rounded cursor-pointer disabled:opacity-40"
                                 >
                                     Dismiss
                                 </button>
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div>
                             {submitSuccess ? (
-                                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-400 px-4 py-2 bg-emerald-950/60 rounded-xl border border-emerald-800">
-                                    <div className="w-4 h-4">{Icon.check}</div>
-                                    Response Delivered!
+                                <div className="flex items-center gap-2 text-xs font-semibold text-[#79B89A] px-3.5 py-2 bg-[#79B89A]/15 rounded-md border border-[#79B89A]/40">
+                                    <div className="w-3.5 h-3.5">{Icon.check}</div>
+                                    <span>Response Delivered</span>
                                 </div>
                             ) : (
                                 <button
                                     type="button"
                                     disabled={isSubmitting || !canSubmit}
                                     onClick={onSubmit}
-                                    className="px-6 py-2.5 text-sm font-bold rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 shadow-lg shadow-blue-900/50 cursor-pointer"
+                                    className="px-4 py-2 text-xs font-semibold rounded-md bg-[#7C9FC5] hover:bg-[#8FB0D4] text-[#101113] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                                 >
-                                    {isSubmitting ? (
-                                        <span className="flex items-center gap-2">
-                                            <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                                <circle cx="12" cy="12" r="10" strokeOpacity="0.3" />
-                                                <path d="M12 2a10 10 0 0 1 10 10" />
-                                            </svg>
-                                            {hasQuestions && totalQuestions > 1 ? 'Delivering Answers…' : 'Sending…'}
-                                        </span>
-                                    ) : (
-                                        hasQuestions && totalQuestions > 1 
+                                    {isSubmitting
+                                        ? 'Sending...'
+                                        : hasQuestions && totalQuestions > 1
                                             ? `Submit Answers (${answeredQuestions}/${totalQuestions})`
-                                            : 'Submit Response'
-                                    )}
+                                            : 'Submit Response'}
                                 </button>
                             )}
                         </div>

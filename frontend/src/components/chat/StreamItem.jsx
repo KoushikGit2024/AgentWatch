@@ -23,15 +23,18 @@ const StreamItem = memo(function StreamItem({
                 <button
                     type="button"
                     onClick={() => onToggle(itemKey)}
-                    className="inline-flex items-center gap-1.5 py-0.5 text-zinc-400 hover:text-zinc-200 transition cursor-pointer select-none font-sans text-xs"
+                    className="inline-flex items-center gap-1.5 py-0.5 text-zinc-400 hover:text-indigo-300 transition cursor-pointer select-none font-sans text-xs"
                 >
-                    <span>{item.title || 'Thought for 1s'}</span>
-                    <div className={`w-3 h-3 text-zinc-500 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
+                    <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400/80" />
+                        {item.title || 'Thought for 1s'}
+                    </span>
+                    <div className={`w-3 h-3 text-zinc-500 group-hover:text-indigo-400 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
                         {Icon.chevronRight}
                     </div>
                 </button>
                 {isOpen && (
-                    <div className="mt-1 mb-2 ml-1 pl-3 border-l-2 border-zinc-700/80 bg-zinc-950/60 py-2 pr-3 rounded-r font-mono text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto select-text">
+                    <div className="mt-1 mb-2 ml-1 pl-3 border-l-2 border-indigo-500/50 bg-[#12141a]/80 py-2 pr-3 rounded-r font-mono text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto select-text shadow-inner">
                         {item.text}
                     </div>
                 )}
@@ -56,7 +59,7 @@ const StreamItem = memo(function StreamItem({
             <div
                 onClick={() => hasDetails && onToggle(itemKey)}
                 className={`flex items-center justify-between gap-2 px-2 py-1 -mx-2 rounded-lg transition select-none w-full min-w-0 ${
-                    hasDetails ? 'cursor-pointer hover:bg-zinc-800/50' : ''
+                    hasDetails ? 'cursor-pointer hover:bg-zinc-800/60' : ''
                 }`}
             >
                 <div className="flex items-center gap-2 flex-wrap font-sans text-xs leading-snug min-w-0 max-w-full">
@@ -64,25 +67,35 @@ const StreamItem = memo(function StreamItem({
 
                     <div className="inline-flex items-center gap-1.5 text-zinc-200">
                         {isAnalyze && (
-                            <FileIcon path={parsedTarget.cleanPath || item.target || item.file} className="w-3.5 h-3.5" />
+                            <div className={`p-0.5 rounded shrink-0 ${fileInfo?.bg ? fileInfo.bg : 'bg-sky-500/10 border border-sky-500/20'}`}>
+                                <FileIcon path={parsedTarget.cleanPath || item.target || item.file} className="w-3.5 h-3.5" />
+                            </div>
                         )}
                         {item.kind === 'search' && (
-                            <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>
+                            <div className="w-4 h-4 p-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 shrink-0">
+                                {Icon.search}
+                            </div>
                         )}
                         {isEdit && (
-                            <div className="inline-flex items-center gap-1">
+                            <div className={`inline-flex items-center gap-1 p-0.5 px-1 rounded shrink-0 ${fileInfo?.bg ? fileInfo.bg : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
                                 <FileIcon path={parsedTarget.cleanPath || item.target || item.file} className="w-3.5 h-3.5" />
-                                <div className="w-3 h-3 text-emerald-400 shrink-0">{Icon.fileEdit}</div>
+                                <div className={`w-3 h-3 shrink-0 ${fileInfo?.color || 'text-emerald-400'}`}>{Icon.fileEdit}</div>
                             </div>
                         )}
                         {isCommand && (
-                            <div className="w-3.5 h-3.5 text-amber-400 shrink-0">{Icon.terminal}</div>
+                            <div className="w-4 h-4 p-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                                {Icon.terminal}
+                            </div>
                         )}
                         {item.kind === 'browser' && (
-                            <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.globe}</div>
+                            <div className="w-4 h-4 p-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0">
+                                {Icon.globe}
+                            </div>
                         )}
                         {isQuestion && (
-                            <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.brain}</div>
+                            <div className="w-4 h-4 p-0.5 rounded bg-pink-500/10 text-pink-400 border border-pink-500/20 shrink-0">
+                                {Icon.brain}
+                            </div>
                         )}
                         {!isAnalyze && !isEdit && !isCommand && !isQuestion && item.kind !== 'browser' && item.kind !== 'search' && hasValidFile && (
                             <FileIcon path={parsedTarget.cleanPath} className="w-3.5 h-3.5" />
@@ -94,75 +107,73 @@ const StreamItem = memo(function StreamItem({
                                     <button
                                         type="button"
                                         onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (typeof onOpenFile === 'function') {
-                                                // Extract line range from item.target (e.g. "MarkdownView.jsx #L1-10")
-                                                // or from rawFileCandidate
-                                                const targetRange = parseFileLink(item.target || '');
-                                                const fileRange = parseFileLink(item.file || '');
-                                                const startLine = targetRange.startLine || fileRange.startLine || parsedTarget.startLine;
-                                                const endLine = targetRange.endLine || fileRange.endLine || parsedTarget.endLine;
+                                             e.stopPropagation();
+                                             if (typeof onOpenFile === 'function') {
+                                                 const targetRange = parseFileLink(item.target || '');
+                                                 const fileRange = parseFileLink(item.file || '');
+                                                 const startLine = targetRange.startLine || fileRange.startLine || parsedTarget.startLine;
+                                                 const endLine = targetRange.endLine || fileRange.endLine || parsedTarget.endLine;
 
-                                                const fullPath = item.file || parsedTarget.cleanPath || item.target || '';
-                                                onOpenFile(fullPath, { startLine, endLine });
-                                            }
-                                        }}
-                                        title="Click to view file contents"
-                                        className={`font-mono text-[11px] font-medium break-all hover:underline cursor-pointer ${fileInfo ? fileInfo.color : 'text-blue-300'}`}
-                                    >
-                                        {item.target || parsedTarget.filename || rawFileCandidate}
-                                    </button>
-                                );
-                            }
+                                                 const fullPath = item.file || parsedTarget.cleanPath || item.target || '';
+                                                 onOpenFile(fullPath, { startLine, endLine });
+                                             }
+                                         }}
+                                         title="Click to view file contents"
+                                         className={`font-mono text-[11px] font-medium break-all hover:underline cursor-pointer ${fileInfo ? fileInfo.color : 'text-cyan-300'}`}
+                                     >
+                                         {item.target || parsedTarget.filename || rawFileCandidate}
+                                     </button>
+                                 );
+                             }
 
-                            return (
-                                <span className={`font-mono text-[11px] font-medium break-all ${fileInfo ? fileInfo.color : 'text-zinc-200'}`}>
-                                    {item.target}
-                                </span>
-                            );
-                        })()}
+                             return (
+                                 <span className={`font-mono text-[11px] font-medium break-all ${fileInfo ? fileInfo.color : 'text-zinc-200'}`}>
+                                     {item.target}
+                                 </span>
+                             );
+                         })()}
 
-                        {fileInfo && fileInfo.label && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium uppercase tracking-wider bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
-                                {fileInfo.label}
-                            </span>
-                        )}
+                         {fileInfo && fileInfo.label && (
+                             <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium uppercase tracking-wider bg-zinc-800/80 text-zinc-300 border border-zinc-700/50">
+                                 {fileInfo.label}
+                             </span>
+                         )}
 
-                        {item.extra && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-zinc-800/90 text-zinc-300 text-[10px] font-mono border border-zinc-700/50">
-                                {item.extra}
-                            </span>
-                        )}
-                    </div>
-                </div>
+                         {item.extra && (
+                             <span className="px-1.5 py-0.5 rounded-md bg-zinc-800/90 text-zinc-300 text-[10px] font-mono border border-zinc-700/50">
+                                 {item.extra}
+                             </span>
+                         )}
+                     </div>
+                 </div>
 
-                {/* Right Status Badge & Chevron */}
-                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                    {isCommand && item.exit_code !== undefined && item.exit_code !== null && (
-                        <span className={`px-1.5 py-0.5 text-[9px] font-mono font-medium rounded ${
-                            item.exit_code === 0
-                                ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/50'
-                                : 'bg-rose-950/70 text-rose-300 border border-rose-800/50'
-                        }`}>
-                            {item.exit_code === 0 ? 'exit 0' : `exit ${item.exit_code}`}
-                        </span>
-                    )}
+                 {/* Right Status Badge & Chevron */}
+                 <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                     {isCommand && item.exit_code !== undefined && item.exit_code !== null && (
+                         <span className={`px-1.5 py-0.5 text-[9px] font-mono font-medium rounded ${
+                             item.exit_code === 0
+                                 ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/50'
+                                 : 'bg-rose-950/80 text-rose-300 border border-rose-700/50'
+                         }`}>
+                             {item.exit_code === 0 ? 'exit 0' : `exit ${item.exit_code}`}
+                         </span>
+                     )}
 
-                    {isCommand && item.exit_code === undefined && (item.status !== 'done' || isWorking) && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    )}
+                     {isCommand && item.exit_code === undefined && (item.status !== 'done' || isWorking) && (
+                         <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse ring-2 ring-amber-400/30" />
+                     )}
 
-                    {hasDetails && (
-                        <div className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}>
-                            {Icon.chevronRight}
-                        </div>
-                    )}
-                </div>
-            </div>
+                     {hasDetails && (
+                         <div className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${isOpen ? 'rotate-90 text-zinc-300' : ''}`}>
+                             {Icon.chevronRight}
+                         </div>
+                     )}
+                 </div>
+             </div>
 
-            {/* Expandable Details Card (Terminal Output / Diff Preview / Question Details) */}
-            {isOpen && hasDetails && (
-                <div className="mt-1 mb-2.5 ml-2 pl-3 border-l-2 border-zinc-700/70 space-y-2 text-xs w-full min-w-0 max-w-full overflow-hidden">
+             {/* Expandable Details Card (Terminal Output / Diff Preview / Question Details) */}
+             {isOpen && hasDetails && (
+                 <div className="mt-1 mb-2.5 ml-2 pl-3 border-l-2 border-blue-500/30 space-y-2 text-xs w-full min-w-0 max-w-full overflow-hidden">
                     {isCommand && (
                         <div className="space-y-1.5 w-full min-w-0 max-w-full">
                             {item.cwd && (

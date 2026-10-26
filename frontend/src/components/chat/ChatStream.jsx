@@ -22,7 +22,6 @@ const ChatStream = forwardRef(function ChatStream({
     const prevScrollTopRef = useRef(0);
     const prevFirstTurnIdRef = useRef(null);
 
-    // Preserve exact scroll position when an older block is prepended at the top
     useLayoutEffect(() => {
         const el = ref?.current;
         const currentFirstId = chatMessages[0]?.id || null;
@@ -56,61 +55,57 @@ const ChatStream = forwardRef(function ChatStream({
         if (onScroll) onScroll(e);
         const el = e.currentTarget;
         if (!el) return;
-        // When user scrolls near top (within 75px), request the next older block
         if (el.scrollTop <= 75 && hasMoreHistory && !isLoadingOlder) {
             triggerLoadOlder();
         }
     };
 
     return (
-        <div className="relative flex-1 min-h-0 w-full overflow-hidden">
+        <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#101113]">
             <div
                 ref={ref}
                 onScroll={handleContainerScroll}
-                className="absolute inset-0 overflow-y-auto overflow-x-hidden w-full px-3 sm:px-4 py-4 space-y-4 select-text"
+                className="absolute inset-0 overflow-y-auto overflow-x-hidden w-full px-2.5 sm:px-4 py-3.5 space-y-3 select-text"
             >
-                <div className="min-h-full w-full min-w-0 max-w-full flex flex-col justify-end">
-                    <div className="space-y-4 w-full min-w-0 max-w-full">
-                        {/* Upward Scroll Lazy-Loading Banner / Sentinel */}
+                <div className="min-h-full aw-chat-column flex flex-col justify-end">
+                    <div className="space-y-3 w-full min-w-0 max-w-full">
                         {chatMessages.length > 0 && (
                             <div className="flex justify-center py-1">
                                 {isLoadingOlder ? (
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400">
-                                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
-                                        <span>Loading earlier conversation block…</span>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#17191C] border border-[#30343A] text-[11px] text-[#A0A6AF]">
+                                        <span className="w-2 h-2 rounded-full bg-[#7C9FC5] animate-ping" />
+                                        <span>Loading earlier conversation block...</span>
                                     </div>
                                 ) : hasMoreHistory ? (
                                     <button
                                         type="button"
                                         onClick={triggerLoadOlder}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-blue-400 font-medium transition cursor-pointer"
+                                        className="aw-focus-ring inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#17191C] hover:bg-[#1D2024] border border-[#30343A] text-[11px] text-[#7C9FC5] font-medium transition cursor-pointer"
                                     >
-                                        <span>Scroll up or tap to load earlier messages</span>
+                                        <span>Load earlier messages</span>
                                     </button>
                                 ) : (
-                                    <span className="text-[10px] text-zinc-600 uppercase tracking-wider font-medium">
+                                    <span className="text-[10px] text-[#747C87] uppercase tracking-wider font-mono">
                                         Beginning of conversation
                                     </span>
                                 )}
                             </div>
                         )}
 
-                        {/* Empty Conversation Welcome State */}
                         {chatMessages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-                                <div className="w-10 h-10 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-blue-400 shadow-inner">
-                                    <div className="w-5 h-5">{Icon.sparkles}</div>
+                            <div className="flex flex-col items-center justify-center py-16 text-center space-y-2.5">
+                                <div className="w-9 h-9 rounded-md bg-[#17191C] border border-[#30343A] flex items-center justify-center text-[#7C9FC5]">
+                                    <div className="w-4 h-4">{Icon.terminal}</div>
                                 </div>
                                 <div className="space-y-1">
-                                    <h3 className="text-sm font-semibold text-zinc-200">Antigravity Agent Ready</h3>
-                                    <p className="text-xs text-zinc-500 max-w-sm">
-                                        Connected to your live Antigravity IDE workspace. Real-time updates, interactive decision prompts, and conversation turns appear directly here.
+                                    <h2 className="text-sm font-semibold text-[#E8EAED]">Antigravity Agent Ready</h2>
+                                    <p className="text-xs text-[#A0A6AF] max-w-sm">
+                                        Connected to your live Antigravity IDE workspace. Real-time execution traces, interactive decision prompts, and conversation turns appear here.
                                     </p>
                                 </div>
                             </div>
                         )}
 
-                        {/* Render Conversation Turns */}
                         {chatMessages.map((turn, idx) => (
                             <ChatTurn
                                 key={turn.id || idx}
@@ -130,15 +125,14 @@ const ChatStream = forwardRef(function ChatStream({
                 </div>
             </div>
 
-            {/* Smart Scroll: Floating Jump to Bottom Button */}
             {isScrolledUp && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20">
                     <button
                         type="button"
                         onClick={onScrollToBottom}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs shadow-lg backdrop-blur cursor-pointer select-none transition active:scale-95"
+                        className="aw-focus-ring flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1D2024] hover:bg-[#23272D] text-[#E8EAED] border border-[#30343A] text-xs shadow-lg cursor-pointer select-none transition"
                     >
-                        <div className="w-3.5 h-3.5 text-zinc-400">{Icon.chevronDown}</div>
+                        <div className="w-3.5 h-3.5 text-[#7C9FC5]">{Icon.chevronDown}</div>
                         <span className="font-medium text-[11px]">Jump to latest</span>
                     </button>
                 </div>

@@ -14,11 +14,13 @@ export function HistoryDrawer({ isOpen, onClose, chats, isLoading, onSelectChat 
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="px-4 py-3.5 border-b border-zinc-800 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-zinc-100">Past Conversations</h2>
+                <div className="px-4 py-3.5 border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0 bg-zinc-950/70">
+                    <h2 className="text-sm font-semibold text-zinc-100 truncate">Past Conversations</h2>
                     <button
                         onClick={onClose}
-                        className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition"
+                        aria-label="Close past conversations"
+                        title="Close"
+                        className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-700/60 sm:border-transparent transition cursor-pointer shrink-0"
                     >
                         <X className="w-4 h-4" />
                     </button>

@@ -24,25 +24,25 @@ import { parseFileLink } from './utils/fileLinkParser';
 import { Icon } from './constants/icons';
 
 export default function App() {
-    // UI View & Drawer State
     const [viewMode, setViewMode] = useState('chat');
     const [fitMode, setFitMode] = useState('fit');
     const [lightboxOpen, setLightboxOpen] = useState(false);
-    const [activeModal, setActiveModal] = useState(null); // 'mode' | 'model' | null
+    const [activeModal, setActiveModal] = useState(null);
     const [timelineOpen, setTimelineOpen] = useState(false);
+    const [timelineCategory, setTimelineCategory] = useState(null);
+    const [timelineSearch, setTimelineSearch] = useState('');
     const [logsOpen, setLogsOpen] = useState(false);
     const [taskManagerOpen, setTaskManagerOpen] = useState(false);
     const [recoveryOpen, setRecoveryOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
-    const [activeFileViewer, setActiveFileViewer] = useState(null); // { cleanPath, filename, startLine, endLine } | null
+    const [activeFileViewer, setActiveFileViewer] = useState(null);
 
     const handleOpenFile = useCallback((rawPath, lineRange = {}) => {
         const parsed = parseFileLink(rawPath);
         if (lineRange.startLine != null) parsed.startLine = lineRange.startLine;
         if (lineRange.endLine != null) parsed.endLine = lineRange.endLine;
 
-        // Ensure startLine <= endLine if both present
         if (parsed.startLine != null && parsed.endLine == null) {
             parsed.endLine = parsed.startLine;
         } else if (parsed.startLine != null && parsed.endLine != null && parsed.startLine > parsed.endLine) {
@@ -52,25 +52,19 @@ export default function App() {
         }
 
         parsed.hasHighlight = parsed.startLine != null && parsed.startLine > 0;
-
-        // Guard: Only open the modal if the target passes genuine file path validation
         if (parsed.isValid && parsed.cleanPath) {
             setActiveFileViewer({ ...parsed });
         }
     }, []);
 
-    // Listen for agentwatch:open-file window events
     useEffect(() => {
         const onCustomOpenFile = (e) => {
-            if (e.detail?.path) {
-                handleOpenFile(e.detail.path, e.detail);
-            }
+            if (e.detail?.path) handleOpenFile(e.detail.path, e.detail);
         };
         window.addEventListener('agentwatch:open-file', onCustomOpenFile);
         return () => window.removeEventListener('agentwatch:open-file', onCustomOpenFile);
     }, [handleOpenFile]);
 
-    // Custom Hook for State & Backend Sync (only polls /snapshot when screen view or lightbox is open)
     const {
         appState,
         snapshotData,
@@ -117,7 +111,6 @@ export default function App() {
         fetchHistoryChats
     } = useAgentWatch({ isScreenActive: viewMode === 'screen' || lightboxOpen });
 
-    // Composer & Chat Stream State
     const [promptText, setPromptText] = useState('');
     const [openItemIds, setOpenItemIds] = useState(new Set());
     const [isScrolledUp, setIsScrolledUp] = useState(false);
@@ -147,10 +140,7 @@ export default function App() {
         shouldAutoScrollRef.current = true;
         setIsScrolledUp(false);
         if (chatScrollRef.current) {
-            chatScrollRef.current.scrollTo({
-                top: chatScrollRef.current.scrollHeight,
-                behavior: 'smooth'
-            });
+            chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
         }
     }, []);
 
@@ -169,7 +159,6 @@ export default function App() {
         isActionPending: isQueueActionPending,
         handleSendNow: handleQueueSendNow,
         handleDelete: handleQueueDelete,
-        handleEdit: handleQueueDirectEdit,
         handleQueueMessage
     } = useQueuedMessages(isAgentWorking);
 
@@ -195,12 +184,19 @@ export default function App() {
         setPromptText('');
     };
 
+    const filteredTimelineEvents = timelineEvents.filter(ev => {
+        if (timelineCategory && (ev.category || ev.event_type) !== timelineCategory) return false;
+        if (timelineSearch.trim()) {
+            const q = timelineSearch.toLowerCase();
+            return (ev.summary || '').toLowerCase().includes(q) || (ev.event_type || '').toLowerCase().includes(q);
+        }
+        return true;
+    });
+
     return (
-        <div className="flex flex-col h-[100dvh] w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
-            {/* ─── Global Toast Notifications Container ──────────────────────── */}
+        <div className="aw-app-shell font-sans">
             <ToastContainer />
 
-            {/* ─── Top Navigation Bar ────────────────────────────────────────── */}
             <Navbar
                 targetTitle={snapshotData?.target ? snapshotData.target.split(' - ')[0] : 'AgentWatch'}
                 isConnected={appState.connected}
@@ -212,15 +208,11 @@ export default function App() {
                 onOpenRecovery={() => { setRecoveryOpen(true); fetchRecoveryItems(); }}
                 recoveryCount={recoveryItems.length}
                 onOpenHistory={() => { setHistoryOpen(true); fetchHistoryChats(); }}
-                onNewChat={() => handleSendPrompt('Start a fresh conversation and review workspace')}
-                onStop={handleStopAgent}
             />
 
-            {/* ─── Main Content Viewport ─────────────────────────────────────── */}
-            <main className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full relative overflow-hidden">
+            <main className="aw-main-viewport">
                 {viewMode === 'chat' ? (
-                    <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden overflow-x-hidden">
-                        {/* Conversation Stream with Upward Lazy-Loading */}
+                    <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden">
                         <ChatStream
                             ref={chatScrollRef}
                             chatMessages={chatMessages}
@@ -239,7 +231,6 @@ export default function App() {
                             onStop={handleStopAgent}
                         />
 
-                        {/* Minimized Pending Interaction / Approval Banner */}
                         {((pendingInteraction && isInteractionMinimized) || (pendingApproval && isApprovalMinimized)) && (
                             <PendingInteractionBanner
                                 pendingInteraction={isInteractionMinimized ? pendingInteraction : null}
@@ -258,7 +249,6 @@ export default function App() {
                             />
                         )}
 
-                        {/* Queued Messages Card matching IDE native workbench */}
                         {queuedMessages.length > 0 && (
                             <QueuedMessagesCard
                                 messages={queuedMessages}
@@ -269,7 +259,6 @@ export default function App() {
                             />
                         )}
 
-                        {/* Bottom Prompt Composer */}
                         <PromptComposer
                             promptText={promptText}
                             onChangePrompt={setPromptText}
@@ -279,41 +268,33 @@ export default function App() {
                             isWorking={isAgentWorking}
                             appState={appState}
                             onOpenModelModal={() => setActiveModal('model')}
-                            onOpenModeModal={() => setActiveModal('mode')}
                             onOpenReviewChanges={() => setReviewChangesOpen(true)}
-                            onOpenLogs={() => { setLogsOpen(true); fetchSystemLogs(); }}
-                            onOpenRecovery={() => { setRecoveryOpen(true); fetchRecoveryItems(); }}
-                            onOpenTaskManager={() => setTaskManagerOpen(true)}
-                            onToggleViewMode={() => setViewMode(v => (v === 'chat' ? 'screen' : 'chat'))}
                             onOpenFile={handleOpenFile}
-                            chatMessages={chatMessages}
-                            viewMode={viewMode}
                             recoveryCount={recoveryItems.length}
                             onStop={handleStopAgent}
                         />
                     </div>
                 ) : (
-                    /* Mirrored IDE Viewport */
-                    <div className="flex-1 flex flex-col min-h-0 bg-black/60 select-none">
-                        <div className="px-4 py-2 border-b border-zinc-850 bg-zinc-900/80 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
-                                <span className="font-semibold text-zinc-200">Antigravity Workspace Viewport</span>
+                    <div className="flex-1 flex flex-col min-h-0 bg-[#101113] select-none">
+                        <div className="px-3 sm:px-4 py-2 border-b border-[#30343A] bg-[#17191C] flex items-center justify-between gap-2 shrink-0">
+                            <div className="flex items-center gap-2 text-xs text-[#A0A6AF] min-w-0">
+                                <span className="font-semibold text-[#E8EAED] truncate">Antigravity Workspace Viewport</span>
                                 <span>·</span>
-                                <span className="text-emerald-400 font-mono">Port 9000</span>
+                                <span className="text-[#79B89A] font-mono shrink-0">Port 9000</span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs">
+                            <div className="flex items-center gap-1.5 text-xs shrink-0">
                                 <button
                                     type="button"
                                     onClick={() => setFitMode(f => (f === 'fit' ? 'full' : 'fit'))}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition cursor-pointer"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1D2024] hover:bg-[#23272D] border border-[#30343A] text-[#E8EAED] transition cursor-pointer"
                                 >
                                     <div className="w-3.5 h-3.5">{Icon.search}</div>
-                                    <span>{fitMode === 'fit' ? 'Zoom 100%' : 'Fit to Screen'}</span>
+                                    <span>{fitMode === 'fit' ? '100%' : 'Fit'}</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setLightboxOpen(true)}
-                                    className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition cursor-pointer"
+                                    className="p-1.5 rounded bg-[#1D2024] hover:bg-[#23272D] border border-[#30343A] text-[#E8EAED] transition cursor-pointer"
                                     title="Open Fullscreen"
                                 >
                                     <div className="w-4 h-4">{Icon.maximize}</div>
@@ -321,22 +302,22 @@ export default function App() {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-0">
+                        <div className="flex-1 overflow-auto p-3 sm:p-4 flex items-center justify-center min-h-0">
                             {snapshotData?.screenshot ? (
                                 <img
                                     src={snapshotData.screenshot}
                                     alt="Antigravity IDE Viewport"
                                     onClick={() => setLightboxOpen(true)}
-                                    className={`cursor-zoom-in rounded-xl border border-zinc-800 shadow-2xl transition-all ${
-                                        fitMode === 'fit' ? 'max-w-full max-h-[80vh] object-contain' : 'min-w-[1400px] h-auto'
+                                    className={`cursor-zoom-in rounded-md border border-[#30343A] transition-all ${
+                                        fitMode === 'fit' ? 'max-w-full max-h-[80dvh] object-contain' : 'min-w-[1280px] h-auto'
                                     }`}
                                 />
                             ) : (
-                                <div className="text-center p-8 space-y-2 text-zinc-500">
-                                    <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mx-auto text-zinc-600 mb-2">
-                                        <div className="w-6 h-6">{Icon.screen}</div>
+                                <div className="text-center p-8 space-y-2 text-[#747C87]">
+                                    <div className="w-10 h-10 rounded-md bg-[#17191C] border border-[#30343A] flex items-center justify-center mx-auto text-[#A0A6AF] mb-2">
+                                        <div className="w-5 h-5">{Icon.screen}</div>
                                     </div>
-                                    <p className="text-sm font-medium text-zinc-300">Antigravity CDP Viewport</p>
+                                    <p className="text-sm font-medium text-[#E8EAED]">Antigravity CDP Viewport</p>
                                     <p className="text-xs">No active window screenshot captured yet.</p>
                                 </div>
                             )}
@@ -345,27 +326,20 @@ export default function App() {
                 )}
             </main>
 
-            {/* ─── Drawers & Modals ──────────────────────────────────────────── */}
             <ActivityTimelineDrawer
                 isOpen={timelineOpen}
                 onClose={() => setTimelineOpen(false)}
-                events={timelineEvents}
+                events={filteredTimelineEvents}
                 isLoading={isTimelineLoading}
+                activeCategory={timelineCategory}
+                onSelectCategory={setTimelineCategory}
+                searchQuery={timelineSearch}
+                onChangeSearch={setTimelineSearch}
                 onRefresh={fetchTimelineEvents}
             />
 
-            <SystemLogsDrawer
-                isOpen={logsOpen}
-                onClose={() => setLogsOpen(false)}
-                logs={systemLogs}
-                isLoading={isLogsLoading}
-                onRefresh={fetchSystemLogs}
-            />
-
-            <TaskManagerDrawer
-                isOpen={taskManagerOpen}
-                onClose={() => setTaskManagerOpen(false)}
-            />
+            <SystemLogsDrawer isOpen={logsOpen} onClose={() => setLogsOpen(false)} logs={systemLogs} isLoading={isLogsLoading} onRefresh={fetchSystemLogs} />
+            <TaskManagerDrawer isOpen={taskManagerOpen} onClose={() => setTaskManagerOpen(false)} />
 
             <RecoveryCenterModal
                 isOpen={recoveryOpen}
@@ -382,12 +356,10 @@ export default function App() {
                 onClose={() => setHistoryOpen(false)}
                 chats={historyChats}
                 isLoading={isHistoryLoading}
+                onSelectChat={(title) => { setHistoryOpen(false); toast.info(`Selected conversation: ${title}`, 'History'); }}
             />
 
-            <ReviewChangesModal
-                isOpen={reviewChangesOpen}
-                onClose={() => setReviewChangesOpen(false)}
-            />
+            <ReviewChangesModal isOpen={reviewChangesOpen} onClose={() => setReviewChangesOpen(false)} />
 
             <ModelModal
                 isOpen={activeModal === 'model'}
@@ -405,13 +377,8 @@ export default function App() {
                 onSelectMode={(m) => { handleSetMode(m); setActiveModal(null); }}
             />
 
-            <LightboxModal
-                isOpen={lightboxOpen}
-                onClose={() => setLightboxOpen(false)}
-                screenshotUrl={snapshotData?.screenshot}
-            />
+            <LightboxModal isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)} screenshotUrl={snapshotData?.screenshot} />
 
-            {/* ─── Interaction Modal (Agent decision requests) ─────────────── */}
             <InteractionModal
                 interaction={isInteractionMinimized ? null : pendingInteraction}
                 selectedOptions={selectedOptions}
@@ -425,7 +392,6 @@ export default function App() {
                 onCancel={handleCancelInteraction}
             />
 
-            {/* ─── Approval Modal (CDP / IDE permission requests) ─────────────── */}
             <ApprovalModal
                 approval={isApprovalMinimized ? null : pendingApproval}
                 isSubmitting={isApprovaling}
@@ -433,11 +399,7 @@ export default function App() {
                 onDismiss={handleDismissApproval}
             />
 
-            {/* ─── File Viewer Modal (Full file & line highlighting inspector) ─── */}
-            <FileViewerModal
-                targetFile={activeFileViewer}
-                onClose={() => setActiveFileViewer(null)}
-            />
+            <FileViewerModal targetFile={activeFileViewer} onClose={() => setActiveFileViewer(null)} />
         </div>
     );
 }
