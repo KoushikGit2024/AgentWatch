@@ -5,24 +5,30 @@ function Find-PythonExecutable {
     # 1. Existing project .venv python
     $venvPy = Join-Path $PSScriptRoot "..\.venv\Scripts\python.exe"
     if (Test-Path $venvPy) {
-        $testRun = & $venvPy -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $testRun) {
-            return (Resolve-Path $venvPy).Path
-        }
+        try {
+            $testRun = & $venvPy -c "import sys; print(sys.executable)" 2>$null
+            if ($LASTEXITCODE -eq 0 -and $testRun) {
+                return (Resolve-Path $venvPy).Path
+            }
+        } catch { }
     }
 
     # 2. Check py launcher
     $pyLauncher = (Get-Command py -ErrorAction SilentlyContinue).Source
     if ($pyLauncher) {
-        $found = & $pyLauncher -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and (Test-Path $found)) { return $found.Trim() }
+        try {
+            $found = & $pyLauncher -c "import sys; print(sys.executable)" 2>$null
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $found)) { return $found.Trim() }
+        } catch { }
     }
 
     # 3. Check python in PATH
     $cmdPython = (Get-Command python -ErrorAction SilentlyContinue).Source
     if ($cmdPython) {
-        $found = & $cmdPython -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and (Test-Path $found)) { return $found.Trim() }
+        try {
+            $found = & $cmdPython -c "import sys; print(sys.executable)" 2>$null
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $found)) { return $found.Trim() }
+        } catch { }
     }
 
     # 4. Search common installation directories
@@ -42,11 +48,13 @@ function Find-PythonExecutable {
     )
 
     foreach ($cand in $candidates) {
-        if (Test-Path $cand) {
-            $testRun = & $cand -c "import sys; print(sys.executable)" 2>$null
-            if ($LASTEXITCODE -eq 0 -and $testRun) {
-                return (Resolve-Path $cand).Path
-            }
+        if (Test-Path $cand -ErrorAction SilentlyContinue) {
+            try {
+                $testRun = & $cand -c "import sys; print(sys.executable)" 2>$null
+                if ($LASTEXITCODE -eq 0 -and $testRun) {
+                    return (Resolve-Path $cand).Path
+                }
+            } catch { }
         }
     }
 

@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { marked } from 'marked';
 import { toast } from '../services/toastService';
 import { getFileInfo, getFileSvgHtml } from '../constants/fileIcons';
+import { isValidFilePath, parseFileLink } from '../utils/fileLinkParser';
 
 // Escape HTML utility for code blocks
 function escapeHtml(str) {
@@ -44,28 +45,47 @@ marked.use({
         link(token) {
             const href = token.href || '#';
             const rawText = token.text || token.href;
-            const isFile = href.startsWith('file://') || href.startsWith('file:/');
+            const isFileUri = href.startsWith('file://') || href.startsWith('file:/');
 
-            if (isFile) {
-                // Decode URI components and clean up file path
-                const decodedPath = decodeURIComponent(href.replace(/^file:\/\/\/?/, ''));
-                const fileInfo = getFileInfo(decodedPath);
-                // Format clean label: if raw text was a long file:/// URL, use basename or relative path
+            // Check if href is a file URI or a direct file path (e.g. "frontend/src/App.jsx")
+            let targetPath = href;
+            if (isFileUri) {
+                targetPath = decodeURIComponent(href.replace(/^file:\/\/\/?/, ''));
+                if (/^\/[a-zA-Z]:/.test(targetPath)) {
+                    targetPath = targetPath.slice(1);
+                }
+            }
+
+            if (isValidFilePath(targetPath)) {
+                const parsed = parseFileLink(targetPath);
+                const fileInfo = getFileInfo(parsed.cleanPath || targetPath);
                 let label = rawText;
-                if (label.startsWith('file://') || label.startsWith('file:/')) {
-                    const parts = decodedPath.split(/[\/\\]/);
-                    label = parts[parts.length - 1] || decodedPath;
+                // If label was a raw file:// URI or raw path, use a clean basename
+                if (label.startsWith('file://') || label.startsWith('file:/') || label.includes('/') || label.includes('\\')) {
+                    label = parsed.filename || label;
                 }
 
-                const svgHtml = getFileSvgHtml(decodedPath, 'w-3.5 h-3.5 inline-block shrink-0 align-text-bottom mr-1');
+                // If line highlight was present, append to label if not already present
+                if (parsed.hasHighlight && !label.includes(':') && !label.includes('#') && !label.includes('L')) {
+                    label = `${label} (L${parsed.startLine}${parsed.endLine && parsed.endLine !== parsed.startLine ? `-${parsed.endLine}` : ''})`;
+                }
 
-                return `<button type="button" class="file-link-pill inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-lg border max-w-full break-all cursor-pointer transition active:scale-95 shadow-xs align-baseline my-0.5 ${fileInfo.bg} ${fileInfo.color} hover:opacity-80" data-file-path="${escapeHtml(decodedPath)}" title="${escapeHtml(fileInfo.label)}: ${escapeHtml(decodedPath)}">
+                const svgHtml = getFileSvgHtml(parsed.cleanPath, 'w-3 h-3 inline-block shrink-0 -mt-0.5 mr-0.5');
+
+                return `<button type="button" class="file-link-pill inline-flex items-center gap-1 font-mono text-[11px] font-medium px-1.5 py-0.2 mx-0.5 rounded-md border max-w-full break-all cursor-pointer transition active:scale-95 align-middle select-none ${fileInfo.bg} ${fileInfo.color} hover:brightness-125" data-file-path="${escapeHtml(parsed.cleanPath)}" data-start-line="${parsed.startLine || ''}" data-end-line="${parsed.endLine || ''}" title="${escapeHtml(fileInfo.label)}: ${escapeHtml(parsed.cleanPath)}">
                     ${svgHtml}
                     <span class="truncate max-w-xs md:max-w-md">${escapeHtml(label)}</span>
                 </button>`;
             }
 
-            return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline underline-offset-2 break-all [word-break:break-all] hover:text-blue-300 transition">${rawText}</a>`;
+            // Clean display label for any remaining file URI links that were not valid file paths
+            let cleanDisplay = rawText;
+            if (cleanDisplay.startsWith('file://') || cleanDisplay.startsWith('file:/')) {
+                const parts = cleanDisplay.split(/[\/\\]/);
+                cleanDisplay = parts[parts.length - 1] || cleanDisplay;
+            }
+
+            return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all [word-break:break-all] transition font-medium">${escapeHtml(cleanDisplay)}</a>`;
         },
 
         code(token) {
@@ -84,7 +104,7 @@ marked.use({
     }
 });
 
-export default function MarkdownView({ content }) {
+export default function MarkdownView({ content, onOpenFile }) {
     const html = useMemo(() => {
         if (!content) return '';
         try {
@@ -94,24 +114,27 @@ export default function MarkdownView({ content }) {
         }
     }, [content]);
 
-    const handleClick = useCallback(async (e) => {
+    const handleClick = useCallback((e) => {
         const fileBtn = e.target.closest('[data-file-path]');
         if (fileBtn) {
             e.preventDefault();
             e.stopPropagation();
             const filePath = fileBtn.getAttribute('data-file-path');
+            const startLineAttr = fileBtn.getAttribute('data-start-line');
+            const endLineAttr = fileBtn.getAttribute('data-end-line');
+            const startLine = startLineAttr ? parseInt(startLineAttr, 10) : undefined;
+            const endLine = endLineAttr ? parseInt(endLineAttr, 10) : undefined;
+
             if (filePath) {
-                try {
-                    await navigator.clipboard.writeText(filePath);
-                    const parts = filePath.split(/[/\\]/);
-                    const fileName = parts[parts.length - 1] || filePath;
-                    toast.success(`Copied path: ${fileName}`, 'File Path Copied');
-                } catch {
-                    toast.info(`Path: ${filePath}`, 'File Path');
+                const lineRange = { startLine, endLine };
+                if (typeof onOpenFile === 'function') {
+                    onOpenFile(filePath, lineRange);
+                } else if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('agentwatch:open-file', { detail: { path: filePath, ...lineRange } }));
                 }
             }
         }
-    }, []);
+    }, [onOpenFile]);
 
     if (!content) return null;
 

@@ -15,7 +15,7 @@ from typing import Optional
 
 from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
-from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics, attachments
+from api.routes import health, events, sessions, controls, auth, interactions, git_review, diagnostics, attachments, files, queue_routes
 from security.authentication import check_auth_required
 from services.log_buffer import attach_to_all_loggers, log_buffer_handler
 from services.conversation_service import conversation_service
@@ -103,6 +103,8 @@ async def watch_transcript_loop():
     last_approval_key = None
     last_interaction_id = None
     dom_probe_tick = 0
+    cached_dom_approval = None
+    dom_miss_count = 0
 
     while True:
         try:
@@ -128,35 +130,37 @@ async def watch_transcript_loop():
                         "has_more": paginated["has_more"],
                     })
 
-            dom_probe_tick = (dom_probe_tick + 1) % 4
+            dom_probe_tick = (dom_probe_tick + 1) % 2
             if websocket_manager.active_connections or transcript_changed:
                 if not transcript_changed and dom_probe_tick == 0:
                     conversation_service.get_recent_conversation(limit=15)
 
                 pending_approval = conversation_service.get_pending_approval()
 
-                if not pending_approval and dom_probe_tick == 0:
+                if dom_probe_tick == 0:
                     ag_status = antigravity_adapter.get_status()
                     if ag_status.get("cdp", {}).get("connected"):
                         dom_popup = await antigravity_adapter.inspect_active_popup()
                         if dom_popup.get("has_popup"):
+                            dom_miss_count = 0
                             if dom_popup.get("popup_kind") == "question":
+                                cached_dom_approval = None
                                 interaction_service.sync_question_from_transcript(
                                     session_id="cdp_live_session",
                                     question_data={
                                         "question": dom_popup.get("title") or "Select an option",
                                         "options": dom_popup.get("options") or [],
-                                        "is_multi_select": False,
+                                        "is_multi_select": dom_popup.get("is_multi_select", False),
                                         "allow_custom_response": dom_popup.get("allow_custom_response", True),
                                     },
                                     is_active=True,
                                 )
-                            else:
+                            elif not pending_approval:
                                 target_str = dom_popup.get("command") or dom_popup.get("target") or dom_popup.get("title") or "action"
                                 step_hash = hashlib.md5(target_str.encode("utf-8", errors="ignore")).hexdigest()[:8]
                                 step_id = f"dom-{step_hash}"
                                 if step_id not in conversation_service._resolved_approvals:
-                                    pending_approval = {
+                                    cached_dom_approval = {
                                         "step_id": step_id,
                                         "request_type": "command" if dom_popup.get("command") else "decision",
                                         "target": target_str,
@@ -166,6 +170,20 @@ async def watch_transcript_loop():
                                         "options": dom_popup.get("options"),
                                         "allow_custom_response": True,
                                     }
+                        else:
+                            dom_miss_count += 1
+                            # Require 2 consecutive misses (~1.4s) before dismissing live popup to prevent transient flicker
+                            if dom_miss_count >= 2:
+                                cached_dom_approval = None
+                                interaction_service.sync_question_from_transcript(
+                                    session_id="cdp_live_session",
+                                    question_data=None,
+                                    is_active=False,
+                                )
+
+                # Use cached dom approval if transcript doesn't specify one
+                if not pending_approval and cached_dom_approval:
+                    pending_approval = cached_dom_approval
 
                 cur_approval_key = pending_approval.get("step_id") if pending_approval else None
                 if cur_approval_key and cur_approval_key != last_approval_key:
@@ -267,6 +285,8 @@ app.include_router(interactions.router)
 app.include_router(git_review.router)
 app.include_router(diagnostics.router)
 app.include_router(attachments.router)
+app.include_router(files.router)
+app.include_router(queue_routes.router)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"

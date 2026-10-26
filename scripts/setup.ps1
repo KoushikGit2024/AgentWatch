@@ -31,10 +31,14 @@ $venvPython = Join-Path $venvPath "Scripts\python.exe"
 
 $recreate = $true
 if (Test-Path $venvPython) {
-    $verifyPy = & $venvPython -c "import sys; print(sys.executable)" 2>$null
-    if ($LASTEXITCODE -eq 0 -and $verifyPy) {
-        $recreate = $false
-        Write-Host "[OK] Existing virtual environment verified at .venv." -ForegroundColor Green
+    try {
+        $verifyPy = & $venvPython -c "import sys; print(sys.executable)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $verifyPy) {
+            $recreate = $false
+            Write-Host "[OK] Existing virtual environment verified at .venv." -ForegroundColor Green
+        }
+    } catch {
+        $recreate = $true
     }
 }
 

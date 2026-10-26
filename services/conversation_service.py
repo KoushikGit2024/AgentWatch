@@ -156,10 +156,29 @@ class ConversationService:
 
                         if stype == "USER_INPUT" and content:
                             self._stopped_active = False
-                            clean = re.sub(r"<USER_REQUEST>\s*", "", content)
-                            clean = re.sub(r"</USER_REQUEST>.*", "", clean, flags=re.DOTALL).strip()
+                            clean = content
+
+                            # If <USER_REQUEST> tags exist, extract strictly the innermost user request
+                            req_match = re.search(r"<USER_REQUEST>(.*?)</USER_REQUEST>", clean, flags=re.DOTALL)
+                            if req_match:
+                                clean = req_match.group(1).strip()
+                            else:
+                                clean = re.sub(r"<USER_REQUEST>\s*", "", clean)
+                                clean = re.sub(r"</USER_REQUEST>.*", "", clean, flags=re.DOTALL).strip()
+
+                            # Clean any leaked metadata or IDE prefixes
                             clean = re.sub(r"<ADDITIONAL_METADATA>.*", "", clean, flags=re.DOTALL).strip()
                             clean = re.sub(r"<USER_SETTINGS_CHANGE>.*", "", clean, flags=re.DOTALL).strip()
+
+                            # If IDE injected action history prefix (e.g. "The USER performed the following action: ..."),
+                            # or repeated chat logs, strip them down to the actual user message
+                            if "The USER performed the following action:" in clean:
+                                parts = clean.split("The USER performed the following action:", 1)
+                                remainder = parts[1]
+                                # Look for user request after action description
+                                if "\n\n" in remainder:
+                                    clean = remainder.split("\n\n", 1)[1].strip()
+
                             clean = clean.strip()
 
                             if clean:
@@ -455,7 +474,7 @@ class ConversationService:
                                         clean_out = clean_out.split("\t\t\t\tOutput:\n", 1)[1]
                                     elif "\t\t\t\tStdout:\n" in clean_out:
                                         clean_out = clean_out.split("\t\t\t\tStdout:\n", 1)[1]
-                                    last_item["output"] = clean_out.strip()[:2000]
+                                    last_item["output"] = clean_out.strip()
 
                     except Exception:
                         continue

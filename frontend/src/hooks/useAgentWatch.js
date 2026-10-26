@@ -273,31 +273,40 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
 
     // ─── Actions ──────────────────────────────────────────────────────────────
     const handleApproval = useCallback(async (requestType, target, decision, stepId, customInstructions = '', optionLabel = '') => {
-        if (stepId) {
-            setApprovals(prev => ({ ...prev, [stepId]: decision }));
-        }
         setIsApprovaling(true);
         try {
             const res = await api.submitApproval(requestType, target, decision, stepId, customInstructions, optionLabel);
             const forwarded = res?.forwarded_to_ide;
             const customSent = res?.custom_response_dispatched;
+            const receiptConfirmed = res?.forward_details?.receipt_confirmed ?? forwarded;
+
+            if (stepId) {
+                setApprovals(prev => ({ ...prev, [stepId]: decision }));
+            }
+
             if (customSent) {
-                toast.success(`'${decision}' and custom instructions sent to Antigravity IDE.`, 'Decision & Instructions Sent');
+                toast.success(`'${decision}' and custom instructions dispatched with receipt.`, 'Receipt Confirmed');
+            } else if (receiptConfirmed) {
+                toast.success(`'${decision}' accepted by Antigravity IDE (receipt confirmed).`, 'Receipt Confirmed');
             } else if (forwarded) {
                 toast.success(`'${decision}' forwarded to Antigravity IDE.`, 'Decision Sent');
             } else {
                 toast.info(`Decision '${decision}' recorded.`, 'Approval Acknowledged');
             }
+
             setTimeout(() => {
                 if (isMountedRef.current) {
                     setPendingApproval(null);
                     setIsApprovalMinimized(false);
                     fetchChatMessages();
                 }
-            }, 800);
+            }, 600);
+
+            return res;
         } catch (err) {
             console.error('Failed to submit approval:', err);
             toast.error(err.message || 'Failed to submit approval decision', 'Approval Error');
+            throw err;
         } finally {
             if (isMountedRef.current) setIsApprovaling(false);
         }
@@ -449,7 +458,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
                 }
             } else {
                 // Top-level single or multi-choice
-                const isMulti = pendingInteraction?.kind === 'multiple_choice';
+                const isMulti = pendingInteraction?.kind === 'multiple_choice' || Boolean(pendingInteraction?.is_multi_select);
                 if (isMulti) {
                     if (next.has(id)) next.delete(id);
                     else next.add(id);
@@ -581,15 +590,15 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         client.connect();
         wsClientRef.current = client;
 
-        // Low-frequency adaptive polling: slower when WebSocket is connected, paused when tab is hidden
-        const appStateTimer = setInterval(fetchAppState, 10000);
+        // Low-frequency adaptive polling: 1.2s for active popups so IDE actions reflect immediately
+        const appStateTimer = setInterval(fetchAppState, 8000);
         const interactionsTimer = setInterval(() => {
             fetchInteractions();
             fetchPendingApprovals();
             if (!wsConnectedRef.current) {
                 fetchChatMessages();
             }
-        }, 5000);
+        }, 1200);
 
         const handleVisibilityChange = () => {
             if (!document.hidden && isMountedRef.current) {

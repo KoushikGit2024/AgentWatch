@@ -11,7 +11,8 @@ const ChatTurn = memo(function ChatTurn({
     openItemIds,
     approvals,
     onToggleItem,
-    onApprove
+    onApprove,
+    onOpenFile
 }) {
     const isUser = turn.role === 'user';
     const timeStr = turn.timestamp
@@ -28,6 +29,10 @@ const ChatTurn = memo(function ChatTurn({
     };
 
     const [previewItem, setPreviewItem] = useState(null);
+
+    const [isUserTextExpanded, setIsUserTextExpanded] = useState(false);
+    const userText = turn.text || '';
+    const isLongUserText = userText.length > 280 || (userText.match(/\n/g) || []).length >= 4;
 
     if (isUser) {
         return (
@@ -78,8 +83,40 @@ const ChatTurn = memo(function ChatTurn({
                         </div>
                     )}
 
-                    {turn.text && (
-                        <p className="whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere]">{turn.text}</p>
+                    {userText && (
+                        <div className="space-y-1.5">
+                            <div className={`whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere] transition-all ${
+                                !isUserTextExpanded && isLongUserText ? 'max-h-28 overflow-hidden relative' : ''
+                            }`}>
+                                <p>{userText}</p>
+                                {!isUserTextExpanded && isLongUserText && (
+                                    <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-blue-600 to-transparent pointer-events-none" />
+                                )}
+                            </div>
+                            {isLongUserText && (
+                                <div className="flex items-center justify-between pt-0.5 text-xs text-blue-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsUserTextExpanded(v => !v)}
+                                        className="font-medium hover:text-white underline underline-offset-2 cursor-pointer transition flex items-center gap-1"
+                                    >
+                                        <span>{isUserTextExpanded ? 'Show less' : 'Expand full message'}</span>
+                                        <div className={`w-3 h-3 transition-transform ${isUserTextExpanded ? 'rotate-180' : ''}`}>
+                                            {Icon.chevronDown || Icon.chevronRight}
+                                        </div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopy}
+                                        title="Copy full message"
+                                        className="px-1.5 py-0.5 rounded hover:bg-blue-700/70 text-[11px] transition flex items-center gap-1"
+                                    >
+                                        <div className="w-3 h-3">{copied ? Icon.check : Icon.copy}</div>
+                                        <span>{copied ? 'Copied' : 'Copy'}</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
                     {timeStr && (
                         <span className="block text-right text-[10px] text-blue-200 mt-1">{timeStr}</span>
@@ -195,25 +232,37 @@ const ChatTurn = memo(function ChatTurn({
                     <div className="space-y-1.5 py-1 select-text">
                         {streamItems.map((item, itemIdx) => {
                             const itemKey = item.step_id || `${turn.id || turnIndex}-${item.id || itemIdx}`;
+                            const isLiveExecuting = item.kind === 'command' && item.exit_code === undefined && (item.status !== 'done' || turn.is_working);
                             return (
                                 <StreamItem
                                     key={itemKey}
                                     item={item}
                                     itemKey={itemKey}
-                                    isOpen={openItemIds.has(itemKey)}
+                                    isOpen={openItemIds.has(itemKey) || isLiveExecuting}
                                     approvalState={approvals[itemKey] || item.approval_decision}
                                     isWorking={turn.is_working}
                                     onToggle={onToggleItem}
                                     onApprove={onApprove}
+                                    onOpenFile={onOpenFile}
                                 />
                             );
                         })}
 
-                        {/* Working Indicator */}
+                        {/* Working Indicator with Active Executing Command Preview */}
                         {turn.is_working && (
-                            <div className="flex items-center gap-2 text-zinc-400 text-xs pt-1 font-sans">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-                                <span className="text-zinc-300 font-medium">Working</span>
+                            <div className="pt-1.5 space-y-1.5 font-sans">
+                                <div className="flex items-center gap-2 text-zinc-400 text-xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                                    <span className="text-zinc-300 font-medium">
+                                        {turn.active_command ? 'Executing command…' : 'Working…'}
+                                    </span>
+                                </div>
+                                {turn.active_command && (
+                                    <div className="p-2 rounded-xl bg-zinc-950/90 border border-amber-500/30 font-mono text-[11px] text-amber-200/90 overflow-x-auto flex items-center gap-2">
+                                        <span className="text-amber-500 font-bold select-none">$</span>
+                                        <span className="break-all">{turn.active_command}</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -221,7 +270,7 @@ const ChatTurn = memo(function ChatTurn({
 
                 {/* Markdown Agent Response */}
                 {turn.text && (
-                    <MarkdownView content={turn.text} />
+                    <MarkdownView content={turn.text} onOpenFile={onOpenFile} />
                 )}
 
                 {/* Response Action Buttons */}

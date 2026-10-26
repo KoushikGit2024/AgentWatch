@@ -114,18 +114,10 @@ export default function ApprovalCard({
                         <button
                             type="button"
                             disabled={!customText.trim()}
-                            onClick={() => handleCustomSubmit('allow')}
-                            className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-semibold transition disabled:opacity-40 cursor-pointer"
-                        >
-                            Allow + Note
-                        </button>
-                        <button
-                            type="button"
-                            disabled={!customText.trim()}
                             onClick={() => handleCustomSubmit('deny')}
-                            className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold transition disabled:opacity-40 cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition disabled:opacity-40 cursor-pointer shadow-sm"
                         >
-                            Deny &amp; Send
+                            Send Instructions
                         </button>
                     </div>
                 </div>

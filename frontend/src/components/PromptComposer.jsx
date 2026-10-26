@@ -18,7 +18,8 @@ export function PromptComposer({
     onToggleViewMode,
     viewMode,
     recoveryCount = 0,
-    onStop
+    onStop,
+    onQueue
 }) {
     const [attachments, setAttachments] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -150,6 +151,20 @@ export function PromptComposer({
         setAttachments([]);
     };
 
+    const handleTriggerQueue = () => {
+        const hasText = Boolean(promptText && promptText.trim());
+        const readyAttachments = attachments.filter(a => !a.isPending);
+        if (!hasText && readyAttachments.length === 0) return;
+        if (isSending || isUploading) return;
+
+        if (onQueue) {
+            onQueue(promptText, readyAttachments);
+        } else {
+            onSend(promptText, readyAttachments);
+        }
+        setAttachments([]);
+    };
+
     const readyAttachments = attachments.filter(a => !a.isPending);
     const canSend = (Boolean(promptText && promptText.trim()) || readyAttachments.length > 0) && !isSending && !isUploading;
 
@@ -261,7 +276,11 @@ export function PromptComposer({
                         onKeyDown={e => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
-                                handleTriggerSend();
+                                if (isWorking) {
+                                    handleTriggerQueue();
+                                } else {
+                                    handleTriggerSend();
+                                }
                             }
                         }}
                         placeholder="Ask anything, paste/attach images or files, @ mention, / actions…"
@@ -321,18 +340,30 @@ export function PromptComposer({
                             )}
                         </div>
 
-                        {/* Dynamic Send / Stop Controls */}
+                        {/* Dynamic Send / Stop / Queue Controls */}
                         <div className="flex items-center gap-1.5 shrink-0">
                             {isWorking ? (
-                                <button
-                                    type="button"
-                                    onClick={onStop}
-                                    title="Stop agent run (Ctrl+D)"
-                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-md shadow-rose-900/40 active:scale-95 transition cursor-pointer"
-                                >
-                                    <div className="w-3.5 h-3.5">{Icon.stop}</div>
-                                    <span>Stop</span>
-                                </button>
+                                <>
+                                    <button
+                                        type="button"
+                                        disabled={!canSend}
+                                        onClick={handleTriggerQueue}
+                                        title="Queue follow-up message to run after agent finishes"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-750 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-200 border border-zinc-700/80 font-medium text-xs shadow-sm active:scale-95 transition cursor-pointer"
+                                    >
+                                        <div className="w-3.5 h-3.5 text-blue-400">{Icon.send}</div>
+                                        <span>Queue</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={onStop}
+                                        title="Stop agent run (Ctrl+D)"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-md shadow-rose-900/40 active:scale-95 transition cursor-pointer"
+                                    >
+                                        <div className="w-3.5 h-3.5">{Icon.stop}</div>
+                                        <span>Stop</span>
+                                    </button>
+                                </>
                             ) : (
                                 <button
                                     type="button"

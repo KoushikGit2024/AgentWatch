@@ -1,6 +1,7 @@
-import React, { memo } from 'react';
+import React, { useState, memo } from 'react';
 import { Icon } from '../../constants/icons';
 import { FileIcon, getFileInfo } from '../../constants/fileIcons';
+import { parseFileLink, isValidFilePath } from '../../utils/fileLinkParser';
 import ApprovalCard from './ApprovalCard';
 import DiffViewer from './DiffViewer';
 
@@ -11,8 +12,11 @@ const StreamItem = memo(function StreamItem({
     approvalState,
     isWorking,
     onToggle,
-    onApprove
+    onApprove,
+    onOpenFile
 }) {
+    const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+    const [copiedOutput, setCopiedOutput] = useState(false);
     if (item.type === 'thought') {
         return (
             <div className="group">
@@ -40,7 +44,10 @@ const StreamItem = memo(function StreamItem({
     const isAnalyze = item.kind === 'analyze';
     const isQuestion = item.kind === 'question';
     const hasDetails = Boolean(item.command || item.output || item.diff || item.instruction || item.file || item.question_data);
-    const fileInfo = (isAnalyze || isEdit) ? getFileInfo(item.target || item.file) : null;
+    const rawFileCandidate = item.file || item.target || '';
+    const parsedTarget = parseFileLink(rawFileCandidate);
+    const hasValidFile = parsedTarget.isValid && Boolean(parsedTarget.cleanPath);
+    const fileInfo = hasValidFile ? getFileInfo(parsedTarget.cleanPath) : null;
     const effectiveApproval = approvalState || item.approval_decision;
 
     return (
@@ -57,14 +64,14 @@ const StreamItem = memo(function StreamItem({
 
                     <div className="inline-flex items-center gap-1.5 text-zinc-200">
                         {isAnalyze && (
-                            <FileIcon path={item.target || item.file} className="w-3.5 h-3.5" />
+                            <FileIcon path={parsedTarget.cleanPath || item.target || item.file} className="w-3.5 h-3.5" />
                         )}
                         {item.kind === 'search' && (
                             <div className="w-3.5 h-3.5 text-purple-400 shrink-0">{Icon.search}</div>
                         )}
                         {isEdit && (
                             <div className="inline-flex items-center gap-1">
-                                <FileIcon path={item.target || item.file} className="w-3.5 h-3.5" />
+                                <FileIcon path={parsedTarget.cleanPath || item.target || item.file} className="w-3.5 h-3.5" />
                                 <div className="w-3 h-3 text-emerald-400 shrink-0">{Icon.fileEdit}</div>
                             </div>
                         )}
@@ -77,10 +84,43 @@ const StreamItem = memo(function StreamItem({
                         {isQuestion && (
                             <div className="w-3.5 h-3.5 text-blue-400 shrink-0">{Icon.brain}</div>
                         )}
+                        {!isAnalyze && !isEdit && !isCommand && !isQuestion && item.kind !== 'browser' && item.kind !== 'search' && hasValidFile && (
+                            <FileIcon path={parsedTarget.cleanPath} className="w-3.5 h-3.5" />
+                        )}
 
-                        <span className={`font-mono text-[11px] font-medium break-all ${fileInfo ? fileInfo.color : 'text-zinc-200'}`}>
-                            {item.target}
-                        </span>
+                        {(() => {
+                            if (hasValidFile) {
+                                return (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (typeof onOpenFile === 'function') {
+                                                // Extract line range from item.target (e.g. "MarkdownView.jsx #L1-10")
+                                                // or from rawFileCandidate
+                                                const targetRange = parseFileLink(item.target || '');
+                                                const fileRange = parseFileLink(item.file || '');
+                                                const startLine = targetRange.startLine || fileRange.startLine || parsedTarget.startLine;
+                                                const endLine = targetRange.endLine || fileRange.endLine || parsedTarget.endLine;
+
+                                                const fullPath = item.file || parsedTarget.cleanPath || item.target || '';
+                                                onOpenFile(fullPath, { startLine, endLine });
+                                            }
+                                        }}
+                                        title="Click to view file contents"
+                                        className={`font-mono text-[11px] font-medium break-all hover:underline cursor-pointer ${fileInfo ? fileInfo.color : 'text-blue-300'}`}
+                                    >
+                                        {item.target || parsedTarget.filename || rawFileCandidate}
+                                    </button>
+                                );
+                            }
+
+                            return (
+                                <span className={`font-mono text-[11px] font-medium break-all ${fileInfo ? fileInfo.color : 'text-zinc-200'}`}>
+                                    {item.target}
+                                </span>
+                            );
+                        })()}
 
                         {fileInfo && fileInfo.label && (
                             <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium uppercase tracking-wider bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
@@ -138,8 +178,39 @@ const StreamItem = memo(function StreamItem({
                             )}
                             {item.output ? (
                                 <div className="space-y-1 w-full min-w-0 max-w-full">
-                                    <div className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Output</div>
-                                    <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-850 font-mono text-[11px] text-zinc-300 whitespace-pre-wrap [word-break:break-word] leading-relaxed max-h-64 overflow-y-auto overflow-x-auto select-text w-full max-w-full">
+                                    <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
+                                        <span className="uppercase tracking-wider">Output</span>
+                                        <div className="flex items-center gap-2">
+                                            {item.output.length > 350 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setIsOutputExpanded(v => !v);
+                                                    }}
+                                                    className="hover:text-zinc-300 underline underline-offset-2 cursor-pointer transition"
+                                                >
+                                                    {isOutputExpanded ? 'Collapse' : 'Expand full output'}
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigator.clipboard.writeText(item.output);
+                                                    setCopiedOutput(true);
+                                                    setTimeout(() => setCopiedOutput(false), 1500);
+                                                }}
+                                                className="hover:text-zinc-300 flex items-center gap-1 cursor-pointer transition"
+                                            >
+                                                <div className="w-3 h-3">{copiedOutput ? Icon.check : Icon.copy}</div>
+                                                <span>{copiedOutput ? 'Copied' : 'Copy'}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className={`p-2.5 rounded-lg bg-zinc-950 border border-zinc-850 font-mono text-[11px] text-zinc-300 whitespace-pre-wrap [word-break:break-word] leading-relaxed overflow-x-auto select-text w-full max-w-full transition-all ${
+                                        isOutputExpanded ? 'max-h-none overflow-y-visible' : 'max-h-64 overflow-y-auto'
+                                    }`}>
                                         {item.output}
                                     </div>
                                 </div>

@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import ChatStream from './components/chat/ChatStream';
 import PendingInteractionBanner from './components/chat/PendingInteractionBanner';
+import QueuedMessagesCard from './components/chat/QueuedMessagesCard';
 import { PromptComposer } from './components/PromptComposer';
 import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
 import { SystemLogsDrawer } from './components/SystemLogsDrawer';
+import { TaskManagerDrawer } from './components/TaskManagerDrawer';
 import { RecoveryCenterModal } from './components/RecoveryCenterModal';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { ReviewChangesModal } from './components/ReviewChangesModal';
@@ -13,8 +15,12 @@ import ModeModal from './components/modals/ModeModal';
 import LightboxModal from './components/modals/LightboxModal';
 import InteractionModal from './components/modals/InteractionModal';
 import ApprovalModal from './components/modals/ApprovalModal';
+import FileViewerModal from './components/modals/FileViewerModal';
 import ToastContainer from './components/ToastContainer';
+import { toast } from './services/toastService';
 import { useAgentWatch } from './hooks/useAgentWatch';
+import { useQueuedMessages } from './hooks/useQueuedMessages';
+import { parseFileLink } from './utils/fileLinkParser';
 import { Icon } from './constants/icons';
 
 export default function App() {
@@ -25,9 +31,44 @@ export default function App() {
     const [activeModal, setActiveModal] = useState(null); // 'mode' | 'model' | null
     const [timelineOpen, setTimelineOpen] = useState(false);
     const [logsOpen, setLogsOpen] = useState(false);
+    const [taskManagerOpen, setTaskManagerOpen] = useState(false);
     const [recoveryOpen, setRecoveryOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
+    const [activeFileViewer, setActiveFileViewer] = useState(null); // { cleanPath, filename, startLine, endLine } | null
+
+    const handleOpenFile = useCallback((rawPath, lineRange = {}) => {
+        const parsed = parseFileLink(rawPath);
+        if (lineRange.startLine != null) parsed.startLine = lineRange.startLine;
+        if (lineRange.endLine != null) parsed.endLine = lineRange.endLine;
+
+        // Ensure startLine <= endLine if both present
+        if (parsed.startLine != null && parsed.endLine == null) {
+            parsed.endLine = parsed.startLine;
+        } else if (parsed.startLine != null && parsed.endLine != null && parsed.startLine > parsed.endLine) {
+            const tmp = parsed.startLine;
+            parsed.startLine = parsed.endLine;
+            parsed.endLine = tmp;
+        }
+
+        parsed.hasHighlight = parsed.startLine != null && parsed.startLine > 0;
+
+        // Guard: Only open the modal if the target passes genuine file path validation
+        if (parsed.isValid && parsed.cleanPath) {
+            setActiveFileViewer({ ...parsed });
+        }
+    }, []);
+
+    // Listen for agentwatch:open-file window events
+    useEffect(() => {
+        const onCustomOpenFile = (e) => {
+            if (e.detail?.path) {
+                handleOpenFile(e.detail.path, e.detail);
+            }
+        };
+        window.addEventListener('agentwatch:open-file', onCustomOpenFile);
+        return () => window.removeEventListener('agentwatch:open-file', onCustomOpenFile);
+    }, [handleOpenFile]);
 
     // Custom Hook for State & Backend Sync (only polls /snapshot when screen view or lightbox is open)
     const {
@@ -119,11 +160,38 @@ export default function App() {
         }
     }, [chatMessages]);
 
+    const isAgentWorking = chatMessages.length > 0 &&
+        chatMessages[chatMessages.length - 1]?.role === 'agent' &&
+        Boolean(chatMessages[chatMessages.length - 1]?.is_working);
+
+    const {
+        queuedMessages,
+        isActionPending: isQueueActionPending,
+        handleSendNow: handleQueueSendNow,
+        handleDelete: handleQueueDelete,
+        handleEdit: handleQueueDirectEdit,
+        handleQueueMessage
+    } = useQueuedMessages(isAgentWorking);
+
+    const handleQueueEdit = async (item) => {
+        if (!item) return;
+        setPromptText(item.text || '');
+        await handleQueueDelete(item);
+        toast.info('Message loaded into composer for editing', 'Editing Queued Prompt');
+    };
+
     const handleSend = (text, attachments = []) => {
         const msg = text !== undefined ? text : promptText;
         if (!msg?.trim() && (!attachments || attachments.length === 0)) return;
         shouldAutoScrollRef.current = true;
         handleSendPrompt(msg, attachments);
+        setPromptText('');
+    };
+
+    const handleQueue = (text, attachments = []) => {
+        const msg = text !== undefined ? text : promptText;
+        if (!msg?.trim() && (!attachments || attachments.length === 0)) return;
+        handleQueueMessage(msg, attachments);
         setPromptText('');
     };
 
@@ -140,6 +208,7 @@ export default function App() {
                 onViewModeChange={setViewMode}
                 onOpenTimeline={() => { setTimelineOpen(true); fetchTimelineEvents(); }}
                 onOpenLogs={() => { setLogsOpen(true); fetchSystemLogs(); }}
+                onOpenTaskManager={() => setTaskManagerOpen(true)}
                 onOpenRecovery={() => { setRecoveryOpen(true); fetchRecoveryItems(); }}
                 recoveryCount={recoveryItems.length}
                 onOpenHistory={() => { setHistoryOpen(true); fetchHistoryChats(); }}
@@ -163,6 +232,7 @@ export default function App() {
                             isScrolledUp={isScrolledUp}
                             onToggleItem={toggleItem}
                             onApprove={handleApproval}
+                            onOpenFile={handleOpenFile}
                             onScroll={handleChatScroll}
                             onScrollToBottom={scrollToBottom}
                             messagesEndRef={messagesEndRef}
@@ -187,13 +257,25 @@ export default function App() {
                             />
                         )}
 
+                        {/* Queued Messages Card matching IDE native workbench */}
+                        {queuedMessages.length > 0 && (
+                            <QueuedMessagesCard
+                                messages={queuedMessages}
+                                onSendNow={handleQueueSendNow}
+                                onDelete={handleQueueDelete}
+                                onEdit={handleQueueEdit}
+                                isActionPending={isQueueActionPending}
+                            />
+                        )}
+
                         {/* Bottom Prompt Composer */}
                         <PromptComposer
                             promptText={promptText}
                             onChangePrompt={setPromptText}
                             onSend={handleSend}
+                            onQueue={handleQueue}
                             isSending={isSendingPrompt}
-                            isWorking={chatMessages.length > 0 && chatMessages[chatMessages.length - 1]?.role === 'agent' && Boolean(chatMessages[chatMessages.length - 1]?.is_working)}
+                            isWorking={isAgentWorking}
                             appState={appState}
                             onOpenModelModal={() => setActiveModal('model')}
                             onOpenModeModal={() => setActiveModal('mode')}
@@ -276,6 +358,11 @@ export default function App() {
                 onRefresh={fetchSystemLogs}
             />
 
+            <TaskManagerDrawer
+                isOpen={taskManagerOpen}
+                onClose={() => setTaskManagerOpen(false)}
+            />
+
             <RecoveryCenterModal
                 isOpen={recoveryOpen}
                 onClose={() => setRecoveryOpen(false)}
@@ -340,6 +427,12 @@ export default function App() {
                 isSubmitting={isApprovaling}
                 onDecide={handleApproval}
                 onDismiss={handleDismissApproval}
+            />
+
+            {/* ─── File Viewer Modal (Full file & line highlighting inspector) ─── */}
+            <FileViewerModal
+                targetFile={activeFileViewer}
+                onClose={() => setActiveFileViewer(null)}
             />
         </div>
     );
