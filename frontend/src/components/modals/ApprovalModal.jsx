@@ -65,12 +65,12 @@ export default function ApprovalModal({
     const getButtonStyle = (optId, optLabel) => {
         const lower = `${optId} ${optLabel}`.toLowerCase();
         if (lower.includes('deny') || lower.includes('reject') || lower.includes('cancel') || lower.includes('no')) {
-            return 'bg-[#D77E83]/15 hover:bg-[#D77E83]/25 border border-[#D77E83]/40 text-[#D77E83]';
+            return 'bg-gradient-to-r from-red-500/20 to-rose-600/20 hover:from-red-500/30 hover:to-rose-600/30 border border-red-500/40 text-red-300 shadow-sm hover:shadow-red-500/20';
         }
         if (lower.includes('always')) {
-            return 'bg-[#1D2024] hover:bg-[#23272D] border border-[#30343A] text-[#E8EAED]';
+            return 'bg-[#1C2028] hover:bg-[#252B36] border border-[#3A4250] text-[#E2E8F0] hover:border-amber-400/40 shadow-sm';
         }
-        return 'bg-[#79B89A] hover:opacity-90 text-[#101113] font-semibold';
+        return 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-[#091512] font-semibold shadow-md shadow-emerald-500/20';
     };
 
     return (
@@ -82,14 +82,14 @@ export default function ApprovalModal({
                 isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
         >
-            <div className="absolute inset-0 bg-black/75" onClick={!isSubmitting ? onDismiss : undefined} />
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={!isSubmitting ? onDismiss : undefined} />
 
-            <div className="relative w-full sm:max-w-md bg-[#17191C] border border-[#30343A] rounded-t-xl sm:rounded-lg shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col">
-                <div className="h-0.5 w-full shrink-0 bg-[#D8B36A]" />
+            <div className="relative w-full sm:max-w-md bg-gradient-to-b from-[#1E232B] to-[#14171C] border border-amber-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-amber-950/30 overflow-hidden max-h-[90dvh] flex flex-col">
+                <div className="h-1 w-full shrink-0 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
 
                 <div className="aw-modal-scroll-region p-4 sm:p-5 space-y-4 overflow-y-auto">
                     <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-md flex items-center justify-center border border-[#D8B36A]/40 bg-[#D8B36A]/12 text-[#D8B36A] shrink-0">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-amber-500/40 bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-400 shrink-0 shadow-inner">
                             <div className="w-4 h-4">
                                 {requestType === 'command' ? Icon.terminal :
                                  requestType === 'file' ? Icon.file :
@@ -99,28 +99,30 @@ export default function ApprovalModal({
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border border-[#D8B36A]/40 bg-[#D8B36A]/12 text-[#D8B36A]">
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/15 text-amber-300 shadow-xs">
                                     {requestType.replace('_', ' ')}
                                 </span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#D8B36A] shrink-0" />
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                             </div>
-                            <h2 className="text-sm font-semibold text-[#E8EAED] mt-1.5">{title}</h2>
+                            <h2 className="text-sm font-bold text-white mt-1.5 tracking-tight">{title}</h2>
                             {description && (
-                                <p className="text-xs text-[#A0A6AF] mt-1 leading-relaxed">{description}</p>
+                                <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">{description}</p>
                             )}
                         </div>
                     </div>
 
                     {target && (
-                        <div className="bg-[#101113] border border-[#30343A] rounded-md p-3 space-y-1.5">
-                            <p className="text-[10px] text-[#747C87] uppercase tracking-wider font-mono font-semibold">
-                                {isCommand ? 'Terminal Command' : 'Target Resource'}
-                            </p>
-                            <pre className="text-xs text-[#E8EAED] font-mono whitespace-pre-wrap break-all leading-relaxed max-h-36 overflow-y-auto">
+                        <div className="bg-[#0D1015]/90 border border-[#2B323F] rounded-xl p-3.5 space-y-1.5 shadow-inner">
+                            <div className="flex items-center justify-between">
+                                <p className="text-[10px] text-amber-400/90 uppercase tracking-wider font-mono font-semibold">
+                                    {isCommand ? 'Terminal Command' : 'Target Resource'}
+                                </p>
+                            </div>
+                            <pre className="text-xs text-amber-100 font-mono whitespace-pre-wrap break-all leading-relaxed max-h-36 overflow-y-auto">
                                 {isCommand ? `$ ${target}` : target}
                             </pre>
                             {(approval.cwd || approval.cwd_short) && (
-                                <p className="text-[10px] text-[#747C87] font-mono truncate">
+                                <p className="text-[10px] text-[#64748B] font-mono truncate">
                                     cwd: {approval.cwd || approval.cwd_short}
                                 </p>
                             )}
@@ -128,10 +130,10 @@ export default function ApprovalModal({
                     )}
 
                     {localDecision ? (
-                        <div className={`flex items-center gap-2 p-3 rounded-md border text-xs font-semibold ${
+                        <div className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs font-semibold ${
                             localDecision === 'deny'
-                                ? 'bg-[#D77E83]/12 border-[#D77E83]/40 text-[#D77E83]'
-                                : 'bg-[#79B89A]/12 border-[#79B89A]/40 text-[#79B89A]'
+                                ? 'bg-red-500/15 border-red-500/40 text-red-300 shadow-sm shadow-red-500/10'
+                                : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-sm shadow-emerald-500/10'
                         }`}>
                             <div className="w-4 h-4">{localDecision === 'deny' ? Icon.x : Icon.check}</div>
                             <span>
@@ -153,7 +155,7 @@ export default function ApprovalModal({
                                             type="button"
                                             onClick={() => handleDecide(optId, optLabel)}
                                             disabled={isSubmitting}
-                                            className={`flex-1 min-w-[90px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs transition cursor-pointer disabled:opacity-50 ${getButtonStyle(optId, optLabel)}`}
+                                            className={`flex-1 min-w-[90px] flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50 active:scale-[0.98] ${getButtonStyle(optId, optLabel)}`}
                                         >
                                             <div className="w-3.5 h-3.5 shrink-0">
                                                 {isDenyBtn ? Icon.x : Icon.check}
@@ -164,18 +166,18 @@ export default function ApprovalModal({
                                 })}
                             </div>
 
-                            <div className="pt-2 border-t border-[#262A30] space-y-2">
+                            <div className="pt-2 border-t border-[#2B323F] space-y-2">
                                 {!showCustomInput ? (
                                     <button
                                         type="button"
                                         onClick={() => setShowCustomInput(true)}
-                                        className="w-full py-2 px-3 rounded-md bg-[#1D2024] hover:bg-[#23272D] border border-[#30343A] text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] flex items-center justify-center gap-2 transition cursor-pointer"
+                                        className="w-full py-2.5 px-3.5 rounded-xl bg-[#1C2028] hover:bg-[#252B36] border border-[#3A4250] hover:border-amber-500/40 text-xs font-medium text-[#94A3B8] hover:text-white flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
                                     >
                                         <span>Deny with custom instructions...</span>
                                     </button>
                                 ) : (
-                                    <div className="space-y-2">
-                                        <label className="block text-[11px] font-semibold text-[#A0A6AF] uppercase tracking-wider">
+                                    <div className="space-y-2 bg-[#0D1015]/70 p-3 rounded-xl border border-[#2B323F]">
+                                        <label className="block text-[11px] font-semibold text-amber-400 uppercase tracking-wider">
                                             Alternative instructions for the agent
                                         </label>
                                         <textarea
@@ -190,13 +192,13 @@ export default function ApprovalModal({
                                             placeholder="Specify what command or approach the agent should use instead..."
                                             rows={2}
                                             autoFocus
-                                            className="w-full bg-[#101113] border border-[#30343A] focus:border-[#7C9FC5] rounded-md px-3 py-2 text-xs text-[#E8EAED] placeholder-[#747C87] outline-none resize-none"
+                                            className="w-full bg-[#14171C] border border-[#3A4250] focus:border-amber-400 focus:ring-1 focus:ring-amber-400/30 rounded-lg px-3 py-2 text-xs text-white placeholder-[#64748B] outline-none resize-none transition"
                                         />
                                         <div className="flex items-center justify-end gap-2">
                                             <button
                                                 type="button"
                                                 onClick={() => { setShowCustomInput(false); setCustomInstructions(''); }}
-                                                className="px-2.5 py-1.5 rounded text-xs text-[#A0A6AF] hover:text-[#E8EAED] transition cursor-pointer"
+                                                className="px-3 py-1.5 rounded-lg text-xs text-[#94A3B8] hover:text-white transition cursor-pointer"
                                             >
                                                 Cancel
                                             </button>
@@ -204,7 +206,7 @@ export default function ApprovalModal({
                                                 type="button"
                                                 disabled={!customInstructions.trim() || isSubmitting}
                                                 onClick={handleSendCustomDeny}
-                                                className="px-3 py-1.5 rounded bg-[#7C9FC5] hover:bg-[#8FB0D4] text-[#101113] text-xs font-semibold transition disabled:opacity-40 cursor-pointer"
+                                                className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-[#091512] text-xs font-bold transition disabled:opacity-40 cursor-pointer shadow-md shadow-amber-500/20"
                                             >
                                                 Send Instructions
                                             </button>

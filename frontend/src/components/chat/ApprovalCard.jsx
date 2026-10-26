@@ -33,14 +33,14 @@ export default function ApprovalCard({
     };
 
     return (
-        <div className="my-1.5 p-3 rounded-lg bg-[#101113] border border-[#D8B36A]/40 flex flex-col gap-2.5 font-sans">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="my-2 p-3.5 rounded-xl bg-gradient-to-b from-[#181C23] to-[#12151B] border border-amber-500/35 shadow-lg shadow-amber-950/20 flex flex-col gap-3 font-sans">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                 <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-[#D8B36A] text-xs flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-[#D8B36A] shrink-0" />
+                    <div className="font-bold text-amber-300 text-xs flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                         <span>{item.permission_title || 'Command Approval Required'}</span>
                     </div>
-                    <p className="text-[11px] text-[#A0A6AF] mt-0.5 font-mono break-all">
+                    <p className="text-[11px] text-[#94A3B8] mt-1 font-mono break-all leading-relaxed">
                         {item.command
                             ? `${item.cwd_short || '.../workspace'} > ${item.command}`
                             : (item.permission_desc || 'Allow the agent to proceed with this action.')}
@@ -59,12 +59,12 @@ export default function ApprovalCard({
                                     key={optId}
                                     type="button"
                                     onClick={() => onApprove(permType, target, optId, stepId, '', optLabel)}
-                                    className={`px-2.5 py-1 rounded font-medium text-[11px] transition cursor-pointer ${
+                                    className={`px-3 py-1.5 rounded-lg font-semibold text-[11px] transition cursor-pointer active:scale-[0.98] ${
                                         isDeny
-                                            ? 'bg-[#D77E83]/15 hover:bg-[#D77E83]/25 border border-[#D77E83]/40 text-[#D77E83]'
+                                            ? 'bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 shadow-sm'
                                             : isAlways
-                                                ? 'bg-[#1D2024] hover:bg-[#23272D] border border-[#30343A] text-[#E8EAED]'
-                                                : 'bg-[#79B89A] hover:opacity-90 text-[#101113] font-semibold'
+                                                ? 'bg-[#1C2028] hover:bg-[#252B36] border border-[#3A4250] hover:border-amber-400/40 text-[#E2E8F0] shadow-sm'
+                                                : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-[#091512] font-bold shadow-md shadow-emerald-500/20'
                                     }`}
                                 >
                                     {optLabel}
@@ -74,18 +74,18 @@ export default function ApprovalCard({
                         <button
                             type="button"
                             onClick={() => setShowCustom(v => !v)}
-                            className="px-2 py-1 rounded bg-[#17191C] hover:bg-[#1D2024] border border-[#30343A] text-[#A0A6AF] hover:text-[#E8EAED] font-medium text-[11px] transition cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-[#1C2028] hover:bg-[#252B36] border border-[#3A4250] hover:border-amber-400/30 text-[#94A3B8] hover:text-white font-medium text-[11px] transition cursor-pointer"
                         >
                             {showCustom ? 'Hide input' : 'Custom instructions...'}
                         </button>
                     </div>
                 ) : (
-                    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded shrink-0 border ${
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg shrink-0 border ${
                         effectiveDecision === 'deny'
-                            ? 'text-[#D77E83] bg-[#D77E83]/12 border-[#D77E83]/35'
-                            : 'text-[#79B89A] bg-[#79B89A]/12 border-[#79B89A]/35'
+                            ? 'text-rose-300 bg-rose-500/15 border-rose-500/40 shadow-sm shadow-rose-500/10'
+                            : 'text-emerald-300 bg-emerald-500/15 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
                     }`}>
-                        <div className="w-3 h-3">
+                        <div className="w-3.5 h-3.5">
                             {effectiveDecision === 'deny' ? Icon.x : Icon.check}
                         </div>
                         <span>
