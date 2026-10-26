@@ -245,55 +245,9 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
         }
     };
 
-    // 1. Minimized floating dock pill (on small screens it lives directly inside the input bottom toolbar; on desktop sm: it floats at bottom-right)
+    // 1. Minimized state: Handled directly and cleanly inside the PromptComposer input toolbar
     if (isMinimized) {
-        return (
-            <div
-                role="status"
-                aria-label="Minimized File Viewer"
-                className="hidden sm:flex fixed sm:bottom-6 sm:right-6 z-[60] items-center gap-2 px-3.5 py-2 bg-[#17191C]/95 backdrop-blur-md border border-[#30343A] rounded-xl shadow-2xl hover:border-[#7C9FC5]/60 transition-all select-none animate-in fade-in slide-in-from-bottom-2 duration-150 max-w-[380px]"
-            >
-                <div
-                    onClick={() => setIsMinimized(false)}
-                    className="flex items-center gap-2 cursor-pointer group min-w-0 flex-1"
-                    title={`Restore IDE File Viewer: ${activeTab?.filename || 'File'}`}
-                >
-                    <div className="w-4 h-4 shrink-0 text-[#7C9FC5]">
-                        <FileIcon path={activePath} className="w-4 h-4" />
-                    </div>
-                    <div className="flex items-center xs:flex-col xs:items-start text-left min-w-0 gap-2 xs:gap-0">
-                        <span className="text-xs font-mono font-medium text-[#E8EAED] group-hover:text-[#7C9FC5] transition truncate max-w-[130px] xs:max-w-[170px] sm:max-w-[220px]">
-                            {activeTab?.filename || 'File Viewer'}
-                        </span>
-                        <span className="text-[10px] font-mono text-[#747C87] flex items-center gap-1 shrink-0">
-                            <span className="px-1 rounded bg-[#23272D] text-[#A0A6AF] shrink-0">{tabs.length} tab{tabs.length > 1 ? 's' : ''}</span>
-                            <span className="hidden sm:inline">· Click to restore</span>
-                        </span>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-1 pl-1.5 border-l border-[#30343A] shrink-0">
-                    {/* Expand from shrinked pill to open window */}
-                    <button
-                        type="button"
-                        onClick={() => setIsMinimized(false)}
-                        title="Expand Window"
-                        className="p-1 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#23272D] transition cursor-pointer"
-                    >
-                        <div className="w-3.5 h-3.5">{Icon.maximize}</div>
-                    </button>
-                    {/* Close */}
-                    <button
-                        type="button"
-                        onClick={handleCloseAll}
-                        title="Close File Viewer"
-                        className="p-1 rounded text-[#A0A6AF] hover:text-rose-400 hover:bg-rose-950/40 transition cursor-pointer"
-                    >
-                        <div className="w-3.5 h-3.5">{Icon.x}</div>
-                    </button>
-                </div>
-            </div>
-        );
+        return null;
     }
 
     // 2. Normal Floating Window or Maximized Window
