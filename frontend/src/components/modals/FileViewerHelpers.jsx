@@ -2,6 +2,25 @@ import React from 'react';
 import MarkdownView from '../MarkdownView';
 import { sanitizeHtml } from '../../utils/sanitizer';
 
+export function classifyFileMedia(filePath = '', fileData = null) {
+  const ext = (filePath.split('.').pop() || '').toLowerCase();
+  const isImage =
+    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext) ||
+    fileData?.media_type === 'image';
+  const isVideo =
+    ['mp4', 'webm', 'mov', 'm4v', 'ogg'].includes(ext) || fileData?.media_type === 'video';
+  const isAudio =
+    ['mp3', 'wav', 'm4a', 'flac'].includes(ext) || fileData?.media_type === 'audio';
+  const isSvg = ext === 'svg';
+  const isMedia = isImage || isVideo || isAudio || Boolean(fileData?.is_media);
+  const isMarkdown = Boolean(
+    !isMedia &&
+      (filePath.endsWith('.md') || filePath.endsWith('.markdown') || fileData?.extension === 'md')
+  );
+  return { isImage, isVideo, isAudio, isSvg, isMedia, isMarkdown, canTogglePreview: isMarkdown || isSvg };
+}
+
+
 export function getMonacoLanguage(ext = '', filename = '') {
   const cleanExt = (ext || '').toLowerCase().replace(/^\./, '');
   const lowerName = (filename || '').toLowerCase();
