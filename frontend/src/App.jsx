@@ -4,19 +4,7 @@ import ChatStream from './components/chat/ChatStream';
 import PendingInteractionBanner from './components/chat/PendingInteractionBanner';
 import QueuedMessagesCard from './components/chat/QueuedMessagesCard';
 import { PromptComposer } from './components/PromptComposer';
-import { ActivityTimelineDrawer } from './components/ActivityTimelineDrawer';
-import { SystemLogsDrawer } from './components/SystemLogsDrawer';
-import { TaskManagerDrawer } from './components/TaskManagerDrawer';
-import { RecoveryCenterModal } from './components/RecoveryCenterModal';
-import { HistoryDrawer } from './components/HistoryDrawer';
-import { ReviewChangesModal } from './components/ReviewChangesModal';
-import ModelModal from './components/modals/ModelModal';
-import ModeModal from './components/modals/ModeModal';
-import LightboxModal from './components/modals/LightboxModal';
-import InteractionModal from './components/modals/InteractionModal';
-import ApprovalModal from './components/modals/ApprovalModal';
-import FileViewerModal from './components/modals/FileViewerModal';
-import FileTreeDrawer from './components/FileTreeDrawer';
+import { AppDrawersAndModals } from './components/AppDrawersAndModals';
 import ToastContainer from './components/ToastContainer';
 import { toast } from './services/toastService';
 import { useAgentWatch } from './hooks/useAgentWatch';
@@ -391,113 +379,66 @@ export default function App() {
         )}
       </main>
 
-      <ActivityTimelineDrawer
-        isOpen={timelineOpen}
-        onClose={() => setTimelineOpen(false)}
-        events={filteredTimelineEvents}
-        isLoading={isTimelineLoading}
-        activeCategory={timelineCategory}
-        onSelectCategory={setTimelineCategory}
-        searchQuery={timelineSearch}
-        onChangeSearch={setTimelineSearch}
-        onRefresh={fetchTimelineEvents}
-      />
-
-      <SystemLogsDrawer
-        isOpen={logsOpen}
-        onClose={() => setLogsOpen(false)}
-        logs={systemLogs}
-        isLoading={isLogsLoading}
-        onRefresh={fetchSystemLogs}
-        onOpenFile={handleOpenFile}
-      />
-      <TaskManagerDrawer isOpen={taskManagerOpen} onClose={() => setTaskManagerOpen(false)} />
-
-      <RecoveryCenterModal
-        isOpen={recoveryOpen}
-        onClose={() => setRecoveryOpen(false)}
+      <AppDrawersAndModals
+        timelineOpen={timelineOpen}
+        setTimelineOpen={setTimelineOpen}
+        filteredTimelineEvents={filteredTimelineEvents}
+        isTimelineLoading={isTimelineLoading}
+        timelineCategory={timelineCategory}
+        setTimelineCategory={setTimelineCategory}
+        timelineSearch={timelineSearch}
+        setTimelineSearch={setTimelineSearch}
+        fetchTimelineEvents={fetchTimelineEvents}
+        logsOpen={logsOpen}
+        setLogsOpen={setLogsOpen}
+        systemLogs={systemLogs}
+        isLogsLoading={isLogsLoading}
+        fetchSystemLogs={fetchSystemLogs}
+        taskManagerOpen={taskManagerOpen}
+        setTaskManagerOpen={setTaskManagerOpen}
+        recoveryOpen={recoveryOpen}
+        setRecoveryOpen={setRecoveryOpen}
         recoveryItems={recoveryItems}
         diagnostics={diagnostics}
-        isLoading={isRecoveryLoading}
-        onRefresh={fetchRecoveryItems}
-        onOpenInteraction={() => {
-          setRecoveryOpen(false);
-          setViewMode('chat');
-          handleReopenInteraction();
-        }}
-      />
-
-      <HistoryDrawer
-        isOpen={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        chats={historyChats}
-        isLoading={isHistoryLoading}
-        onSelectChat={title => {
-          setHistoryOpen(false);
-          toast.info(`Selected conversation: ${title}`, 'History');
-        }}
-      />
-
-      <ReviewChangesModal isOpen={reviewChangesOpen} onClose={() => setReviewChangesOpen(false)} />
-
-      <ModelModal
-        isOpen={activeModal === 'model'}
-        onClose={() => setActiveModal(null)}
-        currentModel={appState.model}
-        availableModels={appState.available_models}
-        onSelectModel={m => {
-          handleSetModel(m);
-          setActiveModal(null);
-        }}
-      />
-
-      <ModeModal
-        isOpen={activeModal === 'mode'}
-        onClose={() => setActiveModal(null)}
-        currentMode={appState.mode}
-        availableModes={appState.available_modes}
-        onSelectMode={m => {
-          handleSetMode(m);
-          setActiveModal(null);
-        }}
-      />
-
-      <LightboxModal
-        isOpen={lightboxOpen}
-        onClose={() => setLightboxOpen(false)}
-        screenshotUrl={snapshotData?.screenshot}
-      />
-
-      <InteractionModal
-        interaction={isInteractionMinimized ? null : pendingInteraction}
+        isRecoveryLoading={isRecoveryLoading}
+        fetchRecoveryItems={fetchRecoveryItems}
+        handleReopenInteraction={handleReopenInteraction}
+        setViewMode={setViewMode}
+        historyOpen={historyOpen}
+        setHistoryOpen={setHistoryOpen}
+        historyChats={historyChats}
+        isHistoryLoading={isHistoryLoading}
+        reviewChangesOpen={reviewChangesOpen}
+        setReviewChangesOpen={setReviewChangesOpen}
+        activeModal={activeModal}
+        setActiveModal={setActiveModal}
+        appState={appState}
+        handleSetModel={handleSetModel}
+        handleSetMode={handleSetMode}
+        lightboxOpen={lightboxOpen}
+        setLightboxOpen={setLightboxOpen}
+        snapshotData={snapshotData}
+        isInteractionMinimized={isInteractionMinimized}
+        pendingInteraction={pendingInteraction}
         selectedOptions={selectedOptions}
         customResponse={customResponse}
         isSubmitting={isSubmitting}
         submitSuccess={submitSuccess}
-        onToggleOption={handleToggleOption}
-        onChangeCustomResponse={setCustomResponse}
-        onSubmit={handleInteractionSubmit}
-        onDismiss={handleDismissInteraction}
-        onCancel={handleCancelInteraction}
-      />
-
-      <ApprovalModal
-        approval={isApprovalMinimized ? null : pendingApproval}
-        isSubmitting={isApprovaling}
-        onDecide={handleApproval}
-        onDismiss={handleDismissApproval}
-      />
-
-      <FileTreeDrawer
-        isOpen={fileTreeOpen}
-        onClose={() => setFileTreeOpen(false)}
-        onOpenFile={handleOpenFile}
-      />
-
-      <FileViewerModal
-        targetFile={activeFileViewer}
-        onClose={() => setActiveFileViewer(null)}
-        onToggleTreeDrawer={() => setFileTreeOpen(prev => !prev)}
+        handleToggleOption={handleToggleOption}
+        setCustomResponse={setCustomResponse}
+        handleInteractionSubmit={handleInteractionSubmit}
+        handleDismissInteraction={handleDismissInteraction}
+        handleCancelInteraction={handleCancelInteraction}
+        isApprovalMinimized={isApprovalMinimized}
+        pendingApproval={pendingApproval}
+        isApprovaling={isApprovaling}
+        handleApproval={handleApproval}
+        handleDismissApproval={handleDismissApproval}
+        fileTreeOpen={fileTreeOpen}
+        setFileTreeOpen={setFileTreeOpen}
+        handleOpenFile={handleOpenFile}
+        activeFileViewer={activeFileViewer}
+        setActiveFileViewer={setActiveFileViewer}
       />
     </div>
   );
