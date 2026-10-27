@@ -1,6 +1,7 @@
 """Event repository for MongoDB persistence and queries."""
 
 from typing import List, Optional, Dict, Any, Tuple
+from collections import deque
 from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError, PyMongoError
 from config.database import get_database
@@ -17,7 +18,7 @@ class EventRepository:
     def __init__(self, db=None):
         self._db = db if db is not None else get_database()
         self.collection: Collection = self._db.events
-        self._fallback_events: List[Dict[str, Any]] = []
+        self._fallback_events: deque = deque(maxlen=1000)
 
     def insert_event(self, event: EventDocument) -> Tuple[Optional[str], bool]:
         """

@@ -1,5 +1,6 @@
 import React from 'react';
 import MarkdownView from '../MarkdownView';
+import { sanitizeHtml } from '../../utils/sanitizer';
 
 export function getMonacoLanguage(ext = '', filename = '') {
   const cleanExt = (ext || '').toLowerCase().replace(/^\./, '');
@@ -195,9 +196,10 @@ export function MediaPreviewViewport({ isImage, isVideo, isAudio, fileData, file
               {(filePath.endsWith('.svg') || fileData?.extension === 'svg') && fileData?.content ? (
                 <div
                   className="p-4 rounded-md border border-[#30343A] bg-[#17191C] shadow-lg max-w-[85vw] max-h-[75dvh] flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-[65dvh] [&>svg]:w-auto [&>svg]:h-auto [&>svg]:min-w-[120px] [&>svg]:min-h-[120px]"
-                  dangerouslySetInnerHTML={{ __html: fileData.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(fileData.content) }}
                 />
               ) : (
+
                 <img
                   src={rawUrl}
                   alt={fileData?.filename || 'Image Preview'}

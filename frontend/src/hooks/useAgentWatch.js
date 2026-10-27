@@ -463,11 +463,28 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
 
   useEffect(() => {
     if (!isScreenActive) return;
-    // Immediate force refresh without stale hash comparison so screen appears instantly on tab switch
-    fetchSnapshot(true);
-    const timer = setInterval(() => fetchSnapshot(false), 1300);
-    return () => clearInterval(timer);
+    let isActive = true;
+    let timeoutId = null;
+
+    const pollLoop = async (force = false) => {
+      if (!isActive) return;
+      try {
+        await fetchSnapshot(force);
+      } finally {
+        if (isActive) {
+          timeoutId = setTimeout(() => pollLoop(false), 1400);
+        }
+      }
+    };
+
+    pollLoop(true);
+
+    return () => {
+      isActive = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [isScreenActive, fetchSnapshot]);
+
 
   useAgentSocket({
     isMountedRef,

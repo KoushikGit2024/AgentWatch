@@ -23,6 +23,7 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fetchLogFiles = async (preferredDate = null) => {
     setIsLoadingFiles(true);
@@ -60,15 +61,14 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
     }
   };
 
-  const handleDeleteLog = async () => {
+  const executeDeleteLog = async () => {
     if (!activeFileMeta) return;
-    const confirmMsg = `Are you sure you want to delete ${activeFileMeta.filename}?\n\nIf this is today's active file, its contents will be cleared/truncated safely.`;
-    if (!window.confirm(confirmMsg)) return;
 
     setIsDeleting(true);
     try {
       const res = await api.deleteLogFile(activeFileMeta.filename);
       toast.success(res.message || 'Log file deleted');
+      setShowDeleteConfirm(false);
       await fetchLogFiles();
     } catch (err) {
       toast.error(err.message || 'Failed to delete log file');
@@ -76,6 +76,12 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
       setIsDeleting(false);
     }
   };
+
+  const handleDeleteLog = () => {
+    if (!activeFileMeta) return;
+    setShowDeleteConfirm(true);
+  };
+
 
   useEffect(() => {
     fetchLogFiles();
@@ -265,6 +271,44 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
           <LogSearchExplorer analytics={analytics} />
         </>
       )}
+
+      {/* Confirmation Modal for Log File Deletion */}
+      {showDeleteConfirm && activeFileMeta && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#181d2a] border border-[#2d3548] rounded-xl p-5 max-w-sm w-full shadow-2xl text-center space-y-4">
+            <div className="w-10 h-10 rounded-full bg-rose-500/15 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/30">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-[#F1F3F5]">
+                Delete {activeFileMeta.filename}?
+              </h4>
+              <p className="text-xs text-[#828c9e] mt-1.5 leading-relaxed">
+                If this is today&apos;s active log file, its contents will be safely truncated. Older log files will be permanently deleted.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 py-1.5 px-3 rounded-lg bg-[#22283a] hover:bg-[#2b334a] text-xs font-medium text-[#A6AFBF] border border-[#31394d] transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeDeleteLog}
+                disabled={isDeleting}
+                className="flex-1 py-1.5 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-rose-900/30"
+              >
+                {isDeleting ? 'Deleting...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

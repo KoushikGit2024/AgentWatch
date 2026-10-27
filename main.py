@@ -30,7 +30,7 @@ from api.routes import (
     queue_routes,
     push,
 )
-from security.authentication import check_auth_required
+from security.authentication import check_auth_required, verify_session_token, is_local_request
 from services.log_buffer import attach_to_all_loggers, log_buffer_handler
 from services.conversation_service import conversation_service
 from services.interaction_service import interaction_service
@@ -378,15 +378,28 @@ app = FastAPI(
 # GZip response compression for low bandwidth usage over mobile/Tailscale
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
-# CORS Middleware
-origins = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+# CORS Configuration: Restrict wildcard origins when credentials are supported
+raw_origins = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+if "*" in raw_origins or not raw_origins:
+    origins = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://*.ts.net",
+    ]
+else:
+    origins = raw_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins if origins else ["*"],
+    allow_origins=origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|.*\.ts\.net)(:\d+)?",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
+
 
 # Include API Routers
 app.include_router(health.router)
@@ -427,23 +440,38 @@ async def auth_middleware(request: Request, call_next):
         "/openapi.json",
     ]
     path = request.url.path
-    if any(path.startswith(p) for p in public_paths) or path in (
-        "/sw.js",
-        "/manifest.json",
-        "/favicon.svg",
-        "/favicon.ico",
-        "/logo.svg",
-    ):
-        return await call_next(request)
+    async def _safe_call_next():
+        try:
+            return await call_next(request)
+        except (RuntimeError, ConnectionResetError, OSError) as exc:
+            err_text = str(exc).lower()
+            if "no response returned" in err_text or "connection closed" in err_text:
+                return JSONResponse(status_code=499, content={"detail": "Client closed connection"})
+            raise
 
-    if check_auth_required(request):
-        if not path.startswith("/api/"):
-            login_file = STATIC_DIR / "login.html"
-            if login_file.exists():
-                return FileResponse(str(login_file))
-        return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+    try:
+        if any(path.startswith(p) for p in public_paths) or path in (
+            "/sw.js",
+            "/manifest.json",
+            "/favicon.svg",
+            "/favicon.ico",
+            "/logo.svg",
+        ):
+            return await _safe_call_next()
 
-    return await call_next(request)
+        if check_auth_required(request):
+            if not path.startswith("/api/"):
+                login_file = STATIC_DIR / "login.html"
+                if login_file.exists():
+                    return FileResponse(str(login_file))
+            return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+
+        return await _safe_call_next()
+    except Exception as exc:
+        if exc.__class__.__name__ == "EndOfStream":
+            return JSONResponse(status_code=499, content={"detail": "Client stream closed"})
+        raise
+
 
 
 if STATIC_DIR.exists():
@@ -503,9 +531,36 @@ async def serve_index(request: Request):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """Real-time streaming WebSocket endpoint for conversation, status, and alerts."""
+    # Origin and Authentication verification (Cross-Site WebSocket Hijacking protection)
+    origin = websocket.headers.get("origin")
+    client_host = websocket.client.host if websocket.client else ""
+    is_local = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
+
+    if origin and not is_local:
+        # Check if origin matches localhost, 127.0.0.1, or Tailscale domain (.ts.net)
+        import re
+        is_allowed_origin = bool(
+            re.match(r"^https?://(localhost|127\.0\.0\.1|.*\.ts\.net)(:\d+)?$", origin)
+        )
+        if not is_allowed_origin:
+            logger.warning("Rejected WebSocket connection from unauthorized origin: %s", origin)
+            await websocket.close(code=1008)
+            return
+
+    # Check authentication if APP_PASSWORD configured and request is non-local
+    if settings.app_password and not is_local:
+        token = websocket.query_params.get("token")
+        cookie_token = websocket.cookies.get("cw_auth_token")
+        valid_auth = (token and verify_session_token(token)) or (cookie_token and verify_session_token(cookie_token))
+        if not valid_auth:
+            logger.warning("Rejected unauthenticated WebSocket connection from %s", client_host)
+            await websocket.close(code=1008)
+            return
+
     await websocket_manager.connect(websocket)
     try:
         paginated = conversation_service.get_paginated_conversation(limit=15)
+
         await websocket.send_json(
             {
                 "type": "init",

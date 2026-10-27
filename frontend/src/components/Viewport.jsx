@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeHtml } from '../utils/sanitizer';
 
 export function Viewport({ snapshotData, onStartNewChat, chatContainerRef }) {
   return (
@@ -9,9 +10,10 @@ export function Viewport({ snapshotData, onStartNewChat, chatContainerRef }) {
       {snapshotData && snapshotData.html ? (
         <div
           className="chat-content max-w-3xl mx-auto w-full space-y-3"
-          dangerouslySetInnerHTML={{ __html: snapshotData.html }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(snapshotData.html) }}
         />
       ) : (
+
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-3">
           <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 shadow-inner">
             <svg

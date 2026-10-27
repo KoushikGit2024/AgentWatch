@@ -108,6 +108,11 @@ class IdempotencyRepository:
                     return "completed", existing.get("response")
                 return "in_progress", None
 
+            # Enforce max 1000 items in in-memory fallback store to prevent memory leak
+            if len(self._fallback_store) >= 1000:
+                oldest_key = next(iter(self._fallback_store))
+                del self._fallback_store[oldest_key]
+
             self._fallback_store[composite_key] = record
             return "reserved", None
 

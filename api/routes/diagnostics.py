@@ -1,6 +1,6 @@
 """Operational Diagnostics Route."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from integrations.antigravity.adapter import antigravity_adapter
 
 router = APIRouter(tags=["Diagnostics"])
@@ -77,17 +77,26 @@ def get_system_processes(sort_by: str = "memory", limit: int = 15):
 
 
 @router.post("/api/v1/system/processes/terminate")
-def terminate_system_process(payload: TerminateProcessRequest):
+def terminate_system_process(payload: TerminateProcessRequest, request: Request):
     """
     Safely terminate selected process(es) by PID.
     Guarded against terminating core system processes or the active AgentWatch server PID.
+    Protected against Cross-Site Request Forgery (CSRF).
     """
+    # Verify origin / referer to prevent CSRF from unauthorized sites
+    origin = request.headers.get("origin") or request.headers.get("referer")
+    if origin:
+        import re
+        if not re.match(r"^https?://(localhost|127\.0\.0\.1|.*\.ts\.net)(:\d+)?", origin):
+            raise HTTPException(status_code=403, detail="Cross-origin process termination forbidden")
+
     from services.system_metrics_service import system_metrics_service
     from repositories.event_repository import EventRepository
     from models.schemas import EventDocument
     import datetime
 
     result = system_metrics_service.terminate_processes(payload.pids, payload.name)
+
 
     try:
         EventRepository().insert_event(

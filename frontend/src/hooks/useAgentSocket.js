@@ -32,7 +32,14 @@ export function useAgentSocket({
 
     const client = new WebSocketClient({
       onOpen: () => {
+        const wasDisconnected = !wsConnectedRef.current;
         wsConnectedRef.current = true;
+        if (wasDisconnected) {
+          fetchAppState();
+          fetchInteractions();
+          fetchPendingApprovals();
+          fetchChatMessages();
+        }
       },
       onClose: () => {
         wsConnectedRef.current = false;

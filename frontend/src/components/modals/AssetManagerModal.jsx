@@ -13,6 +13,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [totalBytes, setTotalBytes] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { type: 'single'|'batch', target?: string, count?: number }
 
   const fetchAttachments = useCallback(async () => {
     setIsLoading(true);
@@ -33,6 +34,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
     if (isOpen) {
       fetchAttachments();
       setSelectedIds(new Set());
+      setConfirmDelete(null);
     }
   }, [isOpen, fetchAttachments]);
 
@@ -55,9 +57,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
     }
   };
 
-  const handleDeleteSingle = async (filename, e) => {
-    e?.stopPropagation();
-    if (!confirm(`Delete ${filename}?`)) return;
+  const executeDeleteSingle = async filename => {
     try {
       await api.deleteAttachment(filename);
       toast.success(`Deleted ${filename}`, 'Asset Removed');
@@ -67,15 +67,20 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
         next.delete(filename);
         return next;
       });
+      setConfirmDelete(null);
     } catch (err) {
       toast.error(err.message || 'Failed to delete file', 'Delete Error');
     }
   };
 
-  const handleDeleteBatch = async () => {
+  const handleDeleteSingle = (filename, e) => {
+    e?.stopPropagation();
+    setConfirmDelete({ type: 'single', target: filename });
+  };
+
+  const executeDeleteBatch = async () => {
     const count = selectedIds.size;
     if (count === 0) return;
-    if (!confirm(`Permanently delete ${count} selected file${count > 1 ? 's' : ''}?`)) return;
 
     setIsDeleting(true);
     try {
@@ -87,6 +92,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
         );
         setAttachments(prev => prev.filter(a => !selectedIds.has(a.filename)));
         setSelectedIds(new Set());
+        setConfirmDelete(null);
       }
     } catch (err) {
       toast.error(err.message || 'Batch delete failed', 'Delete Error');
@@ -94,6 +100,13 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
       setIsDeleting(false);
     }
   };
+
+  const handleDeleteBatch = () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    setConfirmDelete({ type: 'batch', count });
+  };
+
 
   const handleAttachToPrompt = (att, e) => {
     e?.stopPropagation();
@@ -339,7 +352,53 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
             </div>
           )}
         </div>
+
+        {/* Custom Confirmation Modal for Deletion */}
+        {confirmDelete && (
+          <div className="absolute inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-[#181A1F] border border-[#2D3139] rounded-xl p-5 max-w-sm w-full shadow-2xl text-center space-y-4">
+              <div className="w-10 h-10 rounded-full bg-rose-500/10 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/20">
+                <div className="w-5 h-5">{Icon.trash}</div>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-zinc-100">
+                  {confirmDelete.type === 'batch'
+                    ? `Delete ${confirmDelete.count} selected files?`
+                    : 'Delete this asset?'}
+                </h4>
+                <p className="text-xs text-zinc-400 mt-1">
+                  {confirmDelete.type === 'batch'
+                    ? 'This will permanently remove the selected attachments from disk.'
+                    : `Permanently delete "${confirmDelete.target}"? This cannot be undone.`}
+                </p>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(null)}
+                  disabled={isDeleting}
+                  className="flex-1 py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-300 border border-zinc-700 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    confirmDelete.type === 'batch'
+                      ? executeDeleteBatch()
+                      : executeDeleteSingle(confirmDelete.target)
+                  }
+                  disabled={isDeleting}
+                  className="flex-1 py-1.5 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-rose-900/30"
+                >
+                  {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

@@ -32,12 +32,30 @@ const request = async (url, options = {}) => {
     ...getAuthHeaders(),
     ...(options.headers || {}),
   };
+
+  // Provide a generous 15-second default timeout to prevent indefinite UI hangs while accommodating slower disk / git operations
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(new Error('Request timed out after 15 seconds')), options.timeoutMs || 15000)
+    : null;
+
   let res;
   try {
-    res = await fetch(url, { ...options, headers });
+    const fetchOptions = {
+      ...options,
+      headers,
+      signal: options.signal || (controller ? controller.signal : undefined),
+    };
+    res = await fetch(url, fetchOptions);
   } catch (networkErr) {
+    if (networkErr.name === 'AbortError') {
+      throw new Error(`Request timed out: ${url}`);
+    }
     throw new Error(`Network connection error: ${networkErr.message || 'Server unreachable'}`);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
+
 
   if (res.status === 401) {
     handleAuthFailure(res.status);
@@ -364,4 +382,44 @@ export const api = {
     });
     return res.json();
   },
+
+  async getGitReview() {
+    const res = await request('/api/v1/git/review');
+    return res.json();
+  },
+
+  async getVapidPublicKey() {
+    const res = await request('/api/v1/push/vapid-public-key');
+    return res.json();
+  },
+
+  async subscribePush(subscriptionPayload) {
+    const res = await request('/api/v1/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscriptionPayload),
+    });
+    return res.json();
+  },
+
+  async unsubscribePush(endpoint) {
+    const res = await request('/api/v1/push/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint }),
+    });
+    return res.json();
+  },
+
+  async sendTestPush(payload = {}) {
+    const res = await request('/api/v1/push/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  },
 };
+
+export { request };
+

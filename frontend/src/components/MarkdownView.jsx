@@ -3,6 +3,7 @@ import { marked } from 'marked';
 import { toast } from '../services/toastService';
 import { getFileInfo, getFileSvgHtml } from '../constants/fileIcons';
 import { isValidFilePath, parseFileLink } from '../utils/fileLinkParser';
+import { sanitizeHtml } from '../utils/sanitizer';
 
 // Escape HTML utility for code blocks
 function escapeHtml(str) {
@@ -145,11 +146,13 @@ export default function MarkdownView({ content, onOpenFile }) {
   const html = useMemo(() => {
     if (!content) return '';
     try {
-      return marked.parse(content);
+      const parsed = marked.parse(content);
+      return sanitizeHtml(parsed);
     } catch {
       return escapeHtml(content);
     }
   }, [content]);
+
 
   const handleClick = useCallback(
     e => {

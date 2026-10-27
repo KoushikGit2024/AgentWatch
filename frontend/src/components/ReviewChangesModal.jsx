@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from '../services/toastService';
 import { FileIcon } from '../constants/fileIcons';
 import { Icon } from '../constants/icons';
+import { api } from '../services/api';
 
 export function ReviewChangesModal({ isOpen, onClose }) {
   const [reviewData, setReviewData] = useState(null);
@@ -12,16 +13,9 @@ export function ReviewChangesModal({ isOpen, onClose }) {
   const fetchReview = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/v1/git/review', {
-        headers: { 'ngrok-skip-browser-warning': 'true' },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setReviewData(data);
-        setSelectedFile(null);
-      } else {
-        toast.error(`Unable to inspect changes (HTTP ${res.status})`, 'Git Review Error');
-      }
+      const data = await api.getGitReview();
+      setReviewData(data);
+      setSelectedFile(null);
     } catch (err) {
       toast.error(err.message || 'Failed to connect to git review endpoint', 'Network Error');
     } finally {

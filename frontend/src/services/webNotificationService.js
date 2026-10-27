@@ -3,7 +3,7 @@
  * Manages ServiceWorker registration, VAPID push subscriptions, and push test requests.
  */
 
-import { getAuthToken } from './api';
+import { getAuthToken, api } from './api';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -64,14 +64,11 @@ class WebNotificationService {
       throw new Error('Could not register notification service worker.');
     }
 
-    // Fetch VAPID public key from backend
-    const token = getAuthToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const keyRes = await fetch('/api/v1/push/vapid-public-key', { headers });
-    if (!keyRes.ok) {
+    // Fetch VAPID public key from backend via api service
+    const { publicKey } = await api.getVapidPublicKey();
+    if (!publicKey) {
       throw new Error('Failed to retrieve VAPID key from AgentWatch backend.');
     }
-    const { publicKey } = await keyRes.json();
 
     const convertedKey = urlBase64ToUint8Array(publicKey);
 
@@ -104,19 +101,8 @@ class WebNotificationService {
       };
     }
 
-    // Send subscription to backend
-    const subRes = await fetch('/api/v1/push/subscribe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
-      body: JSON.stringify(subscription.toJSON()),
-    });
-
-    if (!subRes.ok) {
-      throw new Error('Failed to save push subscription on backend.');
-    }
+    // Send subscription to backend via api service
+    await api.subscribePush(subscription.toJSON());
 
     return subscription;
   }
@@ -129,16 +115,7 @@ class WebNotificationService {
     await sub.unsubscribe();
 
     try {
-      const token = getAuthToken();
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await fetch('/api/v1/push/unsubscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
-        body: JSON.stringify({ endpoint }),
-      });
+      await api.unsubscribePush(endpoint);
     } catch (e) {
       console.warn('[NotificationService] Failed to notify backend of unsubscribe:', e);
     }
@@ -158,22 +135,12 @@ class WebNotificationService {
       }
     }
 
-    const token = getAuthToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch('/api/v1/push/test', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
-      body: JSON.stringify({
-        title: 'AgentWatch Notification',
-        body: 'Web push is working on this device even with the browser closed!',
-      }),
+    return await api.sendTestPush({
+      title: 'AgentWatch Notification',
+      body: 'Web push is working on this device even with the browser closed!',
     });
-    if (!res.ok) throw new Error('Test notification failed.');
-    return await res.json();
   }
 }
 
 export const webNotificationService = new WebNotificationService();
+
