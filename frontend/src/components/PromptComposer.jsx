@@ -6,7 +6,8 @@ import AttachmentPreview from './chat/AttachmentPreview';
 import WorkbenchBar from './composer/WorkbenchBar';
 import AttachmentLightbox from './composer/AttachmentLightbox';
 import AssetManagerModal from './modals/AssetManagerModal';
-import { FileIcon } from '../constants/fileIcons';
+import { useComposerAttachments } from './composer/useComposerAttachments';
+import { MinimizedViewerBadge } from './composer/MinimizedViewerBadge';
 
 export function PromptComposer({
   promptText,
@@ -22,10 +23,21 @@ export function PromptComposer({
   onStop,
   onQueue,
 }) {
-  const [attachments, setAttachments] = useState([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [previewItem, setPreviewItem] = useState(null);
+  const {
+    attachments,
+    setAttachments,
+    isUploading,
+    isDragging,
+    previewItem,
+    setPreviewItem,
+    imageInputRef,
+    fileInputRef,
+    handleUploadFiles,
+    handlePaste,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useComposerAttachments();
   const [isAssetManagerOpen, setIsAssetManagerOpen] = useState(false);
   const [minimizedViewerStatus, setMinimizedViewerStatus] = useState(null);
 
@@ -34,9 +46,6 @@ export function PromptComposer({
   const [isLoadingArtifacts, setIsLoadingArtifacts] = useState(false);
   const [ideTerminalTasks, setIdeTerminalTasks] = useState([]);
   const [isLoadingTerminal, setIsLoadingTerminal] = useState(false);
-
-  const imageInputRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const onViewerStatus = e => {
@@ -128,77 +137,6 @@ export function PromptComposer({
     }
   };
 
-  const handleUploadFiles = async fileList => {
-    if (!fileList || fileList.length === 0) return;
-    const filesArray = Array.from(fileList);
-    if (attachments.length + filesArray.length > 8) {
-      toast.warning('Maximum 8 attachments allowed per prompt', 'Upload Limit');
-      return;
-    }
-
-    const optimisticItems = filesArray.map((f, i) => {
-      const isImg = f.type.startsWith('image/') || f.name.match(/\.(png|jpe?g|webp|gif|svg)$/i);
-      return {
-        id: `opt_${Date.now()}_${i}`,
-        original_name: f.name,
-        filename: f.name,
-        size: f.size,
-        is_image: isImg,
-        previewUrl: isImg ? URL.createObjectURL(f) : null,
-        isPending: true,
-      };
-    });
-
-    setAttachments(prev => [...prev, ...optimisticItems]);
-    setIsUploading(true);
-
-    try {
-      const res = await api.uploadAttachments(filesArray);
-      if (res && res.attachments) {
-        const uploaded = res.attachments;
-        setAttachments(prev => {
-          const nonPending = prev.filter(p => !optimisticItems.some(o => o.id === p.id));
-          return [...nonPending, ...uploaded];
-        });
-        toast.success(
-          `Attached ${uploaded.length} file${uploaded.length > 1 ? 's' : ''}`,
-          'Attachment Uploaded'
-        );
-      }
-    } catch (err) {
-      setAttachments(prev => prev.filter(p => !optimisticItems.some(o => o.id === p.id)));
-      toast.error(err.message || 'Failed to upload attachments', 'Upload Error');
-    } finally {
-      setIsUploading(false);
-      if (imageInputRef.current) imageInputRef.current.value = '';
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handlePaste = e => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const filesToUpload = [];
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].kind === 'file') {
-        const file = items[i].getAsFile();
-        if (file) {
-          let fileName = file.name;
-          if (!fileName || fileName === 'image.png' || fileName === 'blob') {
-            const now = new Date();
-            const timeStr = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-            fileName = `Pasted_Image_${timeStr}.png`;
-          }
-          filesToUpload.push(new File([file], fileName, { type: file.type || 'image/png' }));
-        }
-      }
-    }
-    if (filesToUpload.length > 0) {
-      e.preventDefault();
-      handleUploadFiles(filesToUpload);
-    }
-  };
-
   const readyAttachments = attachments.filter(a => !a.isPending);
   const canSend =
     (Boolean(promptText && promptText.trim()) || readyAttachments.length > 0) &&
@@ -236,22 +174,9 @@ export function PromptComposer({
         />
 
         <div
-          onDragOver={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragging(true);
-          }}
-          onDragLeave={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragging(false);
-          }}
-          onDrop={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragging(false);
-            if (e.dataTransfer?.files?.length > 0) handleUploadFiles(e.dataTransfer.files);
-          }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           className={`rounded-lg bg-[#101113] border p-2.5 sm:p-3 transition-all relative ${
             isDragging
               ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/30'
@@ -364,51 +289,7 @@ export function PromptComposer({
               </button>
 
               {/* Distinguishable Minimized File Viewer Button in Toolbar */}
-              {minimizedViewerStatus?.isMinimized && minimizedViewerStatus?.hasTabs && (
-                <div className="inline-flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-md bg-[#7C9FC5]/15 border border-[#7C9FC5]/40 text-[#7C9FC5] hover:bg-[#7C9FC5]/25 transition-all shadow-xs animate-in fade-in duration-150">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      window.dispatchEvent(new CustomEvent('agentwatch:file-viewer-restore'))
-                    }
-                    title={`Restore File Viewer: ${minimizedViewerStatus.activeTab?.filename || 'File'}`}
-                    className="aw-focus-ring flex items-center gap-1.5 cursor-pointer max-w-[120px] xs:max-w-[160px]"
-                  >
-                    <div className="w-3.5 h-3.5 shrink-0 text-[#7C9FC5]">
-                      <FileIcon
-                        path={minimizedViewerStatus.activeTab?.path || ''}
-                        className="w-3.5 h-3.5"
-                      />
-                    </div>
-                    <span className="text-[11px] font-mono font-medium text-[#E8EAED] truncate">
-                      {minimizedViewerStatus.activeTab?.filename || 'File Viewer'}
-                    </span>
-                    <span className="text-[9px] px-1 rounded bg-[#7C9FC5]/20 text-[#7C9FC5] font-mono shrink-0">
-                      {minimizedViewerStatus.tabsCount}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      window.dispatchEvent(new CustomEvent('agentwatch:file-viewer-restore'))
-                    }
-                    title="Expand Window"
-                    className="p-0.5 rounded hover:bg-[#7C9FC5]/30 text-[#A0A6AF] hover:text-[#E8EAED] transition cursor-pointer"
-                  >
-                    <div className="w-3 h-3">{Icon.maximize}</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      window.dispatchEvent(new CustomEvent('agentwatch:file-viewer-close'))
-                    }
-                    title="Close File Viewer"
-                    className="p-0.5 rounded hover:bg-rose-500/30 text-[#A0A6AF] hover:text-rose-300 transition cursor-pointer"
-                  >
-                    <div className="w-3 h-3">{Icon.x}</div>
-                  </button>
-                </div>
-              )}
+              <MinimizedViewerBadge status={minimizedViewerStatus} />
 
               {isUploading && (
                 <span className="inline-flex items-center gap-1.5 text-[10px] text-blue-400 font-mono">
