@@ -376,7 +376,7 @@ class AntigravityAdapter:
             self._current_mode = mode
         return success
 
-    async def send_prompt(self, message: str) -> bool:
+    async def send_prompt(self, message: str) -> Dict[str, Any]:
         """Deliver user prompt directly into Antigravity input."""
         target_ws = self.active_chat_url or self.active_target_url
         if not target_ws:
@@ -384,11 +384,23 @@ class AntigravityAdapter:
             target_ws = self.active_chat_url or self.active_target_url
 
         if not target_ws:
-            return False
+            return {"success": False, "error": "Antigravity CDP not connected"}
         from integrations.antigravity.cdp_actions import dispatch_send_prompt
 
-        res = await dispatch_send_prompt(target_ws, message)
-        return bool(res.get("success", False))
+        return await dispatch_send_prompt(target_ws, message)
+
+    async def stop_generation(self) -> Dict[str, Any]:
+        """Dispatch stop signal to active Antigravity session."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
+            self.discover_cdp()
+            target_ws = self.active_chat_url or self.active_target_url
+
+        if not target_ws:
+            return {"success": False, "error": "Antigravity CDP not connected"}
+        from integrations.antigravity.cdp_actions import dispatch_stop_generation
+
+        return await dispatch_stop_generation(target_ws)
 
     async def inspect_active_popup(self) -> Dict[str, Any]:
         """Inspect visible popups or decision requests."""

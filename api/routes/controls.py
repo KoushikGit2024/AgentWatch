@@ -386,7 +386,16 @@ async def send_message(payload: PromptSubmissionRequest):
         if cdp_connected:
             dispatch_res = await antigravity_adapter.send_prompt(prompt_msg)
 
-    dispatched = dispatch_res.get("success", False)
+    if isinstance(dispatch_res, bool):
+        dispatched = dispatch_res
+        dispatch_details = {"success": dispatch_res}
+    elif isinstance(dispatch_res, dict):
+        dispatched = bool(dispatch_res.get("success", False))
+        dispatch_details = dispatch_res
+    else:
+        dispatched = bool(dispatch_res)
+        dispatch_details = {"success": dispatched}
+
     response = {
         "status": "submitted"
         if dispatched
@@ -398,11 +407,13 @@ async def send_message(payload: PromptSubmissionRequest):
         "attachments": payload.attachments or [],
         "target_session_id": payload.session_id,
         "confirmed_execution": dispatched,
-        "dispatch_details": dispatch_res,
+        "dispatch_details": dispatch_details,
         "reason": None
         if dispatched
-        else dispatch_res.get(
-            "error", "Antigravity CDP is not currently connected on remote debugging port"
+        else (
+            dispatch_details.get("error", "Antigravity CDP is not currently connected on remote debugging port")
+            if isinstance(dispatch_details, dict)
+            else "Antigravity CDP is not currently connected on remote debugging port"
         ),
     }
 
