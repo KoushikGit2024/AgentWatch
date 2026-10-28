@@ -121,6 +121,7 @@ async def watch_transcript_loop():
     last_size = 0
     last_approval_key = None
     last_interaction_id = None
+    last_conversation_id = None
     dom_probe_tick = 0
     cached_dom_approval = None
     dom_miss_count = 0
@@ -130,13 +131,24 @@ async def watch_transcript_loop():
 
     while True:
         try:
-            p = conversation_service.get_latest_transcript_path()
+            ag_status = antigravity_adapter.get_status()
+            current_cid = ag_status.get("active_conversation_id")
+            chat_switched = False
+            if current_cid and current_cid != last_conversation_id:
+                last_conversation_id = current_cid
+                last_mtime = 0.0
+                last_size = 0
+                chat_switched = True
+                conversation_service._cached_key = None
+                conversation_service._cached_turns = []
+
+            p = conversation_service.get_latest_transcript_path(conversation_id=current_cid)
             transcript_changed = False
             if p and p.exists():
                 stat = p.stat()
                 mtime = stat.st_mtime
                 size = stat.st_size
-                if mtime != last_mtime or size != last_size:
+                if mtime != last_mtime or size != last_size or chat_switched:
                     last_mtime = mtime
                     last_size = size
                     transcript_changed = True

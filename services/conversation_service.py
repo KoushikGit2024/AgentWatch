@@ -17,7 +17,11 @@ class ConversationService:
     """
 
     def __init__(self):
-        self.brain_base = Path.home() / ".gemini" / "antigravity-ide" / "brain"
+        self.brain_bases = [
+            Path.home() / ".gemini" / "antigravity" / "brain",
+            Path.home() / ".gemini" / "antigravity-ide" / "brain",
+        ]
+        self.brain_base = self.brain_bases[0]
         self._stopped_active: bool = False
         self._resolved_approvals: Dict[str, str] = {}
         self._latest_pending_approval: Optional[Dict[str, Any]] = None
@@ -52,19 +56,32 @@ class ConversationService:
         """Return currently active command/tool approval extracted from transcript, if any."""
         return self._latest_pending_approval
 
-    def get_latest_transcript_path(self) -> Optional[Path]:
+    def get_latest_transcript_path(self, conversation_id: Optional[str] = None) -> Optional[Path]:
         """Find the active conversation's transcript file based on recent modification time.
         Prefers transcript_full.jsonl to ensure full, untruncated messages are parsed.
+        Checks all known brain directories (~/.gemini/antigravity and ~/.gemini/antigravity-ide).
         """
         try:
-            if not self.brain_base.exists():
-                return None
-            transcripts = list(self.brain_base.glob("*/.system_generated/logs/transcript*.jsonl"))
+            bases = getattr(self, "brain_bases", [self.brain_base])
+            if conversation_id:
+                for base in bases:
+                    cand = base / conversation_id / ".system_generated" / "logs" / "transcript_full.jsonl"
+                    if cand.exists() and cand.stat().st_size > 0:
+                        return cand
+                    cand_compat = base / conversation_id / ".system_generated" / "logs" / "transcript.jsonl"
+                    if cand_compat.exists() and cand_compat.stat().st_size > 0:
+                        return cand_compat
+
+            transcripts = []
+            for base in bases:
+                if base.exists():
+                    transcripts.extend(list(base.glob("*/.system_generated/logs/transcript*.jsonl")))
+
             if not transcripts:
                 return None
+
             transcripts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
             candidate = transcripts[0]
-            # If transcript.jsonl was picked, check if sibling transcript_full.jsonl exists with full content
             if candidate.name == "transcript.jsonl":
                 full_sibling = candidate.parent / "transcript_full.jsonl"
                 if full_sibling.exists() and full_sibling.stat().st_size > 0:
@@ -138,9 +155,16 @@ class ConversationService:
                     )
         return normalized
 
-    def _parse_all_turns(self) -> List[Dict[str, Any]]:
+    def _parse_all_turns(self, conversation_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Parse and cache all turns from the active transcript file."""
-        transcript_path = self.get_latest_transcript_path()
+        if not conversation_id:
+            try:
+                from integrations.antigravity.adapter import antigravity_adapter
+                ag_st = antigravity_adapter.get_status()
+                conversation_id = ag_st.get("active_conversation_id")
+            except Exception:
+                pass
+        transcript_path = self.get_latest_transcript_path(conversation_id=conversation_id)
         if not transcript_path or not transcript_path.exists():
             self._latest_pending_approval = None
             self._cached_key = None

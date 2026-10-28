@@ -4,6 +4,7 @@ import { toast } from '../services/toastService';
 import { useAgentAuxData } from './useAgentAuxData';
 import { useAgentSocket } from './useAgentSocket';
 import { useAgentInteractions } from './useAgentInteractions';
+import { useAgentControls } from './useAgentControls';
 import { mergeTurnsPreservingHistory } from '../utils/turnMerger';
 
 const PAGE_BLOCK_SIZE = 15;
@@ -31,16 +32,23 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
   const lastSnapshotHashRef = useRef(null);
   const oldestTurnIndexRef = useRef(null);
   const isLoadingOlderRef = useRef(false);
+  const activeConvIdRef = useRef(null);
 
-  const fetchChatMessages = useCallback(async () => {
+  const fetchChatMessages = useCallback(async (reset = false) => {
     try {
       const data = await api.getChatMessages(PAGE_BLOCK_SIZE);
       if (isMountedRef.current) {
         const incoming = data.messages || [];
-        setChatMessages(prev => mergeTurnsPreservingHistory(prev, incoming));
-        if (oldestTurnIndexRef.current === null && typeof data.oldest_index === 'number') {
-          oldestTurnIndexRef.current = data.oldest_index;
+        if (reset) {
+          setChatMessages(incoming);
+          oldestTurnIndexRef.current = typeof data.oldest_index === 'number' ? data.oldest_index : null;
           setHasMoreHistory(Boolean(data.has_more));
+        } else {
+          setChatMessages(prev => mergeTurnsPreservingHistory(prev, incoming));
+          if (oldestTurnIndexRef.current === null && typeof data.oldest_index === 'number') {
+            oldestTurnIndexRef.current = data.oldest_index;
+            setHasMoreHistory(Boolean(data.has_more));
+          }
         }
         setIsChatLoading(false);
       }
@@ -93,6 +101,14 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
           ...data,
           connected: Boolean(data.connected ?? data.antigravity_connected),
         });
+        const incomingCid = data.active_conversation_id;
+        if (incomingCid && activeConvIdRef.current && activeConvIdRef.current !== incomingCid) {
+          activeConvIdRef.current = incomingCid;
+          oldestTurnIndexRef.current = null;
+          fetchChatMessages(true);
+        } else if (incomingCid && !activeConvIdRef.current) {
+          activeConvIdRef.current = incomingCid;
+        }
       }
     } catch {}
   }, []);
@@ -268,53 +284,13 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
 
 
 
-  const handleSetModel = useCallback(
-    async model => {
-      try {
-        await api.setModel(model);
-        setAppState(prev => ({ ...prev, model }));
-        toast.success(`Switched active plan model to ${model}`, 'Model Updated');
-        await fetchAppState();
-      } catch (err) {
-        toast.error(err.message || 'Failed to switch model', 'Model Switch Failed');
-      }
-    },
-    [fetchAppState]
-  );
-
-  const handleSetMode = useCallback(
-    async mode => {
-      try {
-        await api.setMode(mode);
-        setAppState(prev => ({ ...prev, mode }));
-        toast.success(`Switched execution mode to ${mode}`, 'Mode Updated');
-        await fetchAppState();
-      } catch (err) {
-        toast.error(err.message || 'Failed to switch mode', 'Mode Switch Failed');
-      }
-    },
-    [fetchAppState]
-  );
-
-  const handleStopAgent = useCallback(async () => {
-    setChatMessages(prev => {
-      if (!prev.length) return prev;
-      const updated = [...prev];
-      const last = { ...updated[updated.length - 1] };
-      if (last.role === 'agent') {
-        last.is_working = false;
-        updated[updated.length - 1] = last;
-      }
-      return updated;
-    });
-    try {
-      await api.stopAgent();
-      toast.info('Emergency stop signal sent to Antigravity session.', 'Agent Stopped');
-      setTimeout(fetchChatMessages, 400);
-    } catch (err) {
-      toast.error(err.message || 'Failed to stop agent', 'Stop Request Failed');
-    }
-  }, [fetchChatMessages]);
+  const { handleSetModel, handleSetMode, handleStopAgent } = useAgentControls({
+    setAppState,
+    setChatMessages,
+    fetchAppState,
+    fetchChatMessages,
+    isMountedRef,
+  });
 
   useEffect(() => {
     if (!isScreenActive) return;

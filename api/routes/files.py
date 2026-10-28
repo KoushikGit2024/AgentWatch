@@ -48,12 +48,17 @@ def _resolve_target_path(clean_path: str) -> Path:
             target = fallback
         else:
             basename = Path(clean_path).name
-            brain_base = Path.home() / ".gemini" / "antigravity-ide" / "brain"
-            if brain_base.exists():
-                brain_candidates = list(brain_base.glob(f"**/{basename}"))
-                if brain_candidates:
-                    brain_candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-                    target = brain_candidates[0]
+            brain_bases = [
+                Path.home() / ".gemini" / "antigravity" / "brain",
+                Path.home() / ".gemini" / "antigravity-ide" / "brain",
+            ]
+            brain_candidates = []
+            for b in brain_bases:
+                if b.exists():
+                    brain_candidates.extend(list(b.glob(f"**/{basename}")))
+            if brain_candidates:
+                brain_candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                target = brain_candidates[0]
 
             if not target.exists():
                 candidates = list(repo_root.glob(f"**/{basename}"))
@@ -331,12 +336,15 @@ def get_artifacts():
     List all generated artifacts (markdown documents, diagrams, design specs, media)
     from the active conversation directory in ~/.gemini/antigravity-ide/brain.
     """
-    brain_base = Path.home() / ".gemini" / "antigravity-ide" / "brain"
-    if not brain_base.exists():
-        return {"artifacts": [], "total": 0}
+    brain_bases = [
+        Path.home() / ".gemini" / "antigravity" / "brain",
+        Path.home() / ".gemini" / "antigravity-ide" / "brain",
+    ]
+    transcripts = []
+    for b in brain_bases:
+        if b.exists():
+            transcripts.extend(list(b.glob("*/.system_generated/logs/transcript*.jsonl")))
 
-    # Find the most recently active session directory
-    transcripts = list(brain_base.glob("*/.system_generated/logs/transcript.jsonl"))
     if not transcripts:
         return {"artifacts": [], "total": 0}
 
