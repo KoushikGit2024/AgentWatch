@@ -29,6 +29,8 @@ from api.routes import (
     files,
     queue_routes,
     push,
+    tasks,
+    messages,
 )
 from security.authentication import check_auth_required, verify_session_token, is_local_request
 from services.log_buffer import attach_to_all_loggers, log_buffer_handler
@@ -426,6 +428,8 @@ app.include_router(attachments.router)
 app.include_router(files.router)
 app.include_router(queue_routes.router)
 app.include_router(push.router)
+app.include_router(tasks.router)
+app.include_router(messages.router)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
