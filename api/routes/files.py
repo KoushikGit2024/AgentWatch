@@ -331,109 +331,12 @@ def get_project_file_tree(
 
 
 @router.get("/api/v1/artifacts")
-def get_artifacts():
+def get_artifacts(conversation_id: Optional[str] = Query(None, description="Optional target conversation ID")):
     """
-    List all generated artifacts (markdown documents, diagrams, design specs, media)
-    from the active conversation directory in ~/.gemini/antigravity-ide/brain.
+    List all generated artifacts from the active or specified conversation directory.
     """
-    brain_bases = [
-        Path.home() / ".gemini" / "antigravity" / "brain",
-        Path.home() / ".gemini" / "antigravity-ide" / "brain",
-    ]
-    transcripts = []
-    for b in brain_bases:
-        if b.exists():
-            transcripts.extend(list(b.glob("*/.system_generated/logs/transcript*.jsonl")))
-
-    if not transcripts:
-        return {"artifacts": [], "total": 0}
-
-    transcripts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    active_session_dir = transcripts[0].parent.parent.parent
-
-    artifacts = []
-    # 1. Look for user-facing markdown artifacts (.md) and companion .metadata.json in session root
-    try:
-        import json
-
-        for md_file in active_session_dir.glob("*.md"):
-            try:
-                st = md_file.stat()
-                meta_file = active_session_dir / f"{md_file.name}.metadata.json"
-                meta_info = {}
-                if meta_file.exists():
-                    try:
-                        meta_info = json.loads(meta_file.read_text(encoding="utf-8"))
-                    except Exception:
-                        pass
-
-                artifacts.append(
-                    {
-                        "id": md_file.stem,
-                        "title": md_file.name.replace("_", " ").replace(".md", "").title(),
-                        "filename": md_file.name,
-                        "path": str(md_file).replace("\\", "/"),
-                        "type": "markdown",
-                        "summary": meta_info.get("summary", ""),
-                        "size_bytes": st.st_size,
-                        "mtime": st.st_mtime,
-                    }
-                )
-            except Exception:
-                continue
-    except Exception:
-        pass
-
-    # 2. Look for media artifacts (.png, .jpg, .jpeg, .webp, .gif, .svg, .mp4, .webm, .mov) in .tempmediaStorage or session root
-    try:
-        media_dirs = [active_session_dir / ".tempmediaStorage", active_session_dir]
-        image_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
-        video_exts = {".mp4", ".webm", ".mov"}
-        all_exts = image_exts | video_exts
-        seen_paths = {a["path"] for a in artifacts}
-
-        for mdir in media_dirs:
-            if not mdir.exists():
-                continue
-            for file_path in mdir.iterdir():
-                if not file_path.is_file():
-                    continue
-                ext = file_path.suffix.lower()
-                normalized_path = str(file_path).replace("\\", "/")
-                if ext in all_exts and normalized_path not in seen_paths:
-                    try:
-                        st = file_path.stat()
-                        is_video = ext in video_exts
-                        artifact_type = "video" if is_video else "image"
-                        size_kb = round(st.st_size / 1024, 1)
-                        summary_label = (
-                            f"Video artifact ({size_kb} KB)"
-                            if is_video
-                            else f"Image artifact ({size_kb} KB)"
-                        )
-
-                        artifacts.append(
-                            {
-                                "id": file_path.stem,
-                                "title": file_path.name,
-                                "filename": file_path.name,
-                                "path": normalized_path,
-                                "type": artifact_type,
-                                "summary": summary_label,
-                                "size_bytes": st.st_size,
-                                "mtime": st.st_mtime,
-                            }
-                        )
-                        seen_paths.add(normalized_path)
-                    except Exception:
-                        continue
-    except Exception:
-        pass
-
-    # Sort descending by last modified time
-    artifacts.sort(key=lambda a: a.get("mtime", 0), reverse=True)
-
-    return {"artifacts": artifacts, "total": len(artifacts), "session_id": active_session_dir.name}
+    from services.artifacts_service import artifacts_service
+    return artifacts_service.list_artifacts(conversation_id=conversation_id)
 
 
 class KillTerminalTaskRequest(BaseModel):

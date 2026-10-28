@@ -1,24 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Icon } from '../../constants/icons';
-import { FileIcon } from '../../constants/fileIcons';
 import { api } from '../../services/api';
 import { toast } from '../../services/toastService';
 import { formatFileSize } from '../chat/AttachmentPreview';
+import AssetCard from './AssetCard';
 
-export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment, onPreviewItem }) {
+export default function AssetManagerModal({
+  isOpen,
+  onClose,
+  onSelectAttachment,
+  onPreviewItem,
+  activeConversationId,
+}) {
   const [attachments, setAttachments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
+  const [scope, setScope] = useState('all'); // 'all' | 'chat' | 'global'
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [totalBytes, setTotalBytes] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null); // { type: 'single'|'batch', target?: string, count?: number }
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const fetchAttachments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await api.getAttachments({ search, category });
+      const res = await api.getAttachments({
+        search,
+        category,
+        scope,
+        conversation_id: activeConversationId,
+      });
       if (res && res.success) {
         setAttachments(res.attachments || []);
         setTotalBytes(res.total_bytes || 0);
@@ -28,7 +40,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
     } finally {
       setIsLoading(false);
     }
-  }, [search, category]);
+  }, [search, category, scope, activeConversationId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,11 +85,6 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
     }
   };
 
-  const handleDeleteSingle = (filename, e) => {
-    e?.stopPropagation();
-    setConfirmDelete({ type: 'single', target: filename });
-  };
-
   const executeDeleteBatch = async () => {
     const count = selectedIds.size;
     if (count === 0) return;
@@ -101,13 +108,6 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
     }
   };
 
-  const handleDeleteBatch = () => {
-    const count = selectedIds.size;
-    if (count === 0) return;
-    setConfirmDelete({ type: 'batch', count });
-  };
-
-
   const handleAttachToPrompt = (att, e) => {
     e?.stopPropagation();
     if (onSelectAttachment) {
@@ -124,10 +124,16 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
   };
 
   const categories = [
-    { id: 'all', label: 'All Files' },
+    { id: 'all', label: 'All Types' },
     { id: 'image', label: 'Images' },
     { id: 'document', label: 'Documents' },
     { id: 'code', label: 'Code' },
+  ];
+
+  const scopes = [
+    { id: 'all', label: 'All Files' },
+    { id: 'chat', label: 'This Chat' },
+    { id: 'global', label: 'Out of Chat' },
   ];
 
   const isAllSelected = attachments.length > 0 && selectedIds.size === attachments.length;
@@ -157,7 +163,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
                 </span>
               </div>
               <p className="text-[11px] text-[#A0A6AF] truncate">
-                Browse, reuse, inspect, and clean uploaded workspace media
+                Browse chat uploads & out-of-chat workspace media
               </p>
             </div>
           </div>
@@ -174,27 +180,48 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
 
         {/* Toolbar */}
         <div className="p-2.5 sm:px-4 sm:py-2.5 border-b border-[#262A30] bg-[#101113] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 shrink-0">
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {categories.map(c => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCategory(c.id)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer shrink-0 ${
-                  category === c.id
-                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                    : 'bg-[#1D2024] text-[#A0A6AF] hover:text-[#E8EAED] border border-[#30343A]'
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
+          {/* Scope & Category Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+            {/* Scope Filter */}
+            <div className="flex items-center bg-[#17191C] p-0.5 rounded-lg border border-[#30343A]">
+              {scopes.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setScope(s.id)}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                    scope === s.id
+                      ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                      : 'text-[#A0A6AF] hover:text-[#E8EAED]'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Type Categories */}
+            <div className="flex items-center gap-1">
+              {categories.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategory(c.id)}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition cursor-pointer shrink-0 ${
+                    category === c.id
+                      ? 'bg-[#2A2E35] text-[#E8EAED] font-semibold border border-[#40464F]'
+                      : 'bg-[#1D2024] text-[#8E95A0] hover:text-[#E8EAED] border border-[#30343A]'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Search & Batch Actions */}
+          {/* Search & Actions */}
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <div className="relative flex-1 sm:w-48 lg:w-56 min-w-0">
+            <div className="relative flex-1 sm:w-44 lg:w-52 min-w-0">
               <input
                 type="text"
                 value={search}
@@ -229,7 +256,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
             {selectedIds.size > 0 && (
               <button
                 type="button"
-                onClick={handleDeleteBatch}
+                onClick={() => setConfirmDelete({ type: 'batch', count: selectedIds.size })}
                 disabled={isDeleting}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 font-semibold transition cursor-pointer shrink-0 disabled:opacity-50"
               >
@@ -245,7 +272,7 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
           {isLoading && attachments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-56 gap-2 text-[#747C87] text-xs">
               <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-              <span>Loading uploads directory...</span>
+              <span>Loading upload assets...</span>
             </div>
           ) : attachments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-56 gap-1 text-[#747C87] text-xs">
@@ -254,101 +281,20 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
             </div>
           ) : (
             <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-              {attachments.map(att => {
-                const isSelected = selectedIds.has(att.filename);
-                return (
-                  <div
-                    key={att.filename}
-                    onClick={() => handleToggleSelect(att.filename)}
-                    className={`group relative rounded-lg border p-2.5 flex flex-col justify-between transition cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-950/20 border-blue-500/60 ring-1 ring-blue-500/30'
-                        : 'bg-[#141619] border-[#30343A] hover:border-[#40464F] hover:bg-[#1A1D21]'
-                    }`}
-                  >
-                    {/* Selection Checkbox */}
-                    <div
-                      className={`absolute top-2 right-2 w-4 h-4 rounded border flex items-center justify-center transition z-10 ${
-                        isSelected
-                          ? 'bg-blue-600 border-blue-500 text-white'
-                          : 'border-[#40464F] bg-[#101113]/80 group-hover:border-zinc-400'
-                      }`}
-                    >
-                      {isSelected && <div className="w-2.5 h-2.5">{Icon.check}</div>}
-                    </div>
-
-                    {/* Preview Thumbnail or Icon */}
-                    <div className="h-28 rounded-md bg-[#101113] border border-[#262A30] overflow-hidden flex items-center justify-center mb-2 relative">
-                      {att.is_image ? (
-                        <img
-                          src={att.url}
-                          alt={att.original_name}
-                          loading="lazy"
-                          className="w-full h-full object-cover transition group-hover:scale-105 duration-200"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-1.5 text-[#A0A6AF]">
-                          <FileIcon path={att.original_name} className="w-8 h-8" />
-                          <span className="text-[10px] font-mono uppercase tracking-wider">
-                            {att.category}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Preview Overlay Button */}
-                      {onPreviewItem && (
-                        <button
-                          type="button"
-                          onClick={e => {
-                            e.stopPropagation();
-                            onPreviewItem(att);
-                          }}
-                          title="Inspect Asset"
-                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white"
-                        >
-                          <span className="p-1.5 rounded-full bg-black/60 border border-white/20 text-xs">
-                            <div className="w-3.5 h-3.5">{Icon.maximize}</div>
-                          </span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="min-w-0 space-y-1">
-                      <p
-                        className="text-xs font-medium text-[#E8EAED] truncate"
-                        title={att.original_name}
-                      >
-                        {att.original_name}
-                      </p>
-                      <div className="flex items-center justify-between text-[10px] text-[#747C87] font-mono">
-                        <span>{formatFileSize(att.size)}</span>
-                        <span>{att.created_at.split(' ')[0]}</span>
-                      </div>
-                    </div>
-
-                    {/* Action Bar */}
-                    <div className="flex items-center justify-between gap-1.5 pt-2 mt-2 border-t border-[#262A30]">
-                      <button
-                        type="button"
-                        onClick={e => handleAttachToPrompt(att, e)}
-                        title="Add to current prompt"
-                        className="flex-1 py-1 px-2 rounded bg-[#1D2024] hover:bg-blue-600 hover:text-white border border-[#30343A] text-[#E8EAED] text-[11px] font-medium transition text-center"
-                      >
-                        Attach
-                      </button>
-                      <button
-                        type="button"
-                        onClick={e => handleDeleteSingle(att.filename, e)}
-                        title="Delete file permanently"
-                        className="p-1 rounded text-[#747C87] hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
-                      >
-                        <div className="w-3.5 h-3.5">{Icon.trash}</div>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {attachments.map(att => (
+                <AssetCard
+                  key={att.filename}
+                  attachment={att}
+                  isSelected={selectedIds.has(att.filename)}
+                  onToggleSelect={handleToggleSelect}
+                  onPreviewItem={onPreviewItem}
+                  onAttachToPrompt={handleAttachToPrompt}
+                  onDeleteSingle={(filename, e) => {
+                    e?.stopPropagation();
+                    setConfirmDelete({ type: 'single', target: filename });
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -401,4 +347,3 @@ export default function AssetManagerModal({ isOpen, onClose, onSelectAttachment,
     </div>
   );
 }
-

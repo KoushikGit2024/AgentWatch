@@ -178,7 +178,7 @@ export default function Navbar({
             className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
           >
             <div className="w-4 h-4 p-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 group-hover:bg-violet-500/20 group-hover:border-violet-500/40 shrink-0 transition-all">
-              {Icon.clock}
+              {Icon.timeline}
             </div>
             <span className="hidden xl:inline">Timeline</span>
           </button>
@@ -202,7 +202,7 @@ export default function Navbar({
             className="aw-focus-ring relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
           >
             <div className="w-4 h-4 p-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 shrink-0 transition-all">
-              {Icon.shieldAlert}
+              {Icon.shield}
             </div>
             <span className="hidden xl:inline">Recovery</span>
             {recoveryCount > 0 && (
@@ -270,7 +270,7 @@ export default function Navbar({
                 className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
               >
                 <div className="w-4 h-4 p-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0">
-                  {Icon.clock}
+                  {Icon.timeline}
                 </div>
                 <span>Timeline</span>
               </button>
@@ -291,7 +291,7 @@ export default function Navbar({
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-4 h-4 p-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
-                    {Icon.shieldAlert}
+                    {Icon.shield}
                   </div>
                   <span>Recovery</span>
                 </div>

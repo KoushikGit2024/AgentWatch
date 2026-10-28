@@ -75,6 +75,25 @@ export function PromptComposer({
     };
   }, []);
 
+  // Reload artifacts when active conversation switches while tab is open
+  useEffect(() => {
+    if (activeAttachedTab === 'artifacts') {
+      let isMounted = true;
+      setIsLoadingArtifacts(true);
+      api.getArtifacts(appState?.active_conversation_id)
+        .then(res => {
+          if (isMounted) setArtifactsList(res?.artifacts || []);
+        })
+        .catch(err => {
+          if (isMounted) toast.error(err.message || 'Could not load artifacts', 'Artifacts');
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingArtifacts(false);
+        });
+      return () => { isMounted = false; };
+    }
+  }, [appState?.active_conversation_id, activeAttachedTab]);
+
   useEffect(() => {
     const handleKeyDown = e => {
       if (e.key === 'Escape') {
@@ -95,7 +114,7 @@ export function PromptComposer({
     if (tabName === 'artifacts') {
       setIsLoadingArtifacts(true);
       try {
-        const res = await api.getArtifacts();
+        const res = await api.getArtifacts(appState?.active_conversation_id);
         setArtifactsList(res?.artifacts || []);
       } catch (err) {
         toast.error(err.message || 'Could not load artifacts', 'Artifacts');
@@ -366,6 +385,7 @@ export function PromptComposer({
       <AssetManagerModal
         isOpen={isAssetManagerOpen}
         onClose={() => setIsAssetManagerOpen(false)}
+        activeConversationId={appState?.active_conversation_id}
         onSelectAttachment={selected => {
           setAttachments(prev => {
             if (prev.some(a => a.filename === selected.filename)) return prev;

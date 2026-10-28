@@ -4,7 +4,7 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 router = APIRouter(tags=["Attachments"])
@@ -116,74 +116,25 @@ def _get_file_category(ext: str) -> str:
 
 @router.get("/api/v1/attachments")
 async def list_attachments(
-    search: str = "", category: str = "all", limit: int = 150, offset: int = 0
+    search: str = "",
+    category: str = "all",
+    scope: str = "all",
+    conversation_id: Optional[str] = None,
+    limit: int = 150,
+    offset: int = 0,
 ) -> Dict[str, Any]:
     """
-    List all uploaded attachments with metadata, filtering, and storage usage statistics.
+    List uploaded attachments with per-chat distinction and global upload support.
     """
-    items = []
-    total_bytes = 0
-    search_lower = search.strip().lower()
-
-    if UPLOAD_DIR.exists():
-        for entry in os.scandir(UPLOAD_DIR):
-            if entry.name == ".gitkeep" or not entry.is_file():
-                continue
-
-            try:
-                stat = entry.stat()
-                size = stat.st_size
-                total_bytes += size
-                mtime = stat.st_mtime
-
-                # Match original name or unique name
-                parts = entry.name.split("_", 2)
-                original_name = parts[2] if len(parts) >= 3 else entry.name
-                ext = Path(original_name).suffix.lower()
-                cat = _get_file_category(ext)
-                is_img = cat == "image"
-
-                # Filter category
-                if category != "all" and cat != category:
-                    continue
-
-                # Filter search query
-                if (
-                    search_lower
-                    and search_lower not in original_name.lower()
-                    and search_lower not in entry.name.lower()
-                ):
-                    continue
-
-                items.append(
-                    {
-                        "id": entry.name,
-                        "filename": entry.name,
-                        "original_name": original_name,
-                        "category": cat,
-                        "size": size,
-                        "is_image": is_img,
-                        "url": f"/uploads/{entry.name}",
-                        "relative_path": f"uploads/{entry.name}",
-                        "mtime": mtime,
-                        "created_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime)),
-                    }
-                )
-            except OSError:
-                continue
-
-    # Sort newest first
-    items.sort(key=lambda x: x["mtime"], reverse=True)
-    total_count = len(items)
-    paginated = items[offset : offset + limit]
-
-    return {
-        "success": True,
-        "total_count": total_count,
-        "total_bytes": total_bytes,
-        "total_size_mb": round(total_bytes / (1024 * 1024), 2),
-        "attachments": paginated,
-    }
+    from services.attachment_service import attachment_service
+    return attachment_service.list_attachments(
+        conversation_id=conversation_id,
+        scope=scope,
+        search=search,
+        category=category,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.delete("/api/v1/attachments/{filename}")

@@ -304,8 +304,9 @@ export const api = {
     return res.json();
   },
 
-  async getArtifacts() {
-    const res = await request('/api/v1/artifacts');
+  async getArtifacts(conversationId = null) {
+    const qs = conversationId ? `?conversation_id=${encodeURIComponent(conversationId)}` : '';
+    const res = await request(`/api/v1/artifacts${qs}`);
     return res.json();
   },
 
@@ -341,6 +342,8 @@ export const api = {
     const query = new URLSearchParams();
     if (params.search) query.set('search', params.search);
     if (params.category && params.category !== 'all') query.set('category', params.category);
+    if (params.scope) query.set('scope', params.scope);
+    if (params.conversation_id) query.set('conversation_id', params.conversation_id);
     if (params.limit) query.set('limit', String(params.limit));
     if (params.offset) query.set('offset', String(params.offset));
     const qs = query.toString() ? `?${query.toString()}` : '';
