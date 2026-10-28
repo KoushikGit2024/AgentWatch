@@ -103,6 +103,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         });
         const incomingCid = data.active_conversation_id;
         if (incomingCid && activeConvIdRef.current && activeConvIdRef.current !== incomingCid) {
+          setIsChatLoading(true);
           activeConvIdRef.current = incomingCid;
           oldestTurnIndexRef.current = null;
           fetchChatMessages(true);
@@ -319,6 +320,8 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
   useAgentSocket({
     isMountedRef,
     oldestTurnIndexRef,
+    activeConvIdRef,
+    setIsChatLoading,
     mergeTurnsPreservingHistory,
     setChatMessages,
     setHasMoreHistory,

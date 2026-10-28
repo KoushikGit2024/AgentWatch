@@ -38,35 +38,61 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
             if parts:
                 workspace_name = parts[-1]
 
-    # Query document.title directly from the webview context
+    # Query data-cascade-id, breadcrumb segment, and document.title directly from the webview DOM
     chat_title = None
+    dom_cascade_id = None
     try:
+        dom_probe_js = """
+        (() => {
+            const view = document.querySelector('[data-testid="conversation-view"][data-cascade-id]') || document.querySelector('[data-cascade-id]');
+            const breadcrumb = document.querySelector('[data-testid="breadcrumb-segment"]');
+            return {
+                cascadeId: view ? view.getAttribute('data-cascade-id') : null,
+                breadcrumb: breadcrumb ? breadcrumb.innerText.trim() : null,
+                docTitle: document.title || ''
+            };
+        })()
+        """
         async with websockets.connect(ws_url, open_timeout=1.5, close_timeout=1.5) as ws:
             await ws.send(
                 json.dumps(
                     {
                         "id": 10,
                         "method": "Runtime.evaluate",
-                        "params": {"expression": "document.title", "returnByValue": True},
+                        "params": {"expression": dom_probe_js, "returnByValue": True},
                     }
                 )
             )
             msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=1.5))
-            raw_title = msg.get("result", {}).get("result", {}).get("value") or ""
-            if raw_title:
-                clean_title = (
-                    raw_title.replace("- Standalone - Antigravity", "")
-                    .replace("- Antigravity IDE", "")
-                    .replace("- Antigravity", "")
-                    .strip()
-                )
-                if clean_title and clean_title != "Agent" and not clean_title.startswith("http"):
-                    chat_title = clean_title
+            eval_val = msg.get("result", {}).get("result", {}).get("value") or {}
+            
+            # 1. Prefer data-cascade-id from DOM
+            if eval_val.get("cascadeId"):
+                dom_cascade_id = eval_val["cascadeId"].strip()
+                
+            # 2. Prefer breadcrumb text for active chat title
+            breadcrumb_text = (eval_val.get("breadcrumb") or "").strip()
+            if breadcrumb_text and breadcrumb_text != "Agent":
+                chat_title = breadcrumb_text
+            else:
+                raw_title = eval_val.get("docTitle") or ""
+                if raw_title:
+                    clean_title = (
+                        raw_title.replace("- Standalone - Antigravity", "")
+                        .replace("- Antigravity IDE", "")
+                        .replace("- Antigravity", "")
+                        .strip()
+                    )
+                    if clean_title and clean_title != "Agent" and not clean_title.startswith("http"):
+                        chat_title = clean_title
     except Exception as exc:
-        logger.debug("Chat iframe document.title query notice: %s", exc)
+        logger.debug("Chat iframe DOM probe notice: %s", exc)
+
+    # Use DOM cascadeId if present, else fallback to URL conv_id
+    effective_conv_id = dom_cascade_id or conv_id
 
     return {
-        "conversation_id": conv_id,
+        "conversation_id": effective_conv_id,
         "conversation_title": chat_title,
         "workspace_name": workspace_name,
         "workspace_path": workspace_path,

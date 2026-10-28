@@ -161,6 +161,7 @@ async def watch_transcript_loop():
                     await websocket_manager.broadcast(
                         {
                             "type": "chat_update",
+                            "conversation_id": current_cid,
                             "messages": paginated["messages"],
                             "total": paginated["total"],
                             "oldest_index": paginated["oldest_index"],
@@ -577,10 +578,13 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         paginated = conversation_service.get_paginated_conversation(limit=15)
 
+        ag_status = antigravity_adapter.get_status()
+        init_cid = ag_status.get("active_conversation_id")
         await websocket.send_json(
             {
                 "type": "init",
                 "status": "connected",
+                "conversation_id": init_cid,
                 "messages": paginated["messages"],
                 "total": paginated["total"],
                 "oldest_index": paginated["oldest_index"],

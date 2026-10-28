@@ -4,6 +4,8 @@ import { WebSocketClient } from '../services/websocket';
 export function useAgentSocket({
   isMountedRef,
   oldestTurnIndexRef,
+  activeConvIdRef,
+  setIsChatLoading,
   mergeTurnsPreservingHistory,
   setChatMessages,
   setHasMoreHistory,
@@ -48,10 +50,30 @@ export function useAgentSocket({
         if (!isMountedRef.current) return;
         if (data.type === 'init' || data.type === 'chat_update') {
           if (Array.isArray(data.messages)) {
-            setChatMessages(prev => mergeTurnsPreservingHistory(prev, data.messages));
-            if (oldestTurnIndexRef.current === null && typeof data.oldest_index === 'number') {
-              oldestTurnIndexRef.current = data.oldest_index;
+            const incomingCid = data.conversation_id;
+            const isChatSwitched = Boolean(
+              incomingCid &&
+              activeConvIdRef?.current &&
+              activeConvIdRef.current !== incomingCid
+            );
+
+            if (isChatSwitched) {
+              if (setIsChatLoading) setIsChatLoading(true);
+              if (activeConvIdRef) activeConvIdRef.current = incomingCid;
+              setChatMessages(data.messages);
+              oldestTurnIndexRef.current = typeof data.oldest_index === 'number' ? data.oldest_index : null;
               setHasMoreHistory(Boolean(data.has_more));
+              if (setIsChatLoading) setTimeout(() => setIsChatLoading(false), 200);
+            } else {
+              if (incomingCid && activeConvIdRef && !activeConvIdRef.current) {
+                activeConvIdRef.current = incomingCid;
+              }
+              setChatMessages(prev => mergeTurnsPreservingHistory(prev, data.messages));
+              if (oldestTurnIndexRef.current === null && typeof data.oldest_index === 'number') {
+                oldestTurnIndexRef.current = data.oldest_index;
+                setHasMoreHistory(Boolean(data.has_more));
+              }
+              if (setIsChatLoading) setIsChatLoading(false);
             }
           }
         }
