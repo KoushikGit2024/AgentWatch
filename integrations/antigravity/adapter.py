@@ -1,5 +1,6 @@
 """Antigravity adapter managing CDP discovery, caching, and session state observation."""
 
+import asyncio
 import hashlib
 import httpx
 import logging
@@ -7,6 +8,7 @@ import time
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from config.settings import settings
+from integrations.antigravity.session_tracker import inspect_chat_target, parse_workbench_title
 
 logger = logging.getLogger("integrations.antigravity.adapter")
 
@@ -23,12 +25,18 @@ class AntigravityAdapter:
         self.active_target_id: Optional[str] = None
         self.active_target_url: Optional[str] = None
         self.active_target_title: Optional[str] = None
+        self.active_chat_url: Optional[str] = None
+        self.active_conversation_id: Optional[str] = None
+        self.active_conversation_title: Optional[str] = None
+        self.active_workspace_name: Optional[str] = None
+        self.active_workspace_path: Optional[str] = None
         self.last_status: str = "disconnected"
         self.last_successful_observation: Optional[datetime] = None
         self.last_successful_connection: Optional[datetime] = None
         self.reconnect_attempts: int = 0
         self.last_error: Optional[str] = None
         self._last_scan_time: float = 0.0
+        self._last_chat_scan_time: float = 0.0
         self._current_mode: str = "Fast"
         self._cached_screenshot: Optional[str] = None
         self._cached_screenshot_hash: Optional[str] = None
@@ -76,6 +84,10 @@ class AntigravityAdapter:
                 "title": self.active_target_title,
                 "target_url": self.active_target_url,
                 "last_observation": self.last_successful_observation,
+                "workspace_name": self.active_workspace_name,
+                "workspace_path": self.active_workspace_path,
+                "active_conversation_id": self.active_conversation_id,
+                "active_conversation_title": self.active_conversation_title,
             }
 
         self._last_scan_time = now_ts
@@ -103,6 +115,9 @@ class AntigravityAdapter:
                                 self.active_target_id,
                                 target_id,
                             )
+                            self._cached_screenshot = None
+                            self._cached_screenshot_hash = None
+                            self._cached_active_model = None
 
                         self.active_cdp_port = port
                         self.active_target_id = target_id
@@ -115,6 +130,27 @@ class AntigravityAdapter:
                         self.reconnect_attempts = 0
                         self.last_error = None
 
+                        # Extract fallback workspace name from window title
+                        parsed_ws, _ = parse_workbench_title(self.active_target_title)
+                        if parsed_ws and not self.active_workspace_name:
+                            self.active_workspace_name = parsed_ws
+
+                        # Inspect chat iframe if available in targets
+                        chat_targets = [
+                            t for t in targets
+                            if "/c/" in (t.get("url") or "") and t.get("webSocketDebuggerUrl")
+                        ]
+                        if chat_targets and (now_ts - self._last_chat_scan_time > 1.2 or not self.active_conversation_id):
+                            self._last_chat_scan_time = now_ts
+                            try:
+                                loop = asyncio.get_event_loop()
+                                if loop.is_running():
+                                    asyncio.create_task(self._async_refresh_chat(chat_targets[0]))
+                                else:
+                                    loop.run_until_complete(self._async_refresh_chat(chat_targets[0]))
+                            except Exception:
+                                pass
+
                         return {
                             "connected": True,
                             "port": port,
@@ -122,6 +158,10 @@ class AntigravityAdapter:
                             "title": self.active_target_title,
                             "target_url": self.active_target_url,
                             "last_observation": self.last_successful_observation,
+                            "workspace_name": self.active_workspace_name,
+                            "workspace_path": self.active_workspace_path,
+                            "active_conversation_id": self.active_conversation_id,
+                            "active_conversation_title": self.active_conversation_title,
                         }
             except Exception as e:
                 self.last_error = str(e)
@@ -135,6 +175,11 @@ class AntigravityAdapter:
         self.active_target_id = None
         self.active_target_url = None
         self.active_target_title = None
+        self.active_chat_url = None
+        self.active_conversation_id = None
+        self.active_conversation_title = None
+        self.active_workspace_name = None
+        self.active_workspace_path = None
         self.last_status = "disconnected"
 
         return {
@@ -145,6 +190,50 @@ class AntigravityAdapter:
             "reconnect_attempts": self.reconnect_attempts,
             "last_error": self.last_error,
             "message": "Antigravity CDP not responding on ports " + settings.cdp_ports,
+        }
+
+    async def _async_refresh_chat(self, chat_target: Dict[str, Any]):
+        """Asynchronously inspect chat webview metadata and update active session."""
+        try:
+            info = await inspect_chat_target(chat_target)
+            if info.get("conversation_id"):
+                self.active_conversation_id = info["conversation_id"]
+            if info.get("conversation_title"):
+                self.active_conversation_title = info["conversation_title"]
+            if info.get("workspace_name"):
+                self.active_workspace_name = info["workspace_name"]
+            if info.get("workspace_path"):
+                self.active_workspace_path = info["workspace_path"]
+            if info.get("chat_target_url"):
+                self.active_chat_url = info["chat_target_url"]
+        except Exception as e:
+            logger.debug("Chat refresh async error: %s", e)
+
+    async def refresh_active_context(self, force: bool = False) -> Dict[str, Any]:
+        """Inspect targets and return real-time workspace and chat state."""
+        discovery = self.discover_cdp(force=force)
+        # Check active chat directly
+        for port in settings.parsed_cdp_ports:
+            try:
+                resp = httpx.get(f"http://127.0.0.1:{port}/json/list", timeout=0.8)
+                if resp.status_code == 200:
+                    targets = resp.json()
+                    chat_targets = [
+                        t for t in targets
+                        if "/c/" in (t.get("url") or "") and t.get("webSocketDebuggerUrl")
+                    ]
+                    if chat_targets:
+                        await self._async_refresh_chat(chat_targets[0])
+                        break
+            except Exception:
+                continue
+
+        return {
+            **discovery,
+            "workspace_name": self.active_workspace_name,
+            "workspace_path": self.active_workspace_path,
+            "active_conversation_id": self.active_conversation_id,
+            "active_conversation_title": self.active_conversation_title,
         }
 
     async def capture_screenshot(self, quality: int = 60) -> Optional[str]:
@@ -164,7 +253,6 @@ class AntigravityAdapter:
         try:
             import websockets
             import json
-            import asyncio
 
             async with websockets.connect(self.active_target_url, close_timeout=2) as ws:
                 await ws.send(
@@ -196,194 +284,151 @@ class AntigravityAdapter:
         """Return MD5 hash of the latest captured screenshot for bandwidth deduplication."""
         return self._cached_screenshot_hash
 
-    async def send_prompt(self, message: str) -> Dict[str, Any]:
-        """Dispatch prompt text directly into Antigravity IDE workbench via CDP."""
-        if not self.active_target_url:
-            self.discover_cdp(force=True)
-        if not self.active_target_url:
-            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
-
-        from integrations.antigravity.cdp_actions import dispatch_send_prompt
-
-        res = await dispatch_send_prompt(self.active_target_url, message)
-        if not res.get("success"):
-            self.discover_cdp(force=True)
-            if self.active_target_url:
-                res = await dispatch_send_prompt(self.active_target_url, message)
-        return res
-
-    async def stop_generation(self) -> Dict[str, Any]:
-        """Dispatch stop/cancel signal to active Antigravity session via CDP."""
-        if not self.active_target_url:
-            self.discover_cdp()
-        if not self.active_target_url:
-            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
-
-        from integrations.antigravity.cdp_actions import dispatch_stop_generation
-
-        return await dispatch_stop_generation(self.active_target_url)
-
-    async def inspect_active_popup(self) -> Dict[str, Any]:
-        """Inspect live Antigravity DOM for active command approvals or dynamic question popups."""
-        if not self.active_target_url:
-            self.discover_cdp()
-        if not self.active_target_url:
-            return {"has_popup": False}
-
-        from integrations.antigravity.cdp_actions import dispatch_inspect_active_popup
-
-        return await dispatch_inspect_active_popup(self.active_target_url)
-
-    async def inspect_active_banners(self) -> Dict[str, Any]:
-        """Inspect live Antigravity DOM for rate-limit warnings, quota drops, and error toasts."""
-        if not self.active_target_url:
-            self.discover_cdp()
-        if not self.active_target_url:
-            return {"has_banners": False, "banners": []}
-
-        from integrations.antigravity.cdp_actions import dispatch_inspect_active_banners
-
-        return await dispatch_inspect_active_banners(self.active_target_url)
-
-    async def forward_approval(
-        self,
-        request_type: str,
-        decision: str,
-        custom_response: Optional[str] = None,
-        option_label: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Forward user approval decision (and optional custom instructions) to Antigravity IDE workbench."""
-        if not self.active_target_url:
-            self.discover_cdp()
-        if not self.active_target_url:
+    async def get_active_model_and_plan(self) -> Dict[str, Any]:
+        """
+        Read the active model name, available model list, and fast/planning mode from Antigravity.
+        Caches model info for 30s to reduce unnecessary CDP traffic.
+        """
+        now = time.time()
+        if self._cached_active_model and (now - self._last_model_read_time < 30.0):
             return {
-                "success": False,
-                "requires_native_ide": False,
-                "error": "Antigravity CDP not connected on port 9000",
+                "model": self._cached_active_model,
+                "mode": self._current_mode,
+                "available_models": [
+                    "Gemini 3.8 Flash Medium",
+                    "Claude Sonnet 4.6 (Thinking)",
+                    "Claude Opus 4.6 (Thinking)",
+                    "GPT-OSS 120B (Medium)",
+                ],
+                "available_modes": ["Fast", "Planning"],
+                "cached": True,
             }
 
-        from integrations.antigravity.cdp_actions import dispatch_forward_approval
-
-        return await dispatch_forward_approval(
-            self.active_target_url,
-            request_type=request_type,
-            decision=decision,
-            custom_response=custom_response,
-            option_label=option_label,
-        )
-
-    async def answer_question(
-        self,
-        selected_labels: List[str],
-        custom_response: Optional[str] = None,
-        fallback_prompt: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Answer an active agent question by clicking DOM options or dispatching prompt text."""
-        if not self.active_target_url:
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
             self.discover_cdp()
-        if not self.active_target_url:
-            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
+            target_ws = self.active_chat_url or self.active_target_url
 
-        from integrations.antigravity.cdp_actions import dispatch_answer_question
+        if not target_ws:
+            return {
+                "model": self._cached_active_model or "Gemini 3.8 Flash Medium",
+                "mode": self._current_mode,
+                "available_models": [
+                    "Gemini 3.8 Flash Medium",
+                    "Claude Sonnet 4.6 (Thinking)",
+                    "Claude Opus 4.6 (Thinking)",
+                    "GPT-OSS 120B (Medium)",
+                ],
+                "available_modes": ["Fast", "Planning"],
+                "cached": False,
+            }
 
-        return await dispatch_answer_question(
-            self.active_target_url,
-            selected_labels=selected_labels,
-            custom_response=custom_response,
-            fallback_prompt=fallback_prompt,
-        )
+        from integrations.antigravity.cdp_actions import dispatch_get_active_model
 
-    async def get_active_model_and_plan(self, force_refresh_list: bool = False) -> Dict[str, Any]:
-        """
-        Extract active model and available models from Antigravity IDE UI via CDP.
-        Caches active model for 30s to avoid opening a CDP WebSocket on every 4s poll.
-        """
-        if not self.active_target_url:
-            self.discover_cdp()
-        if not self.active_target_url:
-            return {"model": None, "available_models": [], "mode": self._current_mode}
+        result = await dispatch_get_active_model(target_ws)
+        if result.get("model"):
+            self._cached_active_model = result["model"]
+            self._last_model_read_time = now
 
-        cached_models = getattr(self, "_cached_available_models", None)
-        if cached_models is None:
-            cached_models = [
+        return {
+            "model": self._cached_active_model or "Gemini 3.8 Flash Medium",
+            "mode": self._current_mode,
+            "available_models": [
                 "Gemini 3.8 Flash Medium",
                 "Claude Sonnet 4.6 (Thinking)",
                 "Claude Opus 4.6 (Thinking)",
                 "GPT-OSS 120B (Medium)",
-            ]
-            self._cached_available_models = cached_models
-
-        now = time.time()
-        if (
-            not force_refresh_list
-            and self._cached_active_model
-            and (now - self._last_model_read_time < 30.0)
-        ):
-            active_model = self._cached_active_model
-        else:
-            from integrations.antigravity.cdp_actions import dispatch_read_model
-
-            read_res = await dispatch_read_model(
-                self.active_target_url, force_full_scan=force_refresh_list
-            )
-            active_model = read_res.get("model") or self._cached_active_model or cached_models[0]
-            self._cached_active_model = active_model
-            self._last_model_read_time = now
-
-        if active_model and active_model not in cached_models:
-            cached_models.insert(0, active_model)
-
-        return {
-            "model": active_model,
-            "available_models": cached_models,
-            "mode": self._current_mode,
+            ],
+            "available_modes": ["Fast", "Planning"],
+            "cached": False,
         }
 
-    async def set_active_model(self, target_model: str) -> Dict[str, Any]:
-        """Switch active model in Antigravity IDE by clicking the matching menu item."""
-        self._cached_active_model = target_model
-        self._last_model_read_time = time.time()
-        import os
+    async def set_active_model(self, model_name: str) -> bool:
+        """Switch active model in Antigravity session."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
+            self.discover_cdp()
+            target_ws = self.active_chat_url or self.active_target_url
 
-        if os.environ.get("ENVIRONMENT") == "testing":
-            return {"success": True, "selected": target_model, "test_mode": True}
+        if not target_ws:
+            return False
+        from integrations.antigravity.cdp_actions import dispatch_select_model
 
+        success = await dispatch_select_model(target_ws, model_name)
+        if success:
+            self._cached_active_model = model_name
+            self._last_model_read_time = time.time()
+        return success
+
+    async def set_active_mode(self, mode: str) -> bool:
+        """Switch active planning mode (Fast / Planning)."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
+            self.discover_cdp()
+            target_ws = self.active_chat_url or self.active_target_url
+
+        if not target_ws:
+            return False
+        from integrations.antigravity.cdp_actions import dispatch_select_mode
+
+        success = await dispatch_select_mode(target_ws, mode)
+        if success:
+            self._current_mode = mode
+        return success
+
+    async def send_prompt(self, message: str) -> bool:
+        """Deliver user prompt directly into Antigravity input."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
+            self.discover_cdp()
+            target_ws = self.active_chat_url or self.active_target_url
+
+        if not target_ws:
+            return False
+        from integrations.antigravity.cdp_actions import dispatch_send_prompt
+
+        res = await dispatch_send_prompt(target_ws, message)
+        return bool(res.get("success", False))
+
+    async def inspect_active_popup(self) -> Dict[str, Any]:
+        """Inspect visible popups or decision requests."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
+            self.discover_cdp()
+            target_ws = self.active_chat_url or self.active_target_url
+
+        if not target_ws:
+            return {"has_popup": False}
+        from integrations.antigravity.cdp_actions import dispatch_inspect_popup
+
+        return await dispatch_inspect_popup(target_ws)
+
+    async def respond_to_popup(
+        self,
+        option_id: Optional[str] = None,
+        custom_text: Optional[str] = None,
+        action: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Respond to modal decision popup."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
+            self.discover_cdp()
+            target_ws = self.active_chat_url or self.active_target_url
+
+        if not target_ws:
+            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
+        from integrations.antigravity.cdp_actions import dispatch_respond_popup
+
+        return await dispatch_respond_popup(
+            target_ws, option_id=option_id, custom_text=custom_text, action=action
+        )
+
+    async def toggle_terminal(self) -> Dict[str, Any]:
+        """Toggle integrated terminal in Antigravity."""
         if not self.active_target_url:
             self.discover_cdp()
         if not self.active_target_url:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
-
-        from integrations.antigravity.cdp_actions import dispatch_switch_model
-
-        return await dispatch_switch_model(self.active_target_url, target_model)
-
-    async def set_active_mode(self, target_mode: str) -> Dict[str, Any]:
-        """Switch active agent mode (Fast vs Planning) in Antigravity IDE."""
-        self._current_mode = target_mode
-        import os
-
-        if os.environ.get("ENVIRONMENT") == "testing":
-            return {"success": True, "mode": target_mode, "test_mode": True}
-
-        if not self.active_target_url:
-            self.discover_cdp()
-        if not self.active_target_url:
-            return {"success": True, "mode": target_mode, "cdp_connected": False}
-
-        from integrations.antigravity.cdp_actions import dispatch_switch_mode
-
-        return await dispatch_switch_mode(self.active_target_url, target_mode)
-
-    async def toggle_terminal(self) -> Dict[str, Any]:
-        """Toggle terminal in IDE via CDP click on [data-tooltip-id="tooltip-terminal"]."""
-        if not self.active_target_url:
-            self.discover_cdp()
-        if not self.active_target_url:
-            return {
-                "success": False,
-                "error": "Antigravity CDP not connected on port 9000",
-                "tasks": [],
-            }
         from integrations.antigravity.cdp_actions import dispatch_toggle_terminal
 
         return await dispatch_toggle_terminal(self.active_target_url)
@@ -426,6 +471,10 @@ class AntigravityAdapter:
             "last_successful_connection": self.last_successful_connection,
             "reconnect_attempts": self.reconnect_attempts,
             "last_error": self.last_error,
+            "workspace_name": self.active_workspace_name,
+            "workspace_path": self.active_workspace_path,
+            "active_conversation_id": self.active_conversation_id,
+            "active_conversation_title": self.active_conversation_title,
             "instructions": "Launch Antigravity with '--remote-debugging-port=9000' or run via right-click context menu.",
         }
 

@@ -326,6 +326,10 @@ async def get_app_state():
         "available_models": model_info.get("available_models", []),
         "available_modes": ["Fast", "Planning"],
         "antigravity_connected": is_conn,
+        "workspace_name": ag_status.get("workspace_name"),
+        "workspace_path": ag_status.get("workspace_path"),
+        "active_conversation_id": ag_status.get("active_conversation_id"),
+        "active_conversation_title": ag_status.get("active_conversation_title"),
         "tailscale_serve": tailscale_info["serve_active"],
         "tailscale_funnel_disabled": tailscale_info["funnel_disabled_verified"],
     }

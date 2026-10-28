@@ -203,6 +203,8 @@ export default function App() {
 
       <Navbar
         targetTitle={snapshotData?.target ? snapshotData.target.split(' - ')[0] : 'AgentWatch'}
+        workspaceName={appState.workspace_name}
+        chatTitle={appState.active_conversation_title}
         isConnected={appState.connected}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

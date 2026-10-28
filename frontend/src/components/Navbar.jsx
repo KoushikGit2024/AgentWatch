@@ -4,6 +4,8 @@ import NotificationMenu from './notifications/NotificationMenu';
 
 export default function Navbar({
   targetTitle,
+  workspaceName,
+  chatTitle,
   isConnected,
   viewMode,
   onViewModeChange,
@@ -41,6 +43,8 @@ export default function Navbar({
     if (actionFn) actionFn();
   };
 
+  const displayName = workspaceName || targetTitle || 'AgentWatch';
+
   return (
     <header className="aw-landscape-compact-header relative w-full px-2.5 sm:px-4 lg:px-6 py-2 bg-[#17191C] border-b border-[#30343A] flex items-center justify-between gap-2 shrink-0 select-none z-30">
       <div className="flex items-center gap-2.5 min-w-0 shrink">
@@ -52,11 +56,25 @@ export default function Navbar({
           />
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-xs sm:text-sm font-semibold text-[#E8EAED] tracking-tight leading-none truncate max-w-[105px] xs:max-w-[140px] sm:max-w-[200px] lg:max-w-[320px]">
-              {targetTitle || 'AgentWatch'}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h1
+              title={displayName}
+              className="text-xs sm:text-sm font-semibold text-[#E8EAED] tracking-tight leading-none truncate max-w-[90px] xs:max-w-[120px] sm:max-w-[170px] lg:max-w-[260px]"
+            >
+              {displayName}
             </h1>
-            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-[#1D2024] border border-[#30343A] text-[#A0A6AF] text-[10px] font-mono shrink-0">
+            {chatTitle && (
+              <>
+                <span className="hidden md:inline text-zinc-600 text-xs">/</span>
+                <span
+                  title={chatTitle}
+                  className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-medium truncate max-w-[140px] xl:max-w-[220px]"
+                >
+                  {chatTitle}
+                </span>
+              </>
+            )}
+            <span className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded bg-[#1D2024] border border-[#30343A] text-[#A0A6AF] text-[10px] font-mono shrink-0">
               v2.0
             </span>
           </div>
@@ -67,6 +85,14 @@ export default function Navbar({
               }`}
             />
             <span className="truncate">{isConnected ? 'CDP Live · 9000' : 'Standby'}</span>
+            {chatTitle && (
+              <span
+                title={chatTitle}
+                className="md:hidden truncate text-zinc-500 max-w-[90px] xs:max-w-[130px]"
+              >
+                · {chatTitle}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -139,20 +165,20 @@ export default function Navbar({
             title="Task Manager & Process Monitor"
             className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
           >
-            <div className="w-4 h-4 p-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40 shrink-0 transition-all">
+            <div className="w-4 h-4 p-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 group-hover:bg-blue-500/20 group-hover:border-blue-500/40 shrink-0 transition-all">
               {Icon.activity}
             </div>
-            <span className="hidden xl:inline">Processes</span>
+            <span className="hidden xl:inline">Tasks</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenTimeline}
-            title="Activity Timeline & Traces"
+            title="System Audit Timeline"
             className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
           >
             <div className="w-4 h-4 p-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 group-hover:bg-violet-500/20 group-hover:border-violet-500/40 shrink-0 transition-all">
-              {Icon.timeline}
+              {Icon.clock}
             </div>
             <span className="hidden xl:inline">Timeline</span>
           </button>
@@ -160,7 +186,7 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenLogs}
-            title="System & Server Logs"
+            title="System Diagnostics & Logs"
             className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
           >
             <div className="w-4 h-4 p-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 shrink-0 transition-all">
@@ -172,15 +198,15 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenRecovery}
-            title="Recovery Center & Diagnostics"
-            className="aw-focus-ring group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
+            title="Action Recovery"
+            className="aw-focus-ring relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
           >
-            <div className="w-4 h-4 p-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 group-hover:border-amber-500/40 shrink-0 transition-all">
-              {Icon.shield}
+            <div className="w-4 h-4 p-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 shrink-0 transition-all">
+              {Icon.shieldAlert}
             </div>
             <span className="hidden xl:inline">Recovery</span>
             {recoveryCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 text-[10px] font-mono tabular-nums border border-amber-500/35">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-mono text-[9px] flex items-center justify-center font-bold animate-pulse">
                 {recoveryCount}
               </span>
             )}
@@ -189,113 +215,101 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenHistory}
-            title="Conversation History"
+            title="History"
             className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
           >
-            <div className="w-4 h-4 p-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 group-hover:bg-sky-500/20 group-hover:border-sky-500/40 shrink-0 transition-all">
+            <div className="w-4 h-4 p-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 group-hover:border-indigo-500/40 shrink-0 transition-all">
               {Icon.history}
             </div>
             <span className="hidden xl:inline">History</span>
           </button>
-
-          <div className="w-px h-4 bg-[#30343A] mx-0.5" />
-          <NotificationMenu />
         </nav>
 
-        <div className="md:hidden flex items-center gap-1">
-          <NotificationMenu />
+        <NotificationMenu />
+
+        <div className="relative md:hidden">
           <button
             type="button"
-            aria-label="Open tools menu"
-            aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(prev => !prev)}
-            className={`aw-focus-ring p-1.5 rounded-md border transition cursor-pointer ${
+            aria-label="Toggle diagnostic tools menu"
+            aria-expanded={mobileMenuOpen}
+            className={`aw-focus-ring p-1.5 rounded-md text-[#A0A6AF] hover:text-[#E8EAED] transition border cursor-pointer ${
               mobileMenuOpen
                 ? 'bg-[#1D2024] text-[#E8EAED] border-[#30343A]'
-                : 'text-[#A0A6AF] hover:text-[#E8EAED] border-transparent hover:bg-[#1D2024]'
+                : 'bg-transparent border-transparent hover:bg-[#1D2024] hover:border-[#30343A]'
             }`}
           >
             <div className="w-4 h-4">{Icon.moreHorizontal}</div>
           </button>
 
           {mobileMenuOpen && (
-            <div
-              role="menu"
-              className="absolute right-2.5 top-full mt-1.5 w-60 bg-[#17191C] border border-[#30343A] rounded-lg shadow-xl p-1.5 space-y-0.5 z-50"
-            >
+            <div className="absolute right-0 top-full mt-2 w-48 py-1 bg-[#1A1D21] border border-[#30343A] rounded-lg shadow-2xl z-50 flex flex-col gap-0.5">
               <button
                 type="button"
-                role="menuitem"
                 onClick={() => handleAction(onOpenFiles)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer text-left"
+                className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
               >
-                <div className="w-5 h-5 p-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                <div className="w-4 h-4 p-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
                   {Icon.folder}
                 </div>
-                <span>Project Files Explorer</span>
+                <span>Files</span>
               </button>
               <button
                 type="button"
-                role="menuitem"
                 onClick={() => handleAction(onOpenTaskManager)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer text-left"
+                className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
               >
-                <div className="w-5 h-5 p-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                <div className="w-4 h-4 p-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0">
                   {Icon.activity}
                 </div>
-                <span>Task Manager & Processes</span>
+                <span>Tasks</span>
               </button>
               <button
                 type="button"
-                role="menuitem"
                 onClick={() => handleAction(onOpenTimeline)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer text-left"
+                className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
               >
-                <div className="w-5 h-5 p-1 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0">
-                  {Icon.timeline}
+                <div className="w-4 h-4 p-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0">
+                  {Icon.clock}
                 </div>
-                <span>Activity Timeline</span>
+                <span>Timeline</span>
               </button>
               <button
                 type="button"
-                role="menuitem"
                 onClick={() => handleAction(onOpenLogs)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer text-left"
+                className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
               >
-                <div className="w-5 h-5 p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                <div className="w-4 h-4 p-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
                   {Icon.terminal}
                 </div>
-                <span>System & Server Logs</span>
+                <span>Logs</span>
               </button>
               <button
                 type="button"
-                role="menuitem"
                 onClick={() => handleAction(onOpenRecovery)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer text-left"
+                className="aw-focus-ring flex items-center justify-between px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 p-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                    {Icon.shield}
+                  <div className="w-4 h-4 p-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
+                    {Icon.shieldAlert}
                   </div>
-                  <span>Recovery Center</span>
+                  <span>Recovery</span>
                 </div>
                 {recoveryCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 text-[10px] font-mono tabular-nums border border-amber-500/35">
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono text-[10px] font-bold">
                     {recoveryCount}
                   </span>
                 )}
               </button>
-              <div className="h-px bg-[#262A30] my-1" />
               <button
                 type="button"
-                role="menuitem"
                 onClick={() => handleAction(onOpenHistory)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer text-left"
+                className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
               >
-                <div className="w-5 h-5 p-1 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 shrink-0">
+                <div className="w-4 h-4 p-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
                   {Icon.history}
                 </div>
-                <span>Past Conversations</span>
+                <span>History</span>
               </button>
             </div>
           )}
