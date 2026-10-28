@@ -323,9 +323,9 @@ class AntigravityAdapter:
                 "cached": False,
             }
 
-        from integrations.antigravity.cdp_actions import dispatch_get_active_model
+        from integrations.antigravity.cdp_actions import dispatch_read_model
 
-        result = await dispatch_get_active_model(target_ws)
+        result = await dispatch_read_model(target_ws)
         if result.get("model"):
             self._cached_active_model = result["model"]
             self._last_model_read_time = now
@@ -352,9 +352,9 @@ class AntigravityAdapter:
 
         if not target_ws:
             return False
-        from integrations.antigravity.cdp_actions import dispatch_select_model
+        from integrations.antigravity.cdp_actions import dispatch_switch_model
 
-        success = await dispatch_select_model(target_ws, model_name)
+        success = await dispatch_switch_model(target_ws, model_name)
         if success:
             self._cached_active_model = model_name
             self._last_model_read_time = time.time()
@@ -369,9 +369,9 @@ class AntigravityAdapter:
 
         if not target_ws:
             return False
-        from integrations.antigravity.cdp_actions import dispatch_select_mode
+        from integrations.antigravity.cdp_actions import dispatch_switch_mode
 
-        success = await dispatch_select_mode(target_ws, mode)
+        success = await dispatch_switch_mode(target_ws, mode)
         if success:
             self._current_mode = mode
         return success
@@ -399,9 +399,9 @@ class AntigravityAdapter:
 
         if not target_ws:
             return {"has_popup": False}
-        from integrations.antigravity.cdp_actions import dispatch_inspect_popup
+        from integrations.antigravity.cdp_actions import dispatch_inspect_active_popup
 
-        return await dispatch_inspect_popup(target_ws)
+        return await dispatch_inspect_active_popup(target_ws)
 
     async def respond_to_popup(
         self,
@@ -417,9 +417,9 @@ class AntigravityAdapter:
 
         if not target_ws:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
-        from integrations.antigravity.cdp_actions import dispatch_respond_popup
+        from integrations.antigravity.cdp_actions import dispatch_forward_approval
 
-        return await dispatch_respond_popup(
+        return await dispatch_forward_approval(
             target_ws, option_id=option_id, custom_text=custom_text, action=action
         )
 
