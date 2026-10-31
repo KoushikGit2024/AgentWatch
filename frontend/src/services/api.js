@@ -125,10 +125,13 @@ export const api = {
     return res.json();
   },
 
-  async getChatMessages(limit = 15, before = null) {
+  async getChatMessages(limit = 15, before = null, conversationId = null) {
     const params = new URLSearchParams({ limit: String(limit) });
     if (before !== null && before !== undefined) {
       params.set('before', String(before));
+    }
+    if (conversationId) {
+      params.set('conversation_id', conversationId);
     }
     const res = await request(`/api/v1/chat/messages?${params.toString()}`);
     return res.json();

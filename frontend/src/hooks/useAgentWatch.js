@@ -36,7 +36,8 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
 
   const fetchChatMessages = useCallback(async (reset = false) => {
     try {
-      const data = await api.getChatMessages(PAGE_BLOCK_SIZE);
+      const currentCid = activeConvIdRef.current;
+      const data = await api.getChatMessages(PAGE_BLOCK_SIZE, null, currentCid);
       if (isMountedRef.current) {
         const incoming = data.messages || [];
         if (reset) {
@@ -195,7 +196,8 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     isLoadingOlderRef.current = true;
     setIsLoadingOlder(true);
     try {
-      const data = await api.getChatMessages(PAGE_BLOCK_SIZE, cursor);
+      const currentCid = activeConvIdRef.current;
+      const data = await api.getChatMessages(PAGE_BLOCK_SIZE, cursor, currentCid);
       if (isMountedRef.current) {
         const olderSlice = data.messages || [];
         if (olderSlice.length > 0) {

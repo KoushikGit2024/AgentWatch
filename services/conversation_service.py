@@ -325,18 +325,23 @@ class ConversationService:
         except Exception:
             return []
 
-    def get_recent_conversation(self, limit: int = 40) -> List[Dict[str, Any]]:
+    def get_recent_conversation(
+        self, limit: int = 40, conversation_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """Return the latest `limit` conversation turns."""
-        turns = self._parse_all_turns()
+        turns = self._parse_all_turns(conversation_id=conversation_id)
         return turns[-limit:] if limit > 0 else turns
 
     def get_paginated_conversation(
-        self, limit: int = 15, before: Optional[int] = None
+        self,
+        limit: int = 15,
+        before: Optional[int] = None,
+        conversation_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Return a cursor-paginated slice of conversation turns for upward scroll lazy-loading.
         """
-        turns = self._parse_all_turns()
+        turns = self._parse_all_turns(conversation_id=conversation_id)
         total = len(turns)
         if total == 0:
             return {

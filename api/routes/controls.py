@@ -34,12 +34,17 @@ def get_chat_messages(
     before: Optional[int] = Query(
         None, ge=0, description="Cursor turn_index for upward scroll lazy-loading"
     ),
+    conversation_id: Optional[str] = Query(
+        None, description="Optional conversation ID to pull transcripts for specific session"
+    ),
 ):
     """
     Return paginated Antigravity conversation stream extracted from IDE transcripts.
     Supports request-based upward scroll lazy-loading via `before=<oldest_turn_index>&limit=15`.
     """
-    return _conversation_service.get_paginated_conversation(limit=limit, before=before)
+    return _conversation_service.get_paginated_conversation(
+        limit=limit, before=before, conversation_id=conversation_id
+    )
 
 
 class ApprovalDecisionRequest(BaseModel):
@@ -314,10 +319,15 @@ def get_system_logs(limit: int = 150, min_level: Optional[str] = None):
 @router.get("/api/v1/app-state")
 async def get_app_state():
     """Return genuine application state and active plan models without static guessing."""
-    ag_status = antigravity_adapter.get_status()
+    try:
+        active_ctx = await antigravity_adapter.refresh_active_context()
+        is_conn = bool(active_ctx.get("connected", False))
+    except Exception:
+        active_ctx = antigravity_adapter.get_status()
+        is_conn = bool(active_ctx.get("cdp", {}).get("connected", False))
+
     tailscale_info = remote_access_service.get_tailscale_status()
     model_info = await antigravity_adapter.get_active_model_and_plan()
-    is_conn = bool(ag_status["cdp"]["connected"])
     return {
         "status": "online",
         "connected": is_conn,
@@ -326,10 +336,10 @@ async def get_app_state():
         "available_models": model_info.get("available_models", []),
         "available_modes": ["Fast", "Planning"],
         "antigravity_connected": is_conn,
-        "workspace_name": ag_status.get("workspace_name"),
-        "workspace_path": ag_status.get("workspace_path"),
-        "active_conversation_id": ag_status.get("active_conversation_id"),
-        "active_conversation_title": ag_status.get("active_conversation_title"),
+        "workspace_name": active_ctx.get("workspace_name"),
+        "workspace_path": active_ctx.get("workspace_path"),
+        "active_conversation_id": active_ctx.get("active_conversation_id"),
+        "active_conversation_title": active_ctx.get("active_conversation_title"),
         "tailscale_serve": tailscale_info["serve_active"],
         "tailscale_funnel_disabled": tailscale_info["funnel_disabled_verified"],
     }
