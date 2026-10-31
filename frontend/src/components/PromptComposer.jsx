@@ -7,6 +7,7 @@ import WorkbenchBar from './composer/WorkbenchBar';
 import AttachmentLightbox from './composer/AttachmentLightbox';
 import AssetManagerModal from './modals/AssetManagerModal';
 import TaskOutputModal from './modals/TaskOutputModal';
+import AntigravityTerminalPanel from './terminal/AntigravityTerminalPanel';
 import { useComposerAttachments } from './composer/useComposerAttachments';
 import { useWorkbenchTasks } from './composer/useWorkbenchTasks';
 import { useTaskExecutionTimers } from '../hooks/useTaskExecutionTimers';
@@ -47,6 +48,8 @@ export function PromptComposer({
   const [minimizedViewerStatus, setMinimizedViewerStatus] = useState(null);
   const [activeAttachedTab, setActiveAttachedTab] = useState(null);
   const [inspectingTask, setInspectingTask] = useState(null);
+  const [isTerminalPanelOpen, setIsTerminalPanelOpen] = useState(false);
+  const [selectedTerminalTaskId, setSelectedTerminalTaskId] = useState(null);
 
   const {
     artifactsList,
@@ -119,6 +122,7 @@ export function PromptComposer({
           onRefreshTerminal={handleRefreshTerminalTasks}
           isLoadingArtifacts={isLoadingArtifacts}
           artifactsList={artifactsList}
+          onOpenTerminalPanel={() => setIsTerminalPanelOpen(true)}
         />
 
         <div
@@ -299,6 +303,15 @@ export function PromptComposer({
         isOpen={Boolean(inspectingTask)}
         task={inspectingTask}
         onClose={() => setInspectingTask(null)}
+      />
+
+      <AntigravityTerminalPanel
+        isOpen={isTerminalPanelOpen}
+        onClose={() => setIsTerminalPanelOpen(false)}
+        initialTasks={ideTerminalTasks}
+        onKillTask={handleKillIdeTerminalTask}
+        activeTaskId={selectedTerminalTaskId}
+        onSelectTask={id => setSelectedTerminalTaskId(id)}
       />
     </div>
   );

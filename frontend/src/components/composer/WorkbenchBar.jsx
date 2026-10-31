@@ -18,6 +18,7 @@ export default function WorkbenchBar({
   onRefreshTerminal,
   isLoadingArtifacts,
   artifactsList = [],
+  onOpenTerminalPanel,
 }) {
   return (
     <div className="relative z-20 flex min-h-[2rem] justify-between items-center px-2 py-1 border border-[#30343A] bg-[#17191C] rounded-md select-none">
@@ -37,8 +38,14 @@ export default function WorkbenchBar({
         <button
           type="button"
           data-tooltip-id="tooltip-terminal"
-          onClick={() => onToggleAttachedTab('terminal')}
-          title="Terminal & Commands"
+          onClick={() => {
+            if (onOpenTerminalPanel) {
+              onOpenTerminalPanel();
+            } else {
+              onToggleAttachedTab('terminal');
+            }
+          }}
+          title="Terminal & Multi-Tab Execution (Ctrl+`)"
           className={`aw-focus-ring group relative rounded p-1.5 transition cursor-pointer ${
             activeAttachedTab === 'terminal'
               ? 'bg-[#1D2024] text-[#E8EAED] border border-emerald-500/40'
