@@ -53,7 +53,9 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
             };
         })()
         """
-        async with websockets.connect(ws_url, open_timeout=1.5, close_timeout=1.5) as ws:
+        from integrations.antigravity.cdp_connection import cdp_connect
+
+        async with cdp_connect(ws_url, open_timeout=1.5, close_timeout=1.5) as ws:
             await ws.send(
                 json.dumps(
                     {

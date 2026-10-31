@@ -13,10 +13,10 @@ async def dispatch_toggle_terminal(target_url: str) -> Dict[str, Any]:
     Toggle or expand running items panel in Antigravity IDE and return tasks.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(
-            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        async with cdp_connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=1.5
         ) as ws:
             toggle_js = r"""
             (async () => {
@@ -89,10 +89,10 @@ async def dispatch_get_terminal_tasks(target_url: str) -> Dict[str, Any]:
     Passively query Antigravity IDE workbench for currently running tasks and processes.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(
-            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        async with cdp_connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=1.5
         ) as ws:
             query_js = r"""
             (() => {
@@ -150,10 +150,10 @@ async def dispatch_kill_terminal_task(
     Click the Stop Task button on a specific running item row in Antigravity IDE workbench.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(
-            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        async with cdp_connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=1.5
         ) as ws:
             target_tooltip = tooltip_id or ""
             kill_js = f"""

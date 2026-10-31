@@ -18,9 +18,9 @@ async def get_ide_queued_messages(target_url: str) -> List[Dict[str, Any]]:
     and extracts all queued items.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
+        async with cdp_connect(target_url, max_size=10 * 1024 * 1024, open_timeout=1.5, close_timeout=3.0) as ws:
             extract_js = """
             (() => {
                 const card = document.querySelector('[data-testid="queued-messages-card"]');
@@ -68,9 +68,9 @@ async def dispatch_queued_action(
     Actions: 'send_now', 'delete', 'edit'.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
+        async with cdp_connect(target_url, max_size=10 * 1024 * 1024, open_timeout=1.5, close_timeout=3.0) as ws:
             action_js = f"""
             (async () => {{
                 const card = document.querySelector('[data-testid="queued-messages-card"]');

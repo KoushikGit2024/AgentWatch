@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from config.settings import settings
 from integrations.antigravity.session_tracker import inspect_chat_target, parse_workbench_title
+from integrations.antigravity.target_finder import is_antigravity_target, target_priority, sort_targets_by_priority
 
 logger = logging.getLogger("integrations.antigravity.adapter")
 
@@ -47,31 +48,22 @@ class AntigravityAdapter:
         self._cached_quota_tooltip: Optional[str] = None
         self._last_model_read_time: float = 0.0
         self._last_models_scan_time: float = 0.0
+        self.last_latency_ms: Optional[float] = None
 
     def _is_antigravity_target(self, target: Dict[str, Any]) -> bool:
         """Validate that a CDP target belongs to the Antigravity desktop IDE context."""
-        url = (target.get("url") or "").lower()
-        title = (target.get("title") or "").lower()
-        return (
-            "workbench" in url
-            or "vscode-app" in url
-            or "antigravity" in title
-            or "workbench.html" in url
-        )
+        return is_antigravity_target(target)
 
     def _target_priority(self, target: Dict[str, Any]) -> int:
         """Score target priority so active workspace workbench.html is favored over settings."""
-        url = (target.get("url") or "").lower()
-        title = (target.get("title") or "").lower()
-        if "workbench.html" in url:
-            return 100
-        if "workbench" in url and "settings" not in title:
-            return 80
-        if "antigravity" in title and "settings" not in title:
-            return 70
-        if "workbench" in url:
-            return 40
-        return 10
+        return target_priority(target)
+
+    def mark_target_unresponsive(self, target_url: str, error_message: Optional[str] = None):
+        """Immediately called when a CDP connection drops or times out to mark target stale."""
+        logger.warning("Antigravity CDP target unresponsive: %s (%s)", target_url, error_message)
+        self.last_status = "reconnecting"
+        self.last_error = error_message
+        self._last_scan_time = 0.0  # Allow immediate re-discovery on next attempt
 
     def discover_cdp(self, force: bool = False) -> Dict[str, Any]:
         """
@@ -98,17 +90,14 @@ class AntigravityAdapter:
 
         for port in settings.parsed_cdp_ports:
             try:
+                t0 = time.time()
                 resp = httpx.get(f"http://127.0.0.1:{port}/json/list", timeout=0.8)
                 if resp.status_code == 200:
+                    self.last_latency_ms = round((time.time() - t0) * 1000, 1)
                     targets = resp.json()
-                    valid_targets = [
-                        t
-                        for t in targets
-                        if self._is_antigravity_target(t) and t.get("webSocketDebuggerUrl")
-                    ]
+                    valid_targets = sort_targets_by_priority(targets)
 
                     if valid_targets:
-                        valid_targets.sort(key=self._target_priority, reverse=True)
                         valid_target = valid_targets[0]
                         target_id = valid_target.get("id")
                         now_dt = datetime.now(timezone.utc)
@@ -479,6 +468,7 @@ class AntigravityAdapter:
             "last_successful_connection": self.last_successful_connection,
             "reconnect_attempts": self.reconnect_attempts,
             "last_error": self.last_error,
+            "latency_ms": self.last_latency_ms,
             "workspace_name": self.active_workspace_name,
             "workspace_path": self.active_workspace_path,
             "active_conversation_id": self.active_conversation_id,

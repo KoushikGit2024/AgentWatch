@@ -439,6 +439,12 @@ export const api = {
     });
     return res.json();
   },
+
+  // CDP Reconnect trigger
+  async reconnectCdp() {
+    const res = await request('/api/v1/controls/target/sync', { method: 'POST' });
+    return res.json();
+  },
 };
 
 export { request };

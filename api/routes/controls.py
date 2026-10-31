@@ -119,9 +119,17 @@ async def get_app_state():
 
     tailscale_info = remote_access_service.get_tailscale_status()
     model_info = await antigravity_adapter.get_active_model_and_plan()
+    cdp_details = {
+        "status": antigravity_adapter.last_status,
+        "connected": is_conn,
+        "port": antigravity_adapter.active_cdp_port,
+        "latency_ms": antigravity_adapter.last_latency_ms,
+        "reconnect_attempts": antigravity_adapter.reconnect_attempts,
+    }
     return {
         "status": "online",
         "connected": is_conn,
+        "cdp": cdp_details,
         "mode": model_info.get("mode", "Fast"),
         "model": model_info.get("model"),
         "quota_status": model_info.get("quota_status", "normal"),

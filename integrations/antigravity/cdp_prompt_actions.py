@@ -15,9 +15,9 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
     inserts prompt via native CDP Input.insertText, and clicks the Send message button.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, close_timeout=3) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=3.0) as ws:
             # 1. Focus input element
             focus_js = """
             (() => {
@@ -256,9 +256,9 @@ async def dispatch_stop_generation(target_url: str) -> Dict[str, Any]:
     Finds the Stop/Cancel button, dispatches Ctrl+D, and Escape keys.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, close_timeout=3) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=3.0) as ws:
             stop_js = """
             (() => {
                 const termCloseBtn = document.querySelector('[data-tooltip-id^="terminal-expanded-content"] button, [data-tooltip-id*="terminal"] button');

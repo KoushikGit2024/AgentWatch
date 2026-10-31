@@ -27,9 +27,9 @@ async def capture_cdp_screenshot(
         return cached_data, cached_hash, last_time
 
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, close_timeout=2) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=2.0) as ws:
             await ws.send(
                 json.dumps(
                     {

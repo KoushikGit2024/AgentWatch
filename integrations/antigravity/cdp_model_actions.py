@@ -11,10 +11,10 @@ logger = logging.getLogger("integrations.antigravity.cdp_model_actions")
 async def dispatch_switch_model(target_url: str, target_model: str) -> Dict[str, Any]:
     """Switch active model or effort tier (Low/Medium/High) in Antigravity IDE via CDP."""
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(
-            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        async with cdp_connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=1.5
         ) as ws:
             switch_js = f"""
             (async () => {{
@@ -99,10 +99,10 @@ async def dispatch_switch_model(target_url: str, target_model: str) -> Dict[str,
 async def dispatch_switch_mode(target_url: str, target_mode: str) -> Dict[str, Any]:
     """Switch active agent execution mode (Fast vs Planning) in Antigravity IDE via CDP."""
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(
-            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        async with cdp_connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=1.5
         ) as ws:
             mode_js = f"""
             (async () => {{
@@ -160,10 +160,10 @@ async def dispatch_switch_mode(target_url: str, target_mode: str) -> Dict[str, A
 async def dispatch_read_model(target_url: str, force_full_scan: bool = False) -> Dict[str, Any]:
     """Passively read current model and quota status from Antigravity IDE UI via CDP."""
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(
-            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        async with cdp_connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=1.5
         ) as ws:
             passive_js = r"""
             (() => {
@@ -240,10 +240,10 @@ async def dispatch_read_model(target_url: str, force_full_scan: bool = False) ->
 async def dispatch_scan_available_models(target_url: str) -> List[Dict[str, Any]]:
     """Dynamically scan all models and effort tiers (Low/Medium/High) from Antigravity IDE."""
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(
-            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        async with cdp_connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=1.5
         ) as ws:
             scan_js = r"""
             (async () => {

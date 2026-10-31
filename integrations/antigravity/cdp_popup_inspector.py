@@ -14,9 +14,9 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
     Returns structured details including all available option buttons and custom input availability.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, close_timeout=2.5) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=2.5) as ws:
             inspect_js = r"""
             (() => {
                 function isVisible(el) {
@@ -256,9 +256,9 @@ async def dispatch_inspect_active_banners(target_url: str) -> Dict[str, Any]:
     quota exhaustion toasts, and connection drops that never appear in transcript.jsonl.
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, close_timeout=2.0) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=2.0) as ws:
             inspect_js = """
             (() => {
                 function isVisible(el) {

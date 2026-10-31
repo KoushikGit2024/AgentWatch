@@ -26,9 +26,9 @@ async def dispatch_forward_approval(
     6. Optional custom instructions dispatch if user provided custom_response
     """
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        async with websockets.connect(target_url, close_timeout=5) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=3.0) as ws:
             click_js = f"""
             (async () => {{
                 const dec = {json.dumps(decision.lower().strip())};

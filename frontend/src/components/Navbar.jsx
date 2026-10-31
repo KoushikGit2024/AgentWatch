@@ -1,12 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icon } from '../constants/icons';
 import NotificationMenu from './notifications/NotificationMenu';
+import { api } from '../services/api';
+import { toast } from '../services/toastService';
 
 export default function Navbar({
   targetTitle,
   workspaceName,
   chatTitle,
   isConnected,
+  cdpStatus,
+  onRefreshAppState,
   viewMode,
   onViewModeChange,
   onOpenTimeline,
@@ -19,6 +23,7 @@ export default function Navbar({
   onOpenPortForwarding,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -38,6 +43,25 @@ export default function Navbar({
       document.removeEventListener('keydown', handleEsc);
     };
   }, [mobileMenuOpen]);
+
+  const handleManualReconnect = async (e) => {
+    e.stopPropagation();
+    if (isReconnecting) return;
+    setIsReconnecting(true);
+    try {
+      const res = await api.reconnectCdp();
+      if (res?.connected || res?.status === 'active') {
+        toast.success('Reconnected to Antigravity IDE workbench', 'CDP Live');
+      } else {
+        toast.info('Probing CDP ports... Ensure IDE is started with --remote-debugging-port=9000', 'CDP Probe');
+      }
+      if (onRefreshAppState) onRefreshAppState();
+    } catch (err) {
+      toast.error(err.message || 'Failed to reconnect to IDE', 'CDP Connection');
+    } finally {
+      setIsReconnecting(false);
+    }
+  };
 
   const handleAction = actionFn => {
     setMobileMenuOpen(false);
@@ -79,13 +103,39 @@ export default function Navbar({
               v2.0
             </span>
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-[#A0A6AF] font-mono">
+          <div
+            onClick={!isConnected ? handleManualReconnect : undefined}
+            title={
+              isConnected
+                ? `CDP Live on port ${cdpStatus?.port || 9000}${
+                    cdpStatus?.latency_ms ? ` (${cdpStatus.latency_ms}ms)` : ''
+                  }`
+                : isReconnecting
+                ? 'Reconnecting to Antigravity IDE on port 9000...'
+                : 'CDP Standby · Click to reconnect to Antigravity IDE'
+            }
+            className={`flex items-center gap-1.5 mt-0.5 text-[10px] text-[#A0A6AF] font-mono select-none ${
+              !isConnected ? 'cursor-pointer hover:text-[#E8EAED]' : ''
+            }`}
+          >
             <span
               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                isConnected ? 'bg-[#79B89A] pulse-live' : 'bg-[#747C87]'
+                isConnected
+                  ? 'bg-[#79B89A] pulse-live'
+                  : isReconnecting || cdpStatus?.status === 'reconnecting'
+                  ? 'bg-amber-400 animate-pulse'
+                  : 'bg-[#747C87]'
               }`}
             />
-            <span className="truncate">{isConnected ? 'CDP Live · 9000' : 'Standby'}</span>
+            <span className="truncate">
+              {isConnected
+                ? `CDP Live · ${cdpStatus?.port || 9000}${
+                    cdpStatus?.latency_ms ? ` · ${cdpStatus.latency_ms}ms` : ''
+                  }`
+                : isReconnecting || cdpStatus?.status === 'reconnecting'
+                ? 'Reconnecting...'
+                : 'Standby · Reconnect'}
+            </span>
             {chatTitle && (
               <span
                 title={chatTitle}

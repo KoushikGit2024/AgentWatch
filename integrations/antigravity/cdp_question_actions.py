@@ -22,17 +22,17 @@ async def dispatch_answer_question(
     4. Post-click verification: verifies the dialog has advanced or closed completely.
     5. Returns clean diagnostic status without writing unrequested out-of-band text to the chat composer.
     """
+    clean_labels = [lbl.strip() for lbl in selected_labels if lbl and lbl.strip()]
+    has_custom = bool(custom_response and custom_response.strip())
+    custom_txt = custom_response.strip() if has_custom else ""
+
+    if not clean_labels and not has_custom:
+        return {"success": False, "error": "No options or custom response provided"}
+
     try:
-        import websockets
+        from integrations.antigravity.cdp_connection import cdp_connect
 
-        clean_labels = [lbl.strip() for lbl in selected_labels if lbl and lbl.strip()]
-        has_custom = bool(custom_response and custom_response.strip())
-        custom_txt = custom_response.strip() if has_custom else ""
-
-        if not clean_labels and not has_custom:
-            return {"success": False, "error": "No options or custom response provided"}
-
-        async with websockets.connect(target_url, close_timeout=4.0) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=3.0) as ws:
             step_js = f"""
             (async () => {{
                 const targetLabels = {json.dumps(clean_labels)};

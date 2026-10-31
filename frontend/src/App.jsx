@@ -207,6 +207,8 @@ export default function App() {
         workspaceName={appState.workspace_name}
         chatTitle={appState.active_conversation_title}
         isConnected={appState.connected}
+        cdpStatus={appState.cdp}
+        onRefreshAppState={fetchAppState}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onOpenTimeline={() => {
