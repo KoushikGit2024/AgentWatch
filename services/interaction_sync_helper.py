@@ -145,3 +145,4 @@ def sync_question_from_transcript_data(
     )
     repo.create_interaction(doc)
     return interaction_id
+

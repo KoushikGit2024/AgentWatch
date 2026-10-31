@@ -246,39 +246,20 @@ class AntigravityAdapter:
         if not self.active_target_url:
             return None
 
-        now = time.time()
-        if self._cached_screenshot and (now - self._last_screenshot_time < 1.5):
-            return self._cached_screenshot
+        from integrations.antigravity.screenshot_service import capture_cdp_screenshot
 
-        try:
-            import websockets
-            import json
-
-            async with websockets.connect(self.active_target_url, close_timeout=2) as ws:
-                await ws.send(
-                    json.dumps(
-                        {
-                            "id": 100,
-                            "method": "Page.captureScreenshot",
-                            "params": {"format": "jpeg", "quality": quality},
-                        }
-                    )
-                )
-                reply = await asyncio.wait_for(ws.recv(), timeout=2.5)
-                res = json.loads(reply)
-                data = res.get("result", {}).get("data")
-                if data:
-                    self._cached_screenshot = data
-                    self._cached_screenshot_hash = hashlib.md5(
-                        data.encode("ascii", errors="ignore")
-                    ).hexdigest()[:16]
-                    self._last_screenshot_time = now
-                    return data
-        except Exception as e:
-            logger.debug("CDP screenshot capture notice: %s", str(e))
-            if self._cached_screenshot:
-                return self._cached_screenshot
-        return None
+        data, shot_hash, shot_time = await capture_cdp_screenshot(
+            target_url=self.active_target_url,
+            cached_data=self._cached_screenshot,
+            cached_hash=self._cached_screenshot_hash,
+            last_time=self._last_screenshot_time,
+            quality=quality,
+        )
+        if data:
+            self._cached_screenshot = data
+            self._cached_screenshot_hash = shot_hash
+            self._last_screenshot_time = shot_time
+        return data
 
     def get_cached_screenshot_hash(self) -> Optional[str]:
         """Return MD5 hash of the latest captured screenshot for bandwidth deduplication."""

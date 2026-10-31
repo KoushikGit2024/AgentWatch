@@ -100,3 +100,4 @@ def evaluate_system_capabilities() -> List[CapabilityItem]:
             reason="Native Antigravity permission dialogs require local confirmation in IDE for security.",
         ),
     ]
+
