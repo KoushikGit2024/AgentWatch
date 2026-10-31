@@ -273,6 +273,43 @@ const ChatTurn = memo(function ChatTurn({
                 )}
               </div>
             )}
+
+            {turn.error && (
+              <div className="my-2 p-3 rounded-xl bg-[#1C1416] border border-rose-500/40 text-xs font-sans space-y-2 select-text shadow-sm">
+                <div className="flex items-center justify-between gap-2 border-b border-rose-950/60 pb-1.5">
+                  <div className="flex items-center gap-1.5 font-semibold text-rose-300">
+                    <div className="w-3.5 h-3.5 text-rose-400">{Icon.alertTriangle}</div>
+                    <span>Agent Terminated Due to Error</span>
+                  </div>
+                  {turn.error.error_id && (
+                    <span className="text-[10px] font-mono text-rose-400/70">
+                      ID: {turn.error.error_id}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[#C4C9D2] leading-relaxed">
+                  {turn.error.message || 'There was a network issue connecting to the model server.'}
+                </p>
+                {turn.error.raw_error && (
+                  <div className="p-2 rounded bg-[#120D0F] border border-rose-950/80 font-mono text-[11px] text-rose-300/80 max-h-24 overflow-y-auto whitespace-pre-wrap break-all">
+                    {turn.error.raw_error}
+                  </div>
+                )}
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const textToCopy = turn.error.raw_error || turn.error.message;
+                      navigator.clipboard.writeText(textToCopy);
+                    }}
+                    className="px-2.5 py-1 rounded bg-[#2A1B20] hover:bg-[#38232B] text-rose-300 text-[11px] font-mono transition cursor-pointer flex items-center gap-1"
+                  >
+                    <div className="w-3 h-3">{Icon.copy}</div>
+                    <span>Copy Debug Info</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

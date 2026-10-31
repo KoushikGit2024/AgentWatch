@@ -250,6 +250,36 @@ class ConversationService:
                                         clean_out = clean_out.split("\t\t\t\tStdout:\n", 1)[1]
                                     last_item["output"] = clean_out.strip()
 
+                        elif stype == "ERROR_MESSAGE" or step.get("status") == "ERROR":
+                            if not current_agent_turn:
+                                turn_idx = len(turns)
+                                current_agent_turn = {
+                                    "id": f"turn-{turn_idx}",
+                                    "turn_index": turn_idx,
+                                    "role": "agent",
+                                    "text": "",
+                                    "thinking": "",
+                                    "items": [],
+                                    "steps": [],
+                                    "timestamp": created_at,
+                                    "is_working": False,
+                                }
+                            current_agent_turn["is_working"] = False
+                            err_raw = str(step.get("error") or step.get("message") or content or "Agent terminated due to error").strip()
+                            # Extract Error ID if present
+                            err_id_match = re.search(r"Error ID:\s*([a-zA-Z0-9\-]+)", err_raw)
+                            error_id = err_id_match.group(1) if err_id_match else None
+                            current_agent_turn["error"] = {
+                                "message": "Agent terminated due to error. A network issue or timeout occurred connecting to the model server.",
+                                "raw_error": err_raw,
+                                "error_id": error_id,
+                                "kind": "network_timeout" if any(w in err_raw.lower() for w in ["timeout", "deadline", "wsasend", "wsarecv", "closed"]) else "runtime_error",
+                                "timestamp": created_at,
+                            }
+                            for it in current_agent_turn.get("items", []):
+                                it["requires_permission"] = False
+                                it["status"] = "done"
+
                     except Exception:
                         continue
 
