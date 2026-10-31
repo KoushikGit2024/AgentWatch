@@ -51,7 +51,7 @@ export function FileViewerFooterBar({ activeTab, fileData, activePath, language,
           : `${(language || 'PLAIN').toUpperCase()} · ${fileData?.total_lines || 0} lines`}
       </span>
       <span className="text-[10px] text-[#747C87] hidden sm:inline">
-        {tabsCount} open tab{tabsCount > 1 ? 's' : ''} · Press Ctrl+W to close tab
+        {tabsCount} open tab{tabsCount > 1 ? 's' : ''}
       </span>
     </div>
   );

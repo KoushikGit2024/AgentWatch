@@ -62,7 +62,7 @@ export function FileViewerTabBar({
               <button
                 type="button"
                 onClick={e => handleCloseTab(e, tab.path)}
-                title="Close Tab (Ctrl+W)"
+                title="Close Tab"
                 className="w-4 h-4 rounded hover:bg-[#30343A] flex items-center justify-center text-[#747C87] hover:text-[#E8EAED] transition shrink-0 ml-0.5 cursor-pointer"
               >
                 <div className="w-3 h-3">{Icon.x}</div>
