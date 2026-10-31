@@ -1,9 +1,36 @@
-"""Domain models and Pydantic schemas for AgentWatch."""
+"""Domain models and Pydantic schemas for AgentWatch.
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-from typing import Optional, Dict, Any, List
+Decomposed modularly:
+- Interaction schemas: models.interaction_schemas
+- Prompt & Control schemas: models.prompt_schemas
+"""
+
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, ConfigDict, Field
+
+# Re-export prompt and interaction schemas for backwards compatibility
+from models.interaction_schemas import (
+    InteractionDocument,
+    InteractionFormField,
+    InteractionKind,
+    InteractionOption,
+    InteractionStatus,
+    QuestionItem,
+    SubmitInteractionRequest,
+)
+from models.prompt_schemas import (
+    AgentModeEnum,
+    ControlActionRequest,
+    LoginRequest,
+    PromptSubmissionRequest,
+    RemoteClickRequest,
+    RemoteScrollRequest,
+    SetModeRequest,
+    SetModelRequest,
+    SupportedModelsEnum,
+)
 
 
 class SourceConfidence(str, Enum):
@@ -157,212 +184,6 @@ class AgentDocument(BaseModel):
     last_seen: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class AgentModeEnum(str, Enum):
-    FAST = "Fast"
-    PLANNING = "Planning"
-
-
-class SupportedModelsEnum(str, Enum):
-    DEFAULT_AGENT = "Default Antigravity Agent"
-    GEMINI_PRO = "Gemini 3.1 Pro (High)"
-    CLAUDE_SONNET = "Claude Sonnet 4.6 (Thinking)"
-    CLAUDE_OPUS = "Claude Opus 4.6 (Thinking)"
-    GPT_OSS = "GPT-OSS 120B (Medium)"
-
-
-class SetModeRequest(BaseModel):
-    mode: AgentModeEnum = Field(description="Agent execution mode (Fast or Planning)")
-
-
-class SetModelRequest(BaseModel):
-    model: str = Field(..., min_length=1, max_length=128, description="Target model name")
-
-    @field_validator("model")
-    @classmethod
-    def validate_model_name(cls, v: str) -> str:
-        trimmed = v.strip()
-        if not trimmed:
-            raise ValueError("Model name cannot be blank")
-        return trimmed
-
-
-class RemoteScrollRequest(BaseModel):
-    scrollPercent: float = Field(
-        ..., ge=0.0, le=100.0, description="Normalized vertical scroll percentage between 0 and 100"
-    )
-
-
-class RemoteClickRequest(BaseModel):
-    text: Optional[str] = Field(default="", max_length=500, description="Element text to click")
-    x: Optional[float] = Field(
-        default=None, ge=0.0, le=10000.0, description="Optional X pixel coordinate"
-    )
-    y: Optional[float] = Field(
-        default=None, ge=0.0, le=10000.0, description="Optional Y pixel coordinate"
-    )
-
-
-class LoginRequest(BaseModel):
-    password: str
-
-
-class PromptSubmissionRequest(BaseModel):
-    message: Optional[str] = Field(
-        default=None, max_length=10000, description="Prompt text to dispatch"
-    )
-    prompt: Optional[str] = Field(
-        default=None, max_length=10000, exclude=True, description="Prompt text alias"
-    )
-    session_id: Optional[str] = Field(
-        default=None, max_length=128, description="Target session UUID if explicitly specified"
-    )
-    idempotency_key: Optional[str] = Field(
-        default=None,
-        min_length=1,
-        max_length=128,
-        description="Client idempotency token to prevent duplicate dispatch",
-    )
-    attachments: Optional[List[Dict[str, Any]]] = Field(
-        default=None, description="Attached images or files metadata"
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_prompt_message(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if not data.get("message") and data.get("prompt"):
-                data["message"] = data["prompt"]
-        return data
-
-    @field_validator("message")
-    @classmethod
-    def validate_message_not_blank(cls, v: Optional[str]) -> str:
-        if not v or not v.strip():
-            raise ValueError("Prompt message cannot be empty or whitespace only")
-        return v.strip()
-
-    @field_validator("idempotency_key")
-    @classmethod
-    def validate_idempotency_key(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None:
-            trimmed = v.strip()
-            if not trimmed:
-                raise ValueError("idempotency_key cannot be empty or whitespace only")
-            return trimmed
-        return v
-
-
-class ControlActionRequest(BaseModel):
-    action: str
-    parameters: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-
-# --- Dynamic Interaction Models ---
-
-
-class InteractionKind(str, Enum):
-    SINGLE_CHOICE = "single_choice"
-    MULTIPLE_CHOICE = "multiple_choice"
-    FREE_TEXT = "free_text"
-    CONFIRMATION = "confirmation"
-    FORM = "form"
-    APPROVAL = "approval"
-    BROWSER_PERMISSION = "browser_permission"
-
-
-class InteractionStatus(str, Enum):
-    PENDING = "pending"
-    SUBMITTED = "submitted"
-    CANCELLED = "cancelled"
-    DISMISSED = "dismissed"
-    EXPIRED = "expired"
-    SUPERSEDED = "superseded"
-    RESOLVED = "resolved"
-
-
-class InteractionOption(BaseModel):
-    id: str = Field(..., min_length=1, max_length=128)
-    label: str = Field(..., min_length=1, max_length=256)
-    description: Optional[str] = Field(default=None, max_length=1000)
-    is_recommended: bool = False
-
-
-class InteractionFormField(BaseModel):
-    id: str = Field(..., min_length=1, max_length=128)
-    label: str = Field(..., min_length=1, max_length=256)
-    field_type: str = "text"  # text, textarea, select, checkbox
-    placeholder: Optional[str] = None
-    required: bool = True
-    options: Optional[List[str]] = None
-
-
-class QuestionItem(BaseModel):
-    """Individual question inside a multi-question ask_question tool call."""
-
-    id: str = Field(..., min_length=1, max_length=128)
-    question: str = Field(..., min_length=1, max_length=500)
-    is_multi_select: bool = False
-    options: List[InteractionOption] = Field(default_factory=list)
-
-
-class InteractionDocument(BaseModel):
-    """Persisted dynamic interaction request schema."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    id: Optional[str] = Field(default=None, alias="_id")
-    interaction_id: str = Field(..., min_length=1, max_length=128)
-    session_id: str = Field(..., min_length=1, max_length=128)
-    kind: InteractionKind
-    popup_kind: Optional[str] = Field(
-        default=None, description="question, approval, browser_permission"
-    )
-    title: str = Field(..., min_length=1, max_length=256)
-    description: Optional[str] = Field(default=None, max_length=2000)
-    target_domain: Optional[str] = Field(
-        default=None, max_length=256, description="Target domain for browser permissions"
-    )
-    command: Optional[str] = Field(
-        default=None, max_length=2000, description="Command/script target for approval cards"
-    )
-    options: List[InteractionOption] = Field(default_factory=list)
-    questions: List[QuestionItem] = Field(default_factory=list)
-    fields: List[InteractionFormField] = Field(default_factory=list)
-    step_indicator: Optional[str] = Field(
-        default=None, max_length=64, description="Step count, e.g., 1 of 2"
-    )
-    allow_custom_response: bool = False
-    custom_response_label: str = "Other / Custom Text"
-    status: InteractionStatus = InteractionStatus.PENDING
-    submitted_response: Optional[Dict[str, Any]] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    resolved_at: Optional[datetime] = None
-
-
-class SubmitInteractionRequest(BaseModel):
-    selected_option_ids: List[str] = Field(default_factory=list)
-    custom_response: Optional[str] = Field(
-        default=None, max_length=5000, description="Custom text response when permitted"
-    )
-    form_values: Optional[Dict[str, Any]] = None
-    idempotency_key: Optional[str] = Field(
-        default=None,
-        min_length=1,
-        max_length=128,
-        description="Client idempotency token to prevent duplicate responses",
-    )
-
-    @field_validator("idempotency_key")
-    @classmethod
-    def validate_interaction_idempotency_key(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None:
-            trimmed = v.strip()
-            if not trimmed:
-                raise ValueError("idempotency_key cannot be empty or whitespace only")
-            return trimmed
-        return v
-
-
 class CapabilityStatus(str, Enum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
@@ -460,7 +281,6 @@ def validate_action_transition(
 ) -> bool:
     """Validate whether an action execution state transition is permitted."""
     if current is None:
-        # Initial transition is valid for entry states
         return target in (
             ActionExecutionState.REQUEST_RECEIVED,
             ActionExecutionState.REQUEST_ACCEPTED,
@@ -468,6 +288,6 @@ def validate_action_transition(
             ActionExecutionState.REJECTED,
         )
     if current == target:
-        return True  # Idempotent state assertion
+        return True
     allowed = VALID_ACTION_TRANSITIONS.get(current, set())
     return target in allowed
