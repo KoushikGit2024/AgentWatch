@@ -173,6 +173,41 @@ export function useAgentInteractions({ fetchChatMessages, isMountedRef }) {
     }
   }, [pendingInteraction, isSubmitting, selectedOptions, customResponse, fetchChatMessages, isMountedRef]);
 
+  const handleRespondDirectQuestion = useCallback(
+    async (chosenLabels, customText = null) => {
+      let targetId = pendingInteraction?.interaction_id;
+      if (!targetId) {
+        try {
+          const active = await api.getPendingInteractions();
+          if (active?.interactions?.[0]?.interaction_id) {
+            targetId = active.interactions[0].interaction_id;
+          }
+        } catch {}
+      }
+
+      const optionsSet = new Set(chosenLabels || []);
+      try {
+        if (targetId) {
+          await api.respondInteraction(targetId, optionsSet, customText || '');
+        } else {
+          // If no active interaction id was bound in repository, fallback to prompt dispatch
+          const promptPayload = chosenLabels?.join(', ') || customText || '';
+          if (promptPayload) await api.sendPrompt(promptPayload);
+        }
+        toast.success('Response dispatched to Antigravity IDE', 'Decision Submitted');
+        if (isMountedRef.current) {
+          setPendingInteraction(null);
+          setIsInteractionMinimized(false);
+          setTimeout(fetchChatMessages, 500);
+        }
+      } catch (e) {
+        toast.error(e.message || 'Failed to dispatch question choice', 'Question Response Failed');
+        throw e;
+      }
+    },
+    [pendingInteraction, fetchChatMessages, isMountedRef]
+  );
+
   return {
     pendingInteraction,
     setPendingInteraction,
@@ -200,5 +235,6 @@ export function useAgentInteractions({ fetchChatMessages, isMountedRef }) {
     handleReopenInteraction,
     handleCancelInteraction,
     handleInteractionSubmit,
+    handleRespondDirectQuestion,
   };
 }

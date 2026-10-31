@@ -29,7 +29,7 @@ export default function ApprovalCard({ item, itemKey, approvalState, onApprove }
   };
 
   return (
-    <div className="my-2 p-3.5 rounded-xl bg-gradient-to-b from-[#181C23] to-[#12151B] border border-amber-500/35 shadow-lg shadow-amber-950/20 flex flex-col gap-3 font-sans">
+    <div className="my-2 p-3.5 rounded-xl bg-[#14171D] border border-amber-500/35 shadow-lg shadow-amber-950/20 flex flex-col gap-3 font-sans">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
         <div className="min-w-0 flex-1">
           <div className="font-bold text-amber-300 text-xs flex items-center gap-2">
@@ -60,7 +60,7 @@ export default function ApprovalCard({ item, itemKey, approvalState, onApprove }
                       ? 'bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 shadow-sm'
                       : isAlways
                         ? 'bg-[#1C2028] hover:bg-[#252B36] border border-[#3A4250] hover:border-amber-400/40 text-[#E2E8F0] shadow-sm'
-                        : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-[#091512] font-bold shadow-md shadow-emerald-500/20'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-500/20'
                   }`}
                 >
                   {optLabel}

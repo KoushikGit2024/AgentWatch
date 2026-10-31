@@ -3,6 +3,7 @@ import { Icon } from '../../constants/icons';
 import { FileIcon, getFileInfo } from '../../constants/fileIcons';
 import { parseFileLink, isValidFilePath } from '../../utils/fileLinkParser';
 import ApprovalCard from './ApprovalCard';
+import QuestionCard from './QuestionCard';
 import DiffViewer from './DiffViewer';
 
 const StreamItem = memo(function StreamItem({
@@ -13,6 +14,7 @@ const StreamItem = memo(function StreamItem({
   isWorking,
   onToggle,
   onApprove,
+  onRespondQuestion,
   onOpenFile,
 }) {
   const [isOutputExpanded, setIsOutputExpanded] = useState(false);
@@ -293,27 +295,22 @@ const StreamItem = memo(function StreamItem({
           )}
 
           {isQuestion && item.question_data && (
-            <div className="space-y-1.5 bg-zinc-950/80 p-2.5 rounded-lg border border-zinc-800">
-              <div className="text-xs font-semibold text-zinc-200">
-                {item.question_data.question}
-              </div>
-              {Array.isArray(item.question_data.options) &&
-                item.question_data.options.length > 0 && (
-                  <div className="space-y-1 pt-1">
-                    {item.question_data.options.map((opt, idx) => (
-                      <div
-                        key={opt.id || idx}
-                        className="text-[11px] text-zinc-300 flex items-start gap-1.5"
-                      >
-                        <span className="text-blue-400 font-mono">{idx + 1}.</span>
-                        <span>{typeof opt === 'string' ? opt : opt.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-            </div>
+            <QuestionCard
+              item={item}
+              isWorking={isWorking}
+              onRespond={onRespondQuestion}
+            />
           )}
         </div>
+      )}
+
+      {/* Standalone Interactive Question Card outside collapsed chevron when waiting */}
+      {isQuestion && item.question_data && !isOpen && (
+        <QuestionCard
+          item={item}
+          isWorking={isWorking}
+          onRespond={onRespondQuestion}
+        />
       )}
 
       {(item.requires_permission || effectiveApproval) &&

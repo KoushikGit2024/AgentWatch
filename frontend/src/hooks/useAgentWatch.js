@@ -371,6 +371,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     handleReopenInteraction,
     handleSendPrompt,
     handleInteractionSubmit,
+    handleRespondDirectQuestion,
     handleToggleOption,
     handleSetModel,
     handleSetMode,

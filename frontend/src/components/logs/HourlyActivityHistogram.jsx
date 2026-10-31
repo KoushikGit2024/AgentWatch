@@ -11,7 +11,7 @@ export function HourlyActivityHistogram({
   if (!analytics) return null;
 
   return (
-    <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm space-y-3">
+    <div className="p-3.5 sm:p-4 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-semibold text-[#F1F3F5] tracking-tight">

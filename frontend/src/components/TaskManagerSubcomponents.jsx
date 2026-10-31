@@ -129,7 +129,7 @@ export function SystemSummaryGauges({ summary }) {
         </div>
         <div className="mt-2.5 w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-300"
+            className="bg-blue-500 h-full rounded-full transition-all duration-300"
             style={{ width: `${Math.min(summary.total_cpu_percent, 100)}%` }}
           />
         </div>
@@ -151,7 +151,7 @@ export function SystemSummaryGauges({ summary }) {
             className={`h-full rounded-full transition-all duration-300 ${
               summary.memory_percent > 85
                 ? 'bg-rose-500'
-                : 'bg-gradient-to-r from-blue-500 to-cyan-400'
+                : 'bg-blue-500'
             }`}
             style={{ width: `${Math.min(summary.memory_percent, 100)}%` }}
           />

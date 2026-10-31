@@ -7,7 +7,7 @@ export function LogBreakdownCharts({ analytics }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {/* Log Levels Severity Distribution */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm space-y-3">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm space-y-3">
         <div className="flex items-center gap-2">
           <PieChart className="w-4 h-4 text-emerald-400" />
           <h3 className="text-xs font-semibold text-[#F1F3F5]">Severity Level Distribution</h3>
@@ -59,7 +59,7 @@ export function LogBreakdownCharts({ analytics }) {
       </div>
 
       {/* HTTP Status Code Proportions */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm space-y-3">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm space-y-3">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-sky-400" />
           <h3 className="text-xs font-semibold text-[#F1F3F5]">HTTP Status Codes</h3>

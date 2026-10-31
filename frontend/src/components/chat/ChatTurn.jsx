@@ -13,6 +13,7 @@ const ChatTurn = memo(function ChatTurn({
   approvals,
   onToggleItem,
   onApprove,
+  onRespondQuestion,
   onOpenFile,
   onStop,
 }) {
@@ -237,6 +238,7 @@ const ChatTurn = memo(function ChatTurn({
                   isWorking={turn.is_working}
                   onToggle={onToggleItem}
                   onApprove={onApprove}
+                  onRespondQuestion={onRespondQuestion}
                   onOpenFile={onOpenFile}
                 />
               );

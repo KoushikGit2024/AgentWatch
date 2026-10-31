@@ -79,12 +79,12 @@ export default function ApprovalModal({ approval, isSubmitting, onDecide, onDism
       lower.includes('cancel') ||
       lower.includes('no')
     ) {
-      return 'bg-gradient-to-r from-red-500/20 to-rose-600/20 hover:from-red-500/30 hover:to-rose-600/30 border border-red-500/40 text-red-300 shadow-sm hover:shadow-red-500/20';
+      return 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 shadow-sm hover:shadow-red-500/20';
     }
     if (lower.includes('always')) {
       return 'bg-[#1C2028] hover:bg-[#252B36] border border-[#3A4250] text-[#E2E8F0] hover:border-amber-400/40 shadow-sm';
     }
-    return 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-[#091512] font-semibold shadow-md shadow-emerald-500/20';
+    return 'bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-500/20';
   };
 
   return (
@@ -101,12 +101,12 @@ export default function ApprovalModal({ approval, isSubmitting, onDecide, onDism
         onClick={!isSubmitting ? onDismiss : undefined}
       />
 
-      <div className="relative w-full sm:max-w-md bg-gradient-to-b from-[#1E232B] to-[#14171C] border border-amber-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-amber-950/30 overflow-hidden max-h-[90dvh] flex flex-col">
-        <div className="h-1 w-full shrink-0 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
+      <div className="relative w-full sm:max-w-md bg-[#16181E] border border-amber-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-amber-950/30 overflow-hidden max-h-[90dvh] flex flex-col">
+        <div className="h-1 w-full shrink-0 bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
 
         <div className="aw-modal-scroll-region p-4 sm:p-5 space-y-4 overflow-y-auto">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-amber-500/40 bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-400 shrink-0 shadow-inner">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-amber-500/40 bg-amber-500/15 text-amber-400 shrink-0 shadow-inner">
               <div className="w-4 h-4">
                 {requestType === 'command'
                   ? Icon.terminal
@@ -239,7 +239,7 @@ export default function ApprovalModal({ approval, isSubmitting, onDecide, onDism
                         type="button"
                         disabled={!customInstructions.trim() || isSubmitting}
                         onClick={handleSendCustomDeny}
-                        className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-[#091512] text-xs font-bold transition disabled:opacity-40 cursor-pointer shadow-md shadow-amber-500/20"
+                        className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition disabled:opacity-40 cursor-pointer shadow-md shadow-amber-500/20"
                       >
                         Send Instructions
                       </button>

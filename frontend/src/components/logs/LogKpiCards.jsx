@@ -9,7 +9,7 @@ export function LogKpiCards({ analytics }) {
 
   return (
     <div className="grid grid-cols-2 xs:grid-cols-2 md:grid-cols-4 gap-2.5">
-      <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm flex flex-col justify-between">
+      <div className="p-3.5 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm flex flex-col justify-between">
         <span className="text-[11px] font-mono text-[#828c9e] flex items-center justify-between">
           Total Log Lines
           <FileText className="w-3.5 h-3.5 text-blue-400" />
@@ -24,7 +24,7 @@ export function LogKpiCards({ analytics }) {
         </div>
       </div>
 
-      <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm flex flex-col justify-between">
+      <div className="p-3.5 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm flex flex-col justify-between">
         <span className="text-[11px] font-mono text-[#828c9e] flex items-center justify-between">
           Errors / Critical
           <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
@@ -43,7 +43,7 @@ export function LogKpiCards({ analytics }) {
         </div>
       </div>
 
-      <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm flex flex-col justify-between">
+      <div className="p-3.5 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm flex flex-col justify-between">
         <span className="text-[11px] font-mono text-[#828c9e] flex items-center justify-between">
           HTTP Requests
           <Activity className="w-3.5 h-3.5 text-emerald-400" />
@@ -56,7 +56,7 @@ export function LogKpiCards({ analytics }) {
         </div>
       </div>
 
-      <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm flex flex-col justify-between">
+      <div className="p-3.5 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm flex flex-col justify-between">
         <span className="text-[11px] font-mono text-[#828c9e] flex items-center justify-between">
           Timespan Covered
           <Clock className="w-3.5 h-3.5 text-amber-400" />

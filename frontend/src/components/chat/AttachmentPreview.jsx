@@ -73,7 +73,7 @@ export default function AttachmentPreview({
                   <div className="w-3.5 h-3.5">{Icon.x}</div>
                 </button>
               )}
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-1 py-0.5 text-[9px] text-zinc-300 truncate font-mono">
+              <div className="absolute bottom-0 inset-x-0 bg-black/75 px-1 py-0.5 text-[9px] text-zinc-300 truncate font-mono">
                 {isPending ? 'Uploading…' : formatFileSize(att.size)}
               </div>
             </div>

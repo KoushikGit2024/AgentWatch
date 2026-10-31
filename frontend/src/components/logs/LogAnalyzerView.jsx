@@ -114,7 +114,7 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#0c0e14] overflow-y-auto p-3 sm:p-5 space-y-4 select-text">
       {/* Top Toolbar: Date Selector & File Stats */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-gradient-to-b from-[#181c26] to-[#131620] border border-[#272d3d] shadow-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-[#141720] border border-[#272d3d] shadow-sm">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="p-2 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
             <Calendar className="w-4 h-4" />

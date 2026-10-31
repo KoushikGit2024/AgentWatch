@@ -99,6 +99,7 @@ export default function App() {
     handleReopenInteraction,
     handleSendPrompt,
     handleInteractionSubmit,
+    handleRespondDirectQuestion,
     handleToggleOption,
     handleSetModel,
     handleSetMode,
@@ -248,6 +249,7 @@ export default function App() {
               isScrolledUp={isScrolledUp}
               onToggleItem={toggleItem}
               onApprove={handleApproval}
+              onRespondQuestion={handleRespondDirectQuestion}
               onOpenFile={handleOpenFile}
               onScroll={handleChatScroll}
               onScrollToBottom={scrollToBottom}

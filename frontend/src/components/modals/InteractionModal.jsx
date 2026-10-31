@@ -55,13 +55,13 @@ export default function InteractionModal({
         onClick={!isSubmitting ? onCancel || onDismiss : undefined}
       />
 
-      <div className="relative w-full sm:max-w-lg bg-gradient-to-b from-[#181D26] to-[#12151B] border border-sky-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-sky-950/40 overflow-hidden">
-        <div className="h-1 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-cyan-400 shadow-[0_0_12px_rgba(56,189,248,0.5)]" />
+      <div className="relative w-full sm:max-w-lg bg-[#14171E] border border-sky-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-sky-950/40 overflow-hidden">
+        <div className="h-1 w-full bg-sky-500 shadow-[0_0_12px_rgba(56,189,248,0.5)]" />
 
         <div className="aw-modal-scroll-region overflow-y-auto max-h-[86dvh] p-4 sm:p-5 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500/20 to-indigo-500/15 border border-sky-500/40 flex items-center justify-center text-sky-400 shrink-0 shadow-inner">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/40 flex items-center justify-center text-sky-400 shrink-0 shadow-inner">
                 <div className="w-5 h-5">{Icon.cpu}</div>
               </div>
               <div className="flex-1 min-w-0">
@@ -311,7 +311,7 @@ export default function InteractionModal({
                   type="button"
                   disabled={isSubmitting || !canSubmit}
                   onClick={onSubmit}
-                  className="px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-400 hover:to-indigo-400 text-[#091512] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-sky-500/25 active:scale-[0.98]"
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-sky-600 hover:bg-sky-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-sky-500/25 active:scale-[0.98]"
                 >
                   {isSubmitting
                     ? 'Sending...'
