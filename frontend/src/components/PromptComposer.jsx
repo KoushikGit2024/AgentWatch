@@ -308,10 +308,6 @@ export function PromptComposer({
       <AntigravityTerminalPanel
         isOpen={isTerminalPanelOpen}
         onClose={() => setIsTerminalPanelOpen(false)}
-        initialTasks={ideTerminalTasks}
-        onKillTask={handleKillIdeTerminalTask}
-        activeTaskId={selectedTerminalTaskId}
-        onSelectTask={id => setSelectedTerminalTaskId(id)}
       />
     </div>
   );

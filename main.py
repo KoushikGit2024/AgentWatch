@@ -34,6 +34,7 @@ from api.routes import (
     approvals,
     controls_remote,
     controls_tailscale,
+    terminal_routes,
 )
 from api.auth_middleware import dispatch_auth_middleware
 from security.authentication import check_auth_required, verify_session_token, is_local_request
@@ -213,6 +214,7 @@ app.include_router(messages.router)
 app.include_router(approvals.router)
 app.include_router(controls_remote.router)
 app.include_router(controls_tailscale.router)
+app.include_router(terminal_routes.router)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"

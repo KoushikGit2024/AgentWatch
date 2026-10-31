@@ -38,14 +38,8 @@ export default function WorkbenchBar({
         <button
           type="button"
           data-tooltip-id="tooltip-terminal"
-          onClick={() => {
-            if (onOpenTerminalPanel) {
-              onOpenTerminalPanel();
-            } else {
-              onToggleAttachedTab('terminal');
-            }
-          }}
-          title="Terminal & Multi-Tab Execution (Ctrl+`)"
+          onClick={() => onToggleAttachedTab('terminal')}
+          title="AI Running Commands & Tasks"
           className={`aw-focus-ring group relative rounded p-1.5 transition cursor-pointer ${
             activeAttachedTab === 'terminal'
               ? 'bg-[#1D2024] text-[#E8EAED] border border-emerald-500/40'
@@ -61,6 +55,19 @@ export default function WorkbenchBar({
             {Icon.terminal}
           </div>
         </button>
+
+        {onOpenTerminalPanel && (
+          <button
+            type="button"
+            onClick={onOpenTerminalPanel}
+            title="Interactive Terminal Console (Ctrl+`)"
+            className="aw-focus-ring group relative rounded p-1.5 hover:bg-[#1D2024] text-[#A0A6AF] hover:text-[#E8EAED] transition cursor-pointer"
+          >
+            <div className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform">
+              {Icon.code}
+            </div>
+          </button>
+        )}
 
         <button
           type="button"

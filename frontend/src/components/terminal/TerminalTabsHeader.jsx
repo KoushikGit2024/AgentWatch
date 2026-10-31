@@ -2,8 +2,6 @@ import React from 'react';
 import { Icon } from '../../constants/icons';
 
 export default function TerminalTabsHeader({
-  activeView,
-  onSelectView,
   tabs = [],
   currentTabId,
   onSelectTab,
@@ -14,47 +12,18 @@ export default function TerminalTabsHeader({
   onToggleMaximize,
   onClosePanel,
 }) {
-  const views = [
-    { id: 'problems', label: 'Problems', badge: 0 },
-    { id: 'output', label: 'Output' },
-    { id: 'debug', label: 'Debug Console' },
-    { id: 'terminal', label: 'Terminal' },
-    { id: 'ports', label: 'Ports' },
-  ];
-
   return (
-    <div className="flex items-center justify-between h-[35px] bg-[#181818] border-b border-[#2B2B2B] px-2 overflow-x-auto select-none">
-      {/* Left: View Switcher (Problems, Output, Debug, Terminal, Ports) */}
-      <div className="flex items-center h-full gap-1">
-        {views.map(view => {
-          const isActive = activeView === view.id;
-          return (
-            <button
-              key={view.id}
-              type="button"
-              onClick={() => onSelectView(view.id)}
-              className={`relative flex items-center gap-1.5 px-3 h-full text-[11px] sm:text-xs font-medium transition cursor-pointer ${
-                isActive
-                  ? 'text-[#CCCCCC]'
-                  : 'text-[#9D9D9D] hover:text-[#E8EAED]'
-              }`}
-            >
-              <span>{view.label}</span>
-              {view.badge > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-[#0078D4] text-white">
-                  {view.badge}
-                </span>
-              )}
-              {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#0078D4]" />
-              )}
-            </button>
-          );
-        })}
+    <div className="flex items-center justify-between h-[35px] bg-[#181818] border-b border-[#2B2B2B] px-2 select-none">
+      {/* Left: Terminal Header Title */}
+      <div className="flex items-center h-full gap-2 pl-1 pr-3 border-r border-[#2B2B2B]">
+        <div className="w-4 h-4 text-[#0078D4]">{Icon.terminal}</div>
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#CCCCCC] font-mono">
+          Terminal
+        </span>
       </div>
 
-      {/* Middle/Right: Process Instance Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto max-w-[40%] px-2">
+      {/* Middle/Left: Process Shell Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto flex-1 px-2.5">
         {tabs.map(tab => {
           const isSelected = tab.id === currentTabId;
           return (

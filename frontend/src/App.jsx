@@ -104,6 +104,7 @@ export default function App() {
     handleSetModel,
     handleSetMode,
     handleStopAgent,
+    fetchAppState,
     fetchTimelineEvents,
     fetchSystemLogs,
     fetchRecoveryItems,

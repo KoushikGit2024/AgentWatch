@@ -88,6 +88,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     handleReopenInteraction,
     handleCancelInteraction,
     handleInteractionSubmit,
+    handleRespondDirectQuestion,
   } = interactionOps;
 
 
@@ -376,6 +377,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     handleSetModel,
     handleSetMode,
     handleStopAgent,
+    fetchAppState,
     fetchSnapshot,
   };
 }

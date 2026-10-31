@@ -451,6 +451,49 @@ export const api = {
     const res = await request(`/api/v1/tasks/${encodeURIComponent(taskId)}?tail_bytes=${tailBytes}`);
     return res.json();
   },
+
+  // Interactive User Terminal Session APIs
+  async listTerminalSessions() {
+    const res = await request('/api/v1/terminal/sessions');
+    return res.json();
+  },
+
+  async createTerminalSession(shellType = 'powershell') {
+    const res = await request('/api/v1/terminal/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shell_type: shellType }),
+    });
+    return res.json();
+  },
+
+  async closeTerminalSession(sessionId) {
+    const res = await request(`/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
+
+  async executeTerminalCommand(sessionId, command) {
+    const res = await request(`/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command }),
+    });
+    return res.json();
+  },
+
+  async killTerminalSession(sessionId) {
+    const res = await request(`/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}/kill`, {
+      method: 'POST',
+    });
+    return res.json();
+  },
+
+  async getTerminalSessionOutput(sessionId, tail = 300) {
+    const res = await request(`/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}/output?tail=${tail}`);
+    return res.json();
+  },
 };
 
 export { request };
