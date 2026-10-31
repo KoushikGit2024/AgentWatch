@@ -269,23 +269,26 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
     }
   };
 
-  // 1. Minimized state: Handled directly and cleanly inside the PromptComposer input toolbar
+  // 1. Minimized state: Handled cleanly inside the PromptComposer toolbar badge
   if (isMinimized) {
     return null;
   }
 
-  // 2. Normal Floating Window or Maximized Window
-  const containerClasses = isMaximized
-    ? 'fixed inset-1.5 sm:inset-4 z-[90] flex flex-col'
-    : 'fixed inset-x-2 bottom-2 top-14 sm:inset-auto sm:bottom-4 sm:right-4 sm:w-[780px] lg:sm:w-[940px] sm:h-[620px] sm:max-h-[92vh] z-[90] flex flex-col';
-
+  // 2. Consistent Centered Modal (Mobile, Tablet, Desktop)
   return (
     <div
       role="dialog"
-      aria-modal="false"
+      aria-modal="true"
       aria-label="Multi-File IDE Viewer"
-      className={`${containerClasses} bg-[#17191C] border border-[#30343A] rounded-xl shadow-2xl overflow-hidden select-text animate-in fade-in slide-in-from-bottom-2 duration-150`}
+      className="fixed inset-0 z-[90] flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-xs select-none"
+      onClick={handleCloseAll}
     >
+      <div
+        className={`w-full ${
+          isMaximized ? 'h-full max-h-full' : 'max-w-5xl h-[92vh] sm:h-[88vh]'
+        } bg-[#17191C] border border-[#30343A] rounded-xl shadow-2xl flex flex-col overflow-hidden select-text animate-in fade-in zoom-in-95 duration-150`}
+        onClick={e => e.stopPropagation()}
+      >
       {/* IDE Horizontal Tab Bar */}
       <FileViewerTabBar
         tabs={tabs}
@@ -384,6 +387,7 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
         language={getMonacoLanguage(fileData?.extension, fileData?.filename || activePath)}
         tabsCount={tabs.length}
       />
+      </div>
     </div>
   );
 }

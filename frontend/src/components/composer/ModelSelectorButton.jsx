@@ -44,3 +44,4 @@ export function ModelSelectorButton({ appState, onOpenModelModal }) {
     </button>
   );
 }
+

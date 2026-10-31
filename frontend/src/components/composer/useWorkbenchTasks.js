@@ -145,3 +145,4 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
     handleKillIdeTerminalTask,
   };
 }
+
