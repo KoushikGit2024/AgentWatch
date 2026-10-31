@@ -154,5 +154,36 @@ class QueueMessageService:
 
         return {"success": False, "error": f"Unknown action: {action}"}
 
+    async def dispatch_next_queued(self) -> Optional[Dict[str, Any]]:
+        """
+        Pop and dispatch the oldest queued message when the agent finishes working.
+        Supports both IDE native queued items and local buffer.
+        """
+        # 1. Check IDE native queued messages first
+        if antigravity_adapter.active_target_url:
+            from integrations.antigravity.cdp_queue_actions import (
+                get_ide_queued_messages,
+                dispatch_queued_action,
+            )
+
+            try:
+                ide_items = await get_ide_queued_messages(antigravity_adapter.active_target_url)
+                if ide_items:
+                    logger.info("Auto-dispatching oldest IDE native queued message (index 0)")
+                    res = await dispatch_queued_action(
+                        antigravity_adapter.active_target_url, "send_now", index=0
+                    )
+                    return {"source": "ide_native", "result": res}
+            except Exception as e:
+                logger.debug("Failed auto-dispatching IDE native queue: %s", str(e))
+
+        # 2. Check local buffered queue
+        if self._buffered_queue:
+            next_item = self._buffered_queue[0]
+            logger.info("Auto-dispatching oldest local buffered message: %s", next_item.get("id"))
+            return await self.execute_action(next_item["id"], "send_now")
+
+        return None
+
 
 queue_service = QueueMessageService()

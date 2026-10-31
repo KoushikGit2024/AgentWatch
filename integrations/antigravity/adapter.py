@@ -42,7 +42,11 @@ class AntigravityAdapter:
         self._cached_screenshot_hash: Optional[str] = None
         self._last_screenshot_time: float = 0.0
         self._cached_active_model: Optional[str] = None
+        self._cached_available_models: List[str] = []
+        self._cached_quota_status: str = "normal"
+        self._cached_quota_tooltip: Optional[str] = None
         self._last_model_read_time: float = 0.0
+        self._last_models_scan_time: float = 0.0
 
     def _is_antigravity_target(self, target: Dict[str, Any]) -> bool:
         """Validate that a CDP target belongs to the Antigravity desktop IDE context."""
@@ -266,40 +270,42 @@ class AntigravityAdapter:
         return self._cached_screenshot_hash
 
     async def get_active_model_and_plan(self) -> Dict[str, Any]:
-        """
-        Read the active model name, available model list, and fast/planning mode from Antigravity.
-        Caches model info for 30s to reduce unnecessary CDP traffic.
-        """
+        """Read the active model name, available model list, and mode dynamically from Antigravity."""
         now = time.time()
-        if self._cached_active_model and (now - self._last_model_read_time < 30.0):
-            return {
-                "model": self._cached_active_model,
-                "mode": self._current_mode,
-                "available_models": [
-                    "Gemini 3.8 Flash Medium",
-                    "Claude Sonnet 4.6 (Thinking)",
-                    "Claude Opus 4.6 (Thinking)",
-                    "GPT-OSS 120B (Medium)",
-                ],
-                "available_modes": ["Fast", "Planning"],
-                "cached": True,
-            }
-
         target_ws = self.active_chat_url or self.active_target_url
         if not target_ws:
             self.discover_cdp()
             target_ws = self.active_chat_url or self.active_target_url
 
+        # Check if we should re-scan available models from IDE dropdown (every 60s or if empty)
+        if target_ws and (not self._cached_available_models or (now - self._last_models_scan_time > 60.0)):
+            from integrations.antigravity.cdp_actions import dispatch_scan_available_models
+
+            scanned = await dispatch_scan_available_models(target_ws)
+            if scanned:
+                self._cached_available_models = [
+                    item["name"] for item in scanned if not item.get("disabled") and item.get("name")
+                ]
+                self._last_models_scan_time = now
+
+        if self._cached_active_model and (now - self._last_model_read_time < 30.0):
+            return {
+                "model": self._cached_active_model,
+                "mode": self._current_mode,
+                "quota_status": self._cached_quota_status,
+                "quota_tooltip": self._cached_quota_tooltip,
+                "available_models": self._cached_available_models or [self._cached_active_model],
+                "available_modes": ["Fast", "Planning"],
+                "cached": True,
+            }
+
         if not target_ws:
             return {
-                "model": self._cached_active_model or "Gemini 3.8 Flash Medium",
+                "model": self._cached_active_model or "Gemini 3.8 Flash (Low)",
                 "mode": self._current_mode,
-                "available_models": [
-                    "Gemini 3.8 Flash Medium",
-                    "Claude Sonnet 4.6 (Thinking)",
-                    "Claude Opus 4.6 (Thinking)",
-                    "GPT-OSS 120B (Medium)",
-                ],
+                "quota_status": self._cached_quota_status,
+                "quota_tooltip": self._cached_quota_tooltip,
+                "available_models": self._cached_available_models or ["Gemini 3.8 Flash (Low)"],
                 "available_modes": ["Fast", "Planning"],
                 "cached": False,
             }
@@ -309,17 +315,20 @@ class AntigravityAdapter:
         result = await dispatch_read_model(target_ws)
         if result.get("model"):
             self._cached_active_model = result["model"]
+            self._cached_quota_status = result.get("quota_status", "normal")
+            self._cached_quota_tooltip = result.get("quota_tooltip")
             self._last_model_read_time = now
 
+        # Fallback list if IDE didn't return any: ensure active model is at least present
+        active = self._cached_active_model or "Gemini 3.8 Flash (Low)"
+        models_list = self._cached_available_models if self._cached_available_models else [active]
+
         return {
-            "model": self._cached_active_model or "Gemini 3.8 Flash Medium",
+            "model": active,
             "mode": self._current_mode,
-            "available_models": [
-                "Gemini 3.8 Flash Medium",
-                "Claude Sonnet 4.6 (Thinking)",
-                "Claude Opus 4.6 (Thinking)",
-                "GPT-OSS 120B (Medium)",
-            ],
+            "quota_status": self._cached_quota_status,
+            "quota_tooltip": self._cached_quota_tooltip,
+            "available_models": models_list,
             "available_modes": ["Fast", "Planning"],
             "cached": False,
         }

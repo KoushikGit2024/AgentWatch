@@ -8,6 +8,7 @@ import AttachmentLightbox from './composer/AttachmentLightbox';
 import AssetManagerModal from './modals/AssetManagerModal';
 import { useComposerAttachments } from './composer/useComposerAttachments';
 import { MinimizedViewerBadge } from './composer/MinimizedViewerBadge';
+import { ComposerFooter } from './composer/ComposerFooter';
 
 export function PromptComposer({
   promptText,
@@ -253,15 +254,48 @@ export function PromptComposer({
               <button
                 type="button"
                 onClick={onOpenModelModal}
-                title={appState?.model ? `Active Model: ${appState.model}` : 'Select Plan Model'}
-                className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#17191C] hover:bg-[#1D2024] text-[#E8EAED] border border-[#30343A] hover:border-violet-500/30 transition cursor-pointer max-w-[150px] sm:max-w-[220px]"
+                title={
+                  appState?.quota_tooltip ||
+                  (appState?.model
+                    ? `Active Model: ${appState.model}${
+                        appState.quota_status === 'low'
+                          ? ' (Quota Running Low)'
+                          : appState.quota_status === 'depleted'
+                            ? ' (Quota Limit Reached)'
+                            : ''
+                      }`
+                    : 'Select Plan Model')
+                }
+                className={`aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#17191C] hover:bg-[#1D2024] text-[#E8EAED] border transition cursor-pointer max-w-[160px] sm:max-w-[240px] ${
+                  appState?.quota_status === 'depleted'
+                    ? 'border-rose-500/60 bg-rose-950/20 text-rose-200'
+                    : appState?.quota_status === 'low'
+                      ? 'border-amber-500/60 bg-amber-950/20 text-amber-200'
+                      : 'border-[#30343A] hover:border-violet-500/30'
+                }`}
               >
-                <div className="w-3.5 h-3.5 text-violet-400 shrink-0 group-hover:scale-110 transition-transform">
-                  {Icon.cpu}
+                <div
+                  className={`w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform ${
+                    appState?.quota_status === 'depleted'
+                      ? 'text-rose-400'
+                      : appState?.quota_status === 'low'
+                        ? 'text-amber-400'
+                        : 'text-violet-400'
+                  }`}
+                >
+                  {appState?.quota_status === 'depleted' || appState?.quota_status === 'low'
+                    ? Icon.gauge
+                    : Icon.cpu}
                 </div>
                 <span className="truncate text-[11px] sm:text-xs font-medium">
                   {appState?.model || 'Select model...'}
                 </span>
+                {appState?.quota_status === 'low' && (
+                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                )}
+                {appState?.quota_status === 'depleted' && (
+                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                )}
                 <div className="w-3 h-3 text-[#747C87] group-hover:text-[#A0A6AF] shrink-0 transition-colors">
                   {Icon.chevronDown}
                 </div>
@@ -363,21 +397,7 @@ export function PromptComposer({
         </div>
 
         {/* Graceful Footer: Author Copyright & GitHub Repository Link */}
-        <div className="flex items-center justify-center gap-1.5 pt-1.5 text-[10px] font-mono text-[#747C87] select-none">
-          <span>© {new Date().getFullYear()}</span>
-          <span className="text-[#A0A6AF] font-medium">Koushik Kar</span>
-          <span className="text-[#30343A]">·</span>
-          <a
-            href="https://github.com/KoushikGit2024/AgentWatch"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="View AgentWatch on GitHub"
-            className="inline-flex items-center gap-1 text-[#747C87] hover:text-[#7C9FC5] transition-colors focus:outline-none"
-          >
-            <div className="w-3 h-3">{Icon.github}</div>
-            <span>AgentWatch</span>
-          </a>
-        </div>
+        <ComposerFooter />
       </div>
 
       <AttachmentLightbox item={previewItem} onClose={() => setPreviewItem(null)} />

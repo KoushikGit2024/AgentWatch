@@ -6,6 +6,7 @@ import logging
 import time
 from integrations.antigravity.adapter import antigravity_adapter
 from services.conversation_service import conversation_service
+from services.queue_service import queue_service
 from services.interaction_service import interaction_service
 from services.websocket_manager import websocket_manager
 
@@ -29,6 +30,7 @@ async def run_transcript_watcher():
 
     approval_candidate_key = None
     approval_candidate_time = 0.0
+    agent_was_working = False
 
     while True:
         try:
@@ -67,6 +69,14 @@ async def run_transcript_watcher():
                             "has_more": paginated["has_more"],
                         }
                     )
+
+                # Track working -> idle transition to auto-dispatch queued prompts
+                msgs = paginated.get("messages") or []
+                is_currently_working = bool(msgs and msgs[-1].get("role") == "agent" and msgs[-1].get("is_working"))
+                if agent_was_working and not is_currently_working:
+                    logger.info("Agent finished turn. Checking queue for pending prompts...")
+                    asyncio.create_task(queue_service.dispatch_next_queued())
+                agent_was_working = is_currently_working
 
             dom_probe_tick = (dom_probe_tick + 1) % 2
             if websocket_manager.active_connections or transcript_changed:

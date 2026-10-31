@@ -1,4 +1,4 @@
-"""CDP Terminal Task Automation Dispatchers."""
+"""CDP Terminal & Background Tasks Automation Dispatchers."""
 
 import asyncio
 import json
@@ -10,40 +10,55 @@ logger = logging.getLogger("integrations.antigravity.cdp_terminal_actions")
 
 async def dispatch_toggle_terminal(target_url: str) -> Dict[str, Any]:
     """
-    Click [data-tooltip-id="tooltip-terminal"] in Antigravity IDE workbench via CDP,
-    wait for DOM transition, and return active terminal task rows.
+    Toggle or expand running items panel in Antigravity IDE and return tasks.
     """
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
+        async with websockets.connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        ) as ws:
             toggle_js = r"""
             (async () => {
-                const btn = document.querySelector('[data-tooltip-id="tooltip-terminal"]');
-                if (btn) {
-                    btn.click();
-                    await new Promise(r => setTimeout(r, 220));
+                const toggle = document.querySelector('button[data-testid="running-items-panel-toggle"]') ||
+                    document.querySelector('[data-tooltip-id="tooltip-terminal"]');
+                let toggled = false;
+
+                if (toggle) {
+                    toggle.click();
+                    toggled = true;
+                    await new Promise(r => setTimeout(r, 250));
                 }
 
-                // Query terminal rows whether expanded or already present
-                const taskNodes = Array.from(document.querySelectorAll('[data-tooltip-id^="terminal-expanded-content"]'));
-                const rows = taskNodes.map((el, i) => {
-                    const tooltipId = el.getAttribute('data-tooltip-id') || `terminal-expanded-content--${i}`;
-                    const row = el.closest('.flex-row') || el.parentElement;
-                    const fontMono = row ? row.querySelector('.font-mono') : null;
-                    const commandText = fontMono ? (fontMono.innerText || fontMono.textContent || '').trim() : '';
-                    const hasLoader = Boolean(row && (row.querySelector('.loader') || row.querySelector('.animate-spin') || row.querySelector('span[class*="loader"]')));
-                    return {
-                        index: i,
-                        tooltip_id: tooltipId,
-                        command: commandText,
-                        is_running: hasLoader
-                    };
-                });
+                // Query task rows from current IDE DOM structure
+                const rows = [];
+                const panel = document.querySelector('[data-testid="running-items-panel"]');
+                if (panel) {
+                    const rowNodes = Array.from(panel.querySelectorAll('[data-tooltip-id^="label-task-"]'));
+                    rowNodes.forEach((labelEl, i) => {
+                        const row = labelEl.closest('.flex') || labelEl.parentElement;
+                        const stopBtn = row?.querySelector('button[aria-label="Stop Task"]') || row?.querySelector('[data-tooltip-id^="stop-task-"]');
+                        const statusSvg = row?.querySelector('[data-testid="status-task-running"]');
+
+                        const command = (labelEl?.innerText || labelEl?.textContent || '').trim();
+                        const stopTooltip = stopBtn?.getAttribute('data-tooltip-id');
+                        const labelTooltip = labelEl?.getAttribute('data-tooltip-id');
+                        const id = stopTooltip || labelTooltip || `task-${i}`;
+
+                        if (command) {
+                            rows.push({
+                                index: i,
+                                tooltip_id: id,
+                                command: command,
+                                is_running: Boolean(statusSvg || stopBtn)
+                            });
+                        }
+                    });
+                }
 
                 return {
                     success: true,
-                    toggled: Boolean(btn),
+                    toggled: toggled,
                     tasks: rows
                 };
             })()
@@ -71,28 +86,40 @@ async def dispatch_toggle_terminal(target_url: str) -> Dict[str, Any]:
 
 async def dispatch_get_terminal_tasks(target_url: str) -> Dict[str, Any]:
     """
-    Passively query Antigravity IDE workbench for currently displayed terminal tasks.
+    Passively query Antigravity IDE workbench for currently running tasks and processes.
     """
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
+        async with websockets.connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        ) as ws:
             query_js = r"""
             (() => {
-                const taskNodes = Array.from(document.querySelectorAll('[data-tooltip-id^="terminal-expanded-content"]'));
-                const rows = taskNodes.map((el, i) => {
-                    const tooltipId = el.getAttribute('data-tooltip-id') || `terminal-expanded-content--${i}`;
-                    const row = el.closest('.flex-row') || el.parentElement;
-                    const fontMono = row ? row.querySelector('.font-mono') : null;
-                    const commandText = fontMono ? (fontMono.innerText || fontMono.textContent || '').trim() : '';
-                    const hasLoader = Boolean(row && (row.querySelector('.loader') || row.querySelector('.animate-spin') || row.querySelector('span[class*="loader"]')));
-                    return {
-                        index: i,
-                        tooltip_id: tooltipId,
-                        command: commandText,
-                        is_running: hasLoader
-                    };
-                });
+                const rows = [];
+                const panel = document.querySelector('[data-testid="running-items-panel"]');
+                if (panel) {
+                    const rowNodes = Array.from(panel.querySelectorAll('[data-tooltip-id^="label-task-"]'));
+                    rowNodes.forEach((labelEl, i) => {
+                        const row = labelEl.closest('.flex') || labelEl.parentElement;
+                        const stopBtn = row?.querySelector('button[aria-label="Stop Task"]') || row?.querySelector('[data-tooltip-id^="stop-task-"]');
+                        const statusSvg = row?.querySelector('[data-testid="status-task-running"]');
+
+                        const command = (labelEl?.innerText || labelEl?.textContent || '').trim();
+                        const stopTooltip = stopBtn?.getAttribute('data-tooltip-id');
+                        const labelTooltip = labelEl?.getAttribute('data-tooltip-id');
+                        const id = stopTooltip || labelTooltip || `task-${i}`;
+
+                        if (command) {
+                            rows.push({
+                                index: i,
+                                tooltip_id: id,
+                                command: command,
+                                is_running: Boolean(statusSvg || stopBtn)
+                            });
+                        }
+                    });
+                }
                 return {
                     success: true,
                     tasks: rows
@@ -120,28 +147,43 @@ async def dispatch_kill_terminal_task(
     target_url: str, index: int = 0, tooltip_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Click the specific close button on a terminal task row in Antigravity IDE workbench.
+    Click the Stop Task button on a specific running item row in Antigravity IDE workbench.
     """
     try:
         import websockets
 
-        async with websockets.connect(target_url, max_size=10 * 1024 * 1024, close_timeout=3) as ws:
-            target_tooltip = tooltip_id or f"terminal-expanded-content--{index}"
+        async with websockets.connect(
+            target_url, max_size=10 * 1024 * 1024, close_timeout=3, open_timeout=2.0
+        ) as ws:
+            target_tooltip = tooltip_id or ""
             kill_js = f"""
             (async () => {{
                 const targetId = {json.dumps(target_tooltip)};
                 const targetIndex = {index};
                 let btn = null;
 
-                const wrapper = document.querySelector(`[data-tooltip-id="${{targetId}}"]`);
-                if (wrapper) {{
-                    btn = wrapper.querySelector('button') || wrapper;
+                // 1. Try finding by target tooltip id (e.g. stop-task-21501 or label-task-21501)
+                if (targetId) {{
+                    const directBtn = document.querySelector(`button[data-tooltip-id="${{targetId}}"]`);
+                    if (directBtn) {{
+                        btn = directBtn;
+                    }} else {{
+                        // Maybe targetId is label-task-..., find sibling or parent stop button
+                        const labelNode = document.querySelector(`[data-tooltip-id="${{targetId}}"]`);
+                        if (labelNode) {{
+                            const row = labelNode.closest('.group') || labelNode.closest('.flex') || labelNode.parentElement;
+                            btn = row?.querySelector('button[aria-label="Stop Task"]') || row?.querySelector('[data-tooltip-id^="stop-task-"]');
+                        }}
+                    }}
                 }}
 
+                // 2. Fallback by index among all Stop Task buttons in panel
                 if (!btn) {{
-                    const allWrappers = Array.from(document.querySelectorAll('[data-tooltip-id^="terminal-expanded-content"]'));
-                    if (allWrappers[targetIndex]) {{
-                        btn = allWrappers[targetIndex].querySelector('button') || allWrappers[targetIndex];
+                    const stopBtns = Array.from(document.querySelectorAll('[data-testid="running-items-panel"] button[aria-label="Stop Task"], [data-testid="running-items-panel"] [data-tooltip-id^="stop-task-"]'));
+                    if (stopBtns[targetIndex]) {{
+                        btn = stopBtns[targetIndex];
+                    }} else if (stopBtns.length > 0) {{
+                        btn = stopBtns[0];
                     }}
                 }}
 
@@ -150,7 +192,7 @@ async def dispatch_kill_terminal_task(
                     await new Promise(r => setTimeout(r, 200));
                     return {{ success: true, killed: true, target: targetId }};
                 }}
-                return {{ success: false, error: 'Terminal task close button not found for ' + targetId }};
+                return {{ success: false, error: 'Stop Task button not found for ' + (targetId || targetIndex) }};
             }})()
             """
             await ws.send(
@@ -172,4 +214,3 @@ async def dispatch_kill_terminal_task(
     except Exception as exc:
         logger.warning("CDP kill terminal task failed: %s", str(exc))
         return {"success": False, "error": str(exc)}
-

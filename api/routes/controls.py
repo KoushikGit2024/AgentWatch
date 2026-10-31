@@ -124,6 +124,8 @@ async def get_app_state():
         "connected": is_conn,
         "mode": model_info.get("mode", "Fast"),
         "model": model_info.get("model"),
+        "quota_status": model_info.get("quota_status", "normal"),
+        "quota_tooltip": model_info.get("quota_tooltip"),
         "available_models": model_info.get("available_models", []),
         "available_modes": ["Fast", "Planning"],
         "antigravity_connected": is_conn,

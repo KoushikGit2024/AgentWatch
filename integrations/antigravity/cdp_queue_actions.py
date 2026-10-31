@@ -27,11 +27,11 @@ async def get_ide_queued_messages(target_url: str) -> List[Dict[str, Any]]:
                 if (!card) return [];
                 const rows = Array.from(card.querySelectorAll('.min-h-7, [class*="min-h-7"]'));
                 return rows.map((row, idx) => {
-                    const textSpan = row.querySelector('.line-clamp-2, span.text-sm');
+                    const textSpan = row.querySelector('.line-clamp-2, span.text-sm, [data-quotable="true"]');
                     const text = textSpan ? textSpan.innerText.trim() : '';
-                    const hasSendNow = !!row.querySelector('button[aria-label="Send Now"]');
-                    const hasEdit = !!row.querySelector('button[aria-label="Edit"]');
-                    const hasDelete = !!row.querySelector('button[aria-label="Delete"]');
+                    const hasSendNow = !!row.querySelector('button[aria-label*="Send now" i], button[aria-label*="Send Now"]');
+                    const hasEdit = !!row.querySelector('button[aria-label*="Edit" i]');
+                    const hasDelete = !!row.querySelector('button[aria-label*="Delete" i]');
                     return {
                         id: 'ide_q_' + idx,
                         index: idx,
@@ -81,17 +81,17 @@ async def dispatch_queued_action(
 
                 const act = {json.dumps(action.lower())};
                 if (act === 'send_now') {{
-                    const btn = targetRow.querySelector('button[aria-label="Send Now"]');
+                    const btn = targetRow.querySelector('button[aria-label*="Send now" i], button[aria-label*="Send Now"]');
                     if (!btn) return {{ success: false, error: 'Send Now button not found' }};
                     btn.click();
                     return {{ success: true, action: 'send_now' }};
                 }} else if (act === 'delete') {{
-                    const btn = targetRow.querySelector('button[aria-label="Delete"]');
+                    const btn = targetRow.querySelector('button[aria-label*="Delete" i]');
                     if (!btn) return {{ success: false, error: 'Delete button not found' }};
                     btn.click();
                     return {{ success: true, action: 'delete' }};
                 }} else if (act === 'edit') {{
-                    const btn = targetRow.querySelector('button[aria-label="Edit"]');
+                    const btn = targetRow.querySelector('button[aria-label*="Edit" i]');
                     if (!btn) return {{ success: false, error: 'Edit button not found' }};
                     btn.click();
                     return {{ success: true, action: 'edit_opened' }};

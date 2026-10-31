@@ -370,18 +370,6 @@ export const api = {
     return res.json();
   },
 
-  async getLogFiles() {
-    const res = await request('/api/v1/logs/files');
-    return res.json();
-  },
-
-  async getLogAnalytics(dateOrFile) {
-    const res = await request(
-      `/api/v1/logs/analytics?date_or_file=${encodeURIComponent(dateOrFile)}`
-    );
-    return res.json();
-  },
-
   async deleteLogFile(filename) {
     const res = await request(`/api/v1/logs/files?filename=${encodeURIComponent(filename)}`, {
       method: 'DELETE',
