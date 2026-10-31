@@ -12,6 +12,9 @@ export default function WorkbenchBar({
   isLoadingTerminal,
   ideTerminalTasks = [],
   onKillTerminalTask,
+  onInspectTask,
+  taskTimers = {},
+  formatDuration,
   onRefreshTerminal,
   isLoadingArtifacts,
   artifactsList = [],
@@ -136,31 +139,55 @@ export default function WorkbenchBar({
                 </div>
               ) : ideTerminalTasks.length > 0 ? (
                 <div className="flex flex-col divide-y divide-[#262A30]">
-                  {ideTerminalTasks.map((task, idx) => (
-                    <div
-                      key={task.tooltip_id || idx}
-                      className="flex flex-row items-center justify-between gap-x-2 p-2 hover:bg-[#1D2024] transition"
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                        {task.is_running !== false ? (
-                          <span className="w-3 h-3 shrink-0 rounded-full border-2 border-[#7C9FC5] border-t-transparent animate-spin inline-block" />
-                        ) : (
-                          <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-[#79B89A] inline-block" />
-                        )}
-                        <span className="truncate font-mono text-xs text-[#E8EAED]">
-                          {task.command || 'terminal command'}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => onKillTerminalTask(task.index ?? idx, task.tooltip_id)}
-                        title="Terminate Command in IDE"
-                        className="p-1 rounded text-[#A0A6AF] hover:bg-[#D77E83]/15 hover:text-[#D77E83] transition cursor-pointer"
+                  {ideTerminalTasks.map((task, idx) => {
+                    const taskId = task.tooltip_id || task.id || `task-${idx}`;
+                    const durationStr = formatDuration ? formatDuration(taskTimers[taskId]) : null;
+
+                    return (
+                      <div
+                        key={taskId}
+                        className="flex flex-row items-center justify-between gap-x-2 p-2 hover:bg-[#1D2024] transition rounded group"
                       >
-                        <div className="w-3.5 h-3.5">{Icon.x}</div>
-                      </button>
-                    </div>
-                  ))}
+                        <div
+                          onClick={() => onInspectTask && onInspectTask(task)}
+                          title="Click to view task log output"
+                          className="flex min-w-0 flex-1 items-center gap-x-2 cursor-pointer"
+                        >
+                          {task.is_running !== false ? (
+                            <span className="w-3 h-3 shrink-0 rounded-full border-2 border-[#7C9FC5] border-t-transparent animate-spin inline-block" />
+                          ) : (
+                            <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-[#79B89A] inline-block" />
+                          )}
+                          <span className="truncate font-mono text-xs text-[#E8EAED] group-hover:text-sky-300 transition-colors">
+                            {task.command || 'terminal command'}
+                          </span>
+                          {durationStr && (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#141619] text-[#7C9FC5] border border-[#30343A] shrink-0 tabular-nums">
+                              {durationStr}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => onInspectTask && onInspectTask(task)}
+                            title="Inspect Task Output"
+                            className="p-1 rounded text-[#747C87] hover:text-[#E8EAED] hover:bg-[#23272D] transition cursor-pointer"
+                          >
+                            <div className="w-3.5 h-3.5">{Icon.terminal}</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onKillTerminalTask(task.index ?? idx, task.tooltip_id)}
+                            title="Terminate Command in IDE"
+                            className="p-1 rounded text-[#A0A6AF] hover:bg-[#D77E83]/15 hover:text-[#D77E83] transition cursor-pointer"
+                          >
+                            <div className="w-3.5 h-3.5">{Icon.x}</div>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-5 text-[#747C87] text-xs">

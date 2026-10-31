@@ -44,3 +44,4 @@ async def cdp_connect(
                 await ws.close()
             except Exception:
                 pass
+

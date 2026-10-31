@@ -6,8 +6,10 @@ import AttachmentPreview from './chat/AttachmentPreview';
 import WorkbenchBar from './composer/WorkbenchBar';
 import AttachmentLightbox from './composer/AttachmentLightbox';
 import AssetManagerModal from './modals/AssetManagerModal';
+import TaskOutputModal from './modals/TaskOutputModal';
 import { useComposerAttachments } from './composer/useComposerAttachments';
 import { useWorkbenchTasks } from './composer/useWorkbenchTasks';
+import { useTaskExecutionTimers } from '../hooks/useTaskExecutionTimers';
 import { MinimizedViewerBadge } from './composer/MinimizedViewerBadge';
 import { ComposerFooter } from './composer/ComposerFooter';
 import { ModelSelectorButton } from './composer/ModelSelectorButton';
@@ -44,6 +46,7 @@ export function PromptComposer({
   const [isAssetManagerOpen, setIsAssetManagerOpen] = useState(false);
   const [minimizedViewerStatus, setMinimizedViewerStatus] = useState(null);
   const [activeAttachedTab, setActiveAttachedTab] = useState(null);
+  const [inspectingTask, setInspectingTask] = useState(null);
 
   const {
     artifactsList,
@@ -54,6 +57,8 @@ export function PromptComposer({
     handleRefreshTerminalTasks,
     handleKillIdeTerminalTask,
   } = useWorkbenchTasks(appState?.active_conversation_id, activeAttachedTab, setActiveAttachedTab);
+
+  const { timers: taskTimers, formatDuration } = useTaskExecutionTimers(ideTerminalTasks);
 
   useEffect(() => {
     const onViewerStatus = e => {
@@ -108,6 +113,9 @@ export function PromptComposer({
           isLoadingTerminal={isLoadingTerminal}
           ideTerminalTasks={ideTerminalTasks}
           onKillTerminalTask={handleKillIdeTerminalTask}
+          onInspectTask={task => setInspectingTask(task)}
+          taskTimers={taskTimers}
+          formatDuration={formatDuration}
           onRefreshTerminal={handleRefreshTerminalTasks}
           isLoadingArtifacts={isLoadingArtifacts}
           artifactsList={artifactsList}
@@ -285,6 +293,12 @@ export function PromptComposer({
           });
         }}
         onPreviewItem={att => setPreviewItem(att)}
+      />
+
+      <TaskOutputModal
+        isOpen={Boolean(inspectingTask)}
+        task={inspectingTask}
+        onClose={() => setInspectingTask(null)}
       />
     </div>
   );

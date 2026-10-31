@@ -445,6 +445,12 @@ export const api = {
     const res = await request('/api/v1/controls/target/sync', { method: 'POST' });
     return res.json();
   },
+
+  // Terminal & Background Task logs
+  async getTaskLog(taskId, tailBytes = 50000) {
+    const res = await request(`/api/v1/tasks/${encodeURIComponent(taskId)}?tail_bytes=${tailBytes}`);
+    return res.json();
+  },
 };
 
 export { request };

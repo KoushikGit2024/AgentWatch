@@ -41,3 +41,4 @@ def sort_targets_by_priority(targets: List[Dict[str, Any]]) -> List[Dict[str, An
     ]
     valid.sort(key=target_priority, reverse=True)
     return valid
+
