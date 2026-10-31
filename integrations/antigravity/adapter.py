@@ -426,20 +426,24 @@ class AntigravityAdapter:
         )
 
     async def toggle_terminal(self) -> Dict[str, Any]:
-        """Toggle integrated terminal in Antigravity."""
-        if not self.active_target_url:
+        """Toggle integrated terminal / running tasks panel in Antigravity."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
             self.discover_cdp()
-        if not self.active_target_url:
+            target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
         from integrations.antigravity.cdp_actions import dispatch_toggle_terminal
 
-        return await dispatch_toggle_terminal(self.active_target_url)
+        return await dispatch_toggle_terminal(target_ws)
 
     async def get_terminal_tasks(self) -> Dict[str, Any]:
         """Fetch current terminal tasks from Antigravity IDE workbench via CDP."""
-        if not self.active_target_url:
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
             self.discover_cdp()
-        if not self.active_target_url:
+            target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
             return {
                 "success": False,
                 "error": "Antigravity CDP not connected on port 9000",
@@ -447,20 +451,22 @@ class AntigravityAdapter:
             }
         from integrations.antigravity.cdp_actions import dispatch_get_terminal_tasks
 
-        return await dispatch_get_terminal_tasks(self.active_target_url)
+        return await dispatch_get_terminal_tasks(target_ws)
 
     async def kill_terminal_task(
         self, index: int = 0, tooltip_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Click close button on a specific terminal task row via CDP."""
-        if not self.active_target_url:
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
             self.discover_cdp()
-        if not self.active_target_url:
+            target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
         from integrations.antigravity.cdp_actions import dispatch_kill_terminal_task
 
         return await dispatch_kill_terminal_task(
-            self.active_target_url, index=index, tooltip_id=tooltip_id
+            target_ws, index=index, tooltip_id=tooltip_id
         )
 
     def get_status(self) -> Dict[str, Any]:

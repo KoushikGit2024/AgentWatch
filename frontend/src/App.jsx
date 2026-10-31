@@ -28,6 +28,7 @@ export default function App() {
   const [fileTreeOpen, setFileTreeOpen] = useState(false);
   const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
   const [activeFileViewer, setActiveFileViewer] = useState(null);
+  const [portForwardingOpen, setPortForwardingOpen] = useState(false);
 
   const handleOpenFile = useCallback((rawPath, lineRange = {}) => {
     const parsed = parseFileLink(rawPath);
@@ -227,6 +228,7 @@ export default function App() {
           fetchHistoryChats();
         }}
         onOpenFiles={() => setFileTreeOpen(true)}
+        onOpenPortForwarding={() => setPortForwardingOpen(true)}
       />
 
       <main className="aw-main-viewport">
@@ -366,6 +368,8 @@ export default function App() {
         handleOpenFile={handleOpenFile}
         activeFileViewer={activeFileViewer}
         setActiveFileViewer={setActiveFileViewer}
+        portForwardingOpen={portForwardingOpen}
+        setPortForwardingOpen={setPortForwardingOpen}
       />
     </div>
   );

@@ -11,6 +11,7 @@ import LightboxModal from './modals/LightboxModal';
 import InteractionModal from './modals/InteractionModal';
 import ApprovalModal from './modals/ApprovalModal';
 import FileViewerModal from './modals/FileViewerModal';
+import PortForwardingModal from './modals/PortForwardingModal';
 import FileTreeDrawer from './FileTreeDrawer';
 import { toast } from '../services/toastService';
 
@@ -85,6 +86,8 @@ export function AppDrawersAndModals({
 
   activeFileViewer,
   setActiveFileViewer,
+  portForwardingOpen,
+  setPortForwardingOpen,
 }) {
   return (
     <>
@@ -195,6 +198,11 @@ export function AppDrawersAndModals({
         targetFile={activeFileViewer}
         onClose={() => setActiveFileViewer(null)}
         onToggleTreeDrawer={() => setFileTreeOpen(prev => !prev)}
+      />
+
+      <PortForwardingModal
+        isOpen={portForwardingOpen}
+        onClose={() => setPortForwardingOpen(false)}
       />
     </>
   );

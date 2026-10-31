@@ -405,7 +405,7 @@ export const api = {
     return res.json();
   },
 
-  async sendTestPush(payload = {}) {
+    async sendTestPush(payload = {}) {
     const res = await request('/api/v1/push/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -413,7 +413,32 @@ export const api = {
     });
     return res.json();
   },
+
+  // Tailscale Dynamic Port Forwarding
+  async getTailscalePorts() {
+    const res = await request('/api/v1/tailscale/ports');
+    return res.json();
+  },
+
+  async forwardPort(localPort, externalPort = null, label = null) {
+    const res = await request('/api/v1/tailscale/ports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        local_port: Number(localPort),
+        external_port: externalPort ? Number(externalPort) : null,
+        label: label || null,
+      }),
+    });
+    return res.json();
+  },
+
+  async removePortForward(port) {
+    const res = await request(`/api/v1/tailscale/ports/${port}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
 };
 
 export { request };
-

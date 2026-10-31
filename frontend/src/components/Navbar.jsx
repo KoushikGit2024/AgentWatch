@@ -16,6 +16,7 @@ export default function Navbar({
   recoveryCount = 0,
   onOpenHistory,
   onOpenFiles,
+  onOpenPortForwarding,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -212,6 +213,17 @@ export default function Navbar({
             )}
           </button>
 
+          <button
+            type="button"
+            onClick={onOpenPortForwarding}
+            title="Tailscale Port Forwarding"
+            className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
+          >
+            <div className="w-4 h-4 p-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 shrink-0 transition-all">
+              {Icon.globe}
+            </div>
+            <span className="hidden xl:inline">Ports</span>
+          </button>
           <button
             type="button"
             onClick={onOpenHistory}

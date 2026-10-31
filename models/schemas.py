@@ -291,3 +291,32 @@ def validate_action_transition(
         return True
     allowed = VALID_ACTION_TRANSITIONS.get(current, set())
     return target in allowed
+
+
+class PortForwardRequest(BaseModel):
+    """Request payload to expose a local port through Tailscale Serve."""
+
+    local_port: int = Field(..., ge=1024, le=65535, description="Local port to forward (1024-65535)")
+    external_port: Optional[int] = Field(None, ge=1024, le=65535, description="External Tailnet HTTPS port")
+    label: Optional[str] = Field(None, max_length=60, description="User-friendly service label")
+
+
+class PortForwardItem(BaseModel):
+    """Represents an active Tailscale served port mapping."""
+
+    external_port: int
+    local_port: Optional[int] = None
+    local_target: str
+    url: str
+    is_primary: bool = False
+    label: Optional[str] = None
+
+
+class PortForwardListResponse(BaseModel):
+    """Response containing overall status and active port tunnels."""
+
+    success: bool = True
+    tailnet_hostname: Optional[str] = None
+    connected: bool = False
+    funnel_disabled_verified: bool = True
+    forwards: List[PortForwardItem] = []

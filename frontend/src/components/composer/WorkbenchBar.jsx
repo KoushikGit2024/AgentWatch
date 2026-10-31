@@ -12,6 +12,7 @@ export default function WorkbenchBar({
   isLoadingTerminal,
   ideTerminalTasks = [],
   onKillTerminalTask,
+  onRefreshTerminal,
   isLoadingArtifacts,
   artifactsList = [],
 }) {
@@ -100,14 +101,30 @@ export default function WorkbenchBar({
                 </>
               )}
             </div>
-            <button
-              type="button"
-              onClick={onCloseTab}
-              aria-label="Close popover"
-              className="p-1 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#23272D] transition cursor-pointer"
-            >
-              <div className="w-3.5 h-3.5">{Icon.x}</div>
-            </button>
+            <div className="flex items-center gap-1">
+              {activeAttachedTab === 'terminal' && onRefreshTerminal && (
+                <button
+                  type="button"
+                  onClick={onRefreshTerminal}
+                  aria-label="Refresh terminal processes"
+                  title="Refresh terminal processes"
+                  disabled={isLoadingTerminal}
+                  className="p-1 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#23272D] transition cursor-pointer disabled:opacity-40"
+                >
+                  <div className={`w-3.5 h-3.5 ${isLoadingTerminal ? 'animate-spin text-[#7C9FC5]' : ''}`}>
+                    {Icon.refreshCw}
+                  </div>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onCloseTab}
+                aria-label="Close popover"
+                className="p-1 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#23272D] transition cursor-pointer"
+              >
+                <div className="w-3.5 h-3.5">{Icon.x}</div>
+              </button>
+            </div>
           </div>
 
           <div className="max-h-60 overflow-y-auto p-2">

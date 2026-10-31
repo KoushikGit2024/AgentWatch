@@ -7,8 +7,10 @@ import WorkbenchBar from './composer/WorkbenchBar';
 import AttachmentLightbox from './composer/AttachmentLightbox';
 import AssetManagerModal from './modals/AssetManagerModal';
 import { useComposerAttachments } from './composer/useComposerAttachments';
+import { useWorkbenchTasks } from './composer/useWorkbenchTasks';
 import { MinimizedViewerBadge } from './composer/MinimizedViewerBadge';
 import { ComposerFooter } from './composer/ComposerFooter';
+import { ModelSelectorButton } from './composer/ModelSelectorButton';
 
 export function PromptComposer({
   promptText,
@@ -41,12 +43,17 @@ export function PromptComposer({
   } = useComposerAttachments();
   const [isAssetManagerOpen, setIsAssetManagerOpen] = useState(false);
   const [minimizedViewerStatus, setMinimizedViewerStatus] = useState(null);
-
   const [activeAttachedTab, setActiveAttachedTab] = useState(null);
-  const [artifactsList, setArtifactsList] = useState([]);
-  const [isLoadingArtifacts, setIsLoadingArtifacts] = useState(false);
-  const [ideTerminalTasks, setIdeTerminalTasks] = useState([]);
-  const [isLoadingTerminal, setIsLoadingTerminal] = useState(false);
+
+  const {
+    artifactsList,
+    isLoadingArtifacts,
+    ideTerminalTasks,
+    isLoadingTerminal,
+    handleToggleAttachedTab,
+    handleRefreshTerminalTasks,
+    handleKillIdeTerminalTask,
+  } = useWorkbenchTasks(appState?.active_conversation_id, activeAttachedTab, setActiveAttachedTab);
 
   useEffect(() => {
     const onViewerStatus = e => {
@@ -59,43 +66,6 @@ export function PromptComposer({
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    const fetchTasks = async () => {
-      try {
-        const res = await api.getTerminalTasks();
-        if (isMounted && res?.tasks) {
-          setIdeTerminalTasks(res.tasks);
-        }
-      } catch {}
-    };
-    fetchTasks();
-    const interval = setInterval(fetchTasks, 15000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  // Reload artifacts when active conversation switches while tab is open
-  useEffect(() => {
-    if (activeAttachedTab === 'artifacts') {
-      let isMounted = true;
-      setIsLoadingArtifacts(true);
-      api.getArtifacts(appState?.active_conversation_id)
-        .then(res => {
-          if (isMounted) setArtifactsList(res?.artifacts || []);
-        })
-        .catch(err => {
-          if (isMounted) toast.error(err.message || 'Could not load artifacts', 'Artifacts');
-        })
-        .finally(() => {
-          if (isMounted) setIsLoadingArtifacts(false);
-        });
-      return () => { isMounted = false; };
-    }
-  }, [appState?.active_conversation_id, activeAttachedTab]);
-
-  useEffect(() => {
     const handleKeyDown = e => {
       if (e.key === 'Escape') {
         if (previewItem) setPreviewItem(null);
@@ -105,57 +75,6 @@ export function PromptComposer({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewItem, activeAttachedTab]);
-
-  const handleToggleAttachedTab = async tabName => {
-    if (activeAttachedTab === tabName) {
-      setActiveAttachedTab(null);
-      return;
-    }
-    setActiveAttachedTab(tabName);
-    if (tabName === 'artifacts') {
-      setIsLoadingArtifacts(true);
-      try {
-        const res = await api.getArtifacts(appState?.active_conversation_id);
-        setArtifactsList(res?.artifacts || []);
-      } catch (err) {
-        toast.error(err.message || 'Could not load artifacts', 'Artifacts');
-      } finally {
-        setIsLoadingArtifacts(false);
-      }
-    } else if (tabName === 'terminal') {
-      setIsLoadingTerminal(true);
-      try {
-        const tasksRes = await api.getTerminalTasks();
-        if (tasksRes?.tasks && tasksRes.tasks.length > 0) {
-          setIdeTerminalTasks(tasksRes.tasks);
-        } else {
-          const toggleRes = await api.toggleTerminal();
-          if (toggleRes?.tasks && Array.isArray(toggleRes.tasks)) {
-            setIdeTerminalTasks(toggleRes.tasks);
-          }
-        }
-      } catch (err) {
-        console.error('Terminal sync error:', err);
-      } finally {
-        setIsLoadingTerminal(false);
-      }
-    }
-  };
-
-  const handleKillIdeTerminalTask = async (taskIndex, tooltipId) => {
-    try {
-      await api.killTerminalTask(taskIndex, tooltipId);
-      setIdeTerminalTasks(prev => prev.filter((_, idx) => idx !== taskIndex));
-      setTimeout(async () => {
-        try {
-          const refreshed = await api.getTerminalTasks();
-          if (refreshed?.tasks) setIdeTerminalTasks(refreshed.tasks);
-        } catch {}
-      }, 300);
-    } catch (err) {
-      toast.error(err.message || 'Could not terminate command in IDE', 'Terminal');
-    }
-  };
 
   const readyAttachments = attachments.filter(a => !a.isPending);
   const canSend =
@@ -189,6 +108,7 @@ export function PromptComposer({
           isLoadingTerminal={isLoadingTerminal}
           ideTerminalTasks={ideTerminalTasks}
           onKillTerminalTask={handleKillIdeTerminalTask}
+          onRefreshTerminal={handleRefreshTerminalTasks}
           isLoadingArtifacts={isLoadingArtifacts}
           artifactsList={artifactsList}
         />
@@ -251,55 +171,7 @@ export function PromptComposer({
 
           <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#262A30] text-xs">
             <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap min-w-0">
-              <button
-                type="button"
-                onClick={onOpenModelModal}
-                title={
-                  appState?.quota_tooltip ||
-                  (appState?.model
-                    ? `Active Model: ${appState.model}${
-                        appState.quota_status === 'low'
-                          ? ' (Quota Running Low)'
-                          : appState.quota_status === 'depleted'
-                            ? ' (Quota Limit Reached)'
-                            : ''
-                      }`
-                    : 'Select Plan Model')
-                }
-                className={`aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#17191C] hover:bg-[#1D2024] text-[#E8EAED] border transition cursor-pointer max-w-[160px] sm:max-w-[240px] ${
-                  appState?.quota_status === 'depleted'
-                    ? 'border-rose-500/60 bg-rose-950/20 text-rose-200'
-                    : appState?.quota_status === 'low'
-                      ? 'border-amber-500/60 bg-amber-950/20 text-amber-200'
-                      : 'border-[#30343A] hover:border-violet-500/30'
-                }`}
-              >
-                <div
-                  className={`w-3.5 h-3.5 shrink-0 group-hover:scale-110 transition-transform ${
-                    appState?.quota_status === 'depleted'
-                      ? 'text-rose-400'
-                      : appState?.quota_status === 'low'
-                        ? 'text-amber-400'
-                        : 'text-violet-400'
-                  }`}
-                >
-                  {appState?.quota_status === 'depleted' || appState?.quota_status === 'low'
-                    ? Icon.gauge
-                    : Icon.cpu}
-                </div>
-                <span className="truncate text-[11px] sm:text-xs font-medium">
-                  {appState?.model || 'Select model...'}
-                </span>
-                {appState?.quota_status === 'low' && (
-                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                )}
-                {appState?.quota_status === 'depleted' && (
-                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-rose-500" />
-                )}
-                <div className="w-3 h-3 text-[#747C87] group-hover:text-[#A0A6AF] shrink-0 transition-colors">
-                  {Icon.chevronDown}
-                </div>
-              </button>
+              <ModelSelectorButton appState={appState} onOpenModelModal={onOpenModelModal} />
 
               <div className="h-3.5 w-px bg-[#262A30] mx-0.5" />
 
