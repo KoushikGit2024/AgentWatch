@@ -6,6 +6,32 @@ import ApprovalCard from './ApprovalCard';
 import QuestionCard from './QuestionCard';
 import DiffViewer from './DiffViewer';
 
+function renderExtraBadge(extra) {
+  if (!extra) return null;
+  // Match diff format like "-4 +2 lines", "+5 lines", "-3 lines", "+1 line", "0 lines"
+  const diffMatch = extra.match(/^(?:-(\d+))?\s*(?:\+(\d+))?\s*(line|lines)?$/i);
+  if (diffMatch && (diffMatch[1] !== undefined || diffMatch[2] !== undefined)) {
+    const removed = diffMatch[1] ? parseInt(diffMatch[1], 10) : 0;
+    const added = diffMatch[2] ? parseInt(diffMatch[2], 10) : 0;
+    const label = diffMatch[3] || 'lines';
+
+    return (
+      <span className="px-1.5 py-0.5 rounded-md bg-zinc-800/90 text-[10px] font-mono border border-zinc-700/50 inline-flex items-center gap-1 select-none">
+        {removed > 0 && <span className="text-rose-400 font-semibold">-{removed}</span>}
+        {added > 0 && <span className="text-emerald-400 font-semibold">+{added}</span>}
+        {removed === 0 && added === 0 && <span className="text-zinc-400">0</span>}
+        <span className="text-zinc-400 text-[9px]">{label}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="px-1.5 py-0.5 rounded-md bg-zinc-800/90 text-zinc-300 text-[10px] font-mono border border-zinc-700/50">
+      {extra}
+    </span>
+  );
+}
+
 const StreamItem = memo(function StreamItem({
   item,
   itemKey,
@@ -165,11 +191,7 @@ const StreamItem = memo(function StreamItem({
               </span>
             )}
 
-            {item.extra && (
-              <span className="px-1.5 py-0.5 rounded-md bg-zinc-800/90 text-zinc-300 text-[10px] font-mono border border-zinc-700/50">
-                {item.extra}
-              </span>
-            )}
+            {item.extra && renderExtraBadge(item.extra)}
           </div>
         </div>
 
@@ -203,25 +225,25 @@ const StreamItem = memo(function StreamItem({
 
       {/* Expandable Details Card (Terminal Output / Diff Preview / Question Details) */}
       {isOpen && hasDetails && (
-        <div className="mt-1 mb-2.5 ml-2 pl-3 border-l-2 border-blue-500/30 space-y-2 text-xs w-full min-w-0 max-w-full overflow-hidden">
+        <div className="mt-1 mb-2.5 ml-1 pl-3 border-l-2 border-blue-500/30 space-y-2 text-xs min-w-0">
           {isCommand && (
-            <div className="space-y-1.5 w-full min-w-0 max-w-full">
+            <div className="space-y-1.5 min-w-0">
               {item.cwd && (
-                <div className="text-[10px] text-zinc-500 font-mono truncate max-w-full">
+                <div className="text-[10px] text-zinc-500 font-mono truncate">
                   in <span className="text-zinc-400">{item.cwd}</span>
                 </div>
               )}
               {item.command && (
-                <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-[11px] text-zinc-300 w-full max-w-full overflow-x-auto select-text break-all">
+                <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-[11px] text-zinc-300 overflow-x-auto select-text break-all">
                   <span className="text-amber-500 select-none">$ </span>
                   {item.command}
                 </div>
               )}
               {item.output ? (
-                <div className="space-y-1 w-full min-w-0 max-w-full">
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
-                    <span className="uppercase tracking-wider">Output</span>
-                    <div className="flex items-center gap-2">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 text-[10px] text-zinc-500 font-mono py-0.5">
+                    <span className="uppercase tracking-wider shrink-0">Output</span>
+                    <div className="flex items-center gap-2.5 shrink-0">
                       {item.output.length > 350 && (
                         <button
                           type="button"

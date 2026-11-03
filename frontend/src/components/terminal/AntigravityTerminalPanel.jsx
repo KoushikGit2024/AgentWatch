@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icon } from '../../constants/icons';
-import { api } from '../../services/api';
+import { terminalApi } from '../../services/terminalApi';
 import { toast } from '../../services/toastService';
 import TerminalTabsHeader from './TerminalTabsHeader';
 import TerminalInputLine from './TerminalInputLine';
@@ -23,7 +23,7 @@ export default function AntigravityTerminalPanel({
   // 1. Fetch sessions list on open (lightweight, zero busy loop)
   const loadSessions = useCallback(async () => {
     try {
-      const res = await api.listTerminalSessions();
+      const res = await terminalApi.listSessions();
       if (res && res.success && Array.isArray(res.sessions)) {
         setSessions(res.sessions);
         if (!currentSessionId && res.sessions.length > 0) {
@@ -48,7 +48,7 @@ export default function AntigravityTerminalPanel({
       if (isFetchingRef.current) return;
       try {
         isFetchingRef.current = true;
-        const res = await api.getTerminalSessionOutput(currentSessionId, 400);
+        const res = await terminalApi.getSessionOutput(currentSessionId, 400);
         if (isMounted && res && res.success) {
           setSessionOutputs(prev => ({
             ...prev,
@@ -101,7 +101,7 @@ export default function AntigravityTerminalPanel({
 
   const handleCreateNewTab = async (shellType = 'powershell') => {
     try {
-      const res = await api.createTerminalSession(shellType);
+      const res = await terminalApi.createSession(shellType);
       if (res && res.success) {
         setSessions(prev => [...prev, {
           session_id: res.session_id,
@@ -120,7 +120,7 @@ export default function AntigravityTerminalPanel({
 
   const handleCloseTab = async (sessionIdToClose) => {
     try {
-      await api.closeTerminalSession(sessionIdToClose);
+      await terminalApi.closeSession(sessionIdToClose);
       setSessions(prev => {
         const next = prev.filter(s => s.session_id !== sessionIdToClose);
         if (currentSessionId === sessionIdToClose && next.length > 0) {
@@ -134,7 +134,7 @@ export default function AntigravityTerminalPanel({
   const handleExecuteCommand = async (cmd) => {
     if (!currentSessionId) return;
     try {
-      const resExec = await api.executeTerminalCommand(currentSessionId, cmd);
+      const resExec = await terminalApi.executeCommand(currentSessionId, cmd);
       if (resExec && resExec.cwd) {
         setSessions(prev =>
           prev.map(s =>
@@ -143,7 +143,7 @@ export default function AntigravityTerminalPanel({
         );
       }
       // Immediately fetch latest output without waiting for timer
-      const res = await api.getTerminalSessionOutput(currentSessionId, 400);
+      const res = await terminalApi.getSessionOutput(currentSessionId, 400);
       if (res && res.success) {
         setSessionOutputs(prev => ({
           ...prev,
@@ -163,13 +163,13 @@ export default function AntigravityTerminalPanel({
   const handleKillCurrentProcess = async () => {
     if (!currentSessionId) return;
     try {
-      const resKill = await api.killTerminalSession(currentSessionId);
+      const resKill = await terminalApi.killSession(currentSessionId);
       if (resKill && resKill.success) {
         toast.success('Terminal process terminated', 'Process Stopped');
       } else {
         toast.info('No active process running to terminate', 'Terminal Idle');
       }
-      const res = await api.getTerminalSessionOutput(currentSessionId, 400);
+      const res = await terminalApi.getSessionOutput(currentSessionId, 400);
       if (res && res.success) {
         setSessionOutputs(prev => ({
           ...prev,

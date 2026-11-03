@@ -152,23 +152,32 @@ class TranscriptStepParser:
             file_short = "/".join(file_parts[-2:]) if len(file_parts) >= 2 else file_target
             target = file_short or file_target
             summary = f"Read {file_short}" if file_short else "Read file"
-        elif name == "edit_file":
+        elif name in ("edit_file", "replace_file_content", "multi_replace_file_content"):
             verb = "Edited"
             kind = "edit"
-            file_target = args.get("Path") or ""
+            file_target = args.get("Path") or args.get("TargetFile") or ""
             file_parts = re.split(r"[\\/]", file_target)
             file_short = "/".join(file_parts[-2:]) if len(file_parts) >= 2 else file_target
             target = file_short or file_target
             summary = f"Edited {file_short}" if file_short else "Edited file"
-            diff_info = parse_edit_tool_diff(args.get("Target") or "", args.get("Replacement") or "")
+            parsed_target, parsed_extra, diff_info = parse_edit_tool_diff(name, args)
+            if parsed_extra:
+                extra = parsed_extra
+            if parsed_target:
+                target = parsed_target
         elif name in ("write_file", "write_to_file"):
             verb = "Created"
             kind = "create"
-            file_target = args.get("Path") or args.get("AbsolutePath") or ""
+            file_target = args.get("Path") or args.get("AbsolutePath") or args.get("TargetFile") or ""
             file_parts = re.split(r"[\\/]", file_target)
             file_short = "/".join(file_parts[-2:]) if len(file_parts) >= 2 else file_target
             target = file_short or file_target
             summary = f"Wrote {file_short}" if file_short else "Wrote file"
+            parsed_target, parsed_extra, diff_info = parse_edit_tool_diff(name, args)
+            if parsed_extra:
+                extra = parsed_extra
+            if parsed_target:
+                target = parsed_target
         elif name == "grep_search":
             verb = "Searched"
             kind = "search"

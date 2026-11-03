@@ -96,3 +96,31 @@ def test_parse_edit_tool_diff_write_to_file_new():
     assert diff_info["is_new_file"] is True
     assert diff_info["added_count"] == 3
     assert diff_info["removed_count"] == 0
+
+
+def test_parse_edit_tool_diff_edit_file():
+    args = {
+        "Path": "d:/All Codes/src/components/Modal.jsx",
+        "Target": "const open = false;\n",
+        "Replacement": "const open = true;\nconst count = 1;\n",
+    }
+    target, extra, diff_info = parse_edit_tool_diff("edit_file", args)
+
+    assert target == "Modal.jsx"
+    assert extra == "-1 +2 lines"
+    assert diff_info["added_count"] == 2
+    assert diff_info["removed_count"] == 1
+    assert diff_info["file"] == "Modal.jsx"
+
+
+def test_parse_edit_tool_diff_write_file():
+    args = {
+        "Path": "d:/All Codes/src/new_config.json",
+        "Content": "{\n  \"enabled\": true\n}\n",
+    }
+    target, extra, diff_info = parse_edit_tool_diff("write_file", args)
+
+    assert target == "new_config.json"
+    assert extra == "+3 lines"
+    assert diff_info["is_new_file"] is True
+    assert diff_info["added_count"] == 3

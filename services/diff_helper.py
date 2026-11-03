@@ -87,10 +87,11 @@ def parse_edit_tool_diff(
     tool_name: str, args: Dict[str, Any], workspace_root: Optional[str] = None
 ) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     """
-    Parse write_to_file, replace_file_content, or multi_replace_file_content
-    into target string, delta badge extra (e.g. '-3 +5 lines'), and compact diff_info payload.
+    Parse edit_file, replace_file_content, multi_replace_file_content,
+    write_file, or write_to_file into target string, delta badge extra (e.g. '-3 +5 lines'),
+    and compact diff_info payload.
     """
-    file_target = args.get("TargetFile") or ""
+    file_target = args.get("Path") or args.get("TargetFile") or args.get("AbsolutePath") or ""
     file_parts = re.split(r"[\\/]", file_target)
     file_short = file_parts[-1] if file_parts else file_target
 
@@ -161,9 +162,9 @@ def parse_edit_tool_diff(
         }
         result = (target, extra, diff_info)
 
-    elif tool_name == "replace_file_content":
-        tc = args.get("TargetContent") or ""
-        rc = args.get("ReplacementContent") or ""
+    elif tool_name in ("edit_file", "replace_file_content"):
+        tc = args.get("Target") if "Target" in args else args.get("TargetContent", "")
+        rc = args.get("Replacement") if "Replacement" in args else args.get("ReplacementContent", "")
         start_l = args.get("StartLine")
         end_l = args.get("EndLine")
 
@@ -190,8 +191,9 @@ def parse_edit_tool_diff(
         }
         result = (target, extra, diff_info)
 
-    elif tool_name == "write_to_file":
-        code_content = args.get("CodeContent") or ""
+    elif tool_name in ("write_file", "write_to_file"):
+        code_content = args.get("Content") if "Content" in args else args.get("CodeContent", "")
+        code_content = code_content or ""
         line_cnt = len(code_content.splitlines())
         added = line_cnt
         removed = 0

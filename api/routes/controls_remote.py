@@ -17,6 +17,19 @@ from services.remote_access import remote_access_service
 router = APIRouter(tags=["Remote Controls & Configuration"])
 
 
+@router.get("/api/v1/models/scan")
+async def scan_models():
+    """On-demand scan of all available plan models and effort tiers from Antigravity IDE.
+    Only triggered when user opens the Model selection modal, preventing background focus collisions.
+    """
+    model_info = await antigravity_adapter.get_active_model_and_plan(allow_dropdown_scan=True)
+    return {
+        "success": True,
+        "model": model_info.get("model"),
+        "available_models": model_info.get("available_models", []),
+    }
+
+
 @router.post("/set-mode")
 @router.post("/api/v1/set-mode")
 @router.post("/api/v1/controls/mode")
@@ -80,3 +93,16 @@ def get_ssl_status():
         "mode": "tailscale_serve_automated_tls",
     }
 
+
+@router.get("/tailscale-status")
+@router.get("/api/v1/tailscale-status")
+def get_tailscale_status():
+    """Verify Tailscale Serve HTTPS status and Funnel security guarantees."""
+    return remote_access_service.get_tailscale_status()
+
+
+@router.post("/tailscale/auto-configure")
+@router.post("/api/v1/tailscale/auto-configure")
+def auto_configure_tailscale():
+    """Idempotently issue 'tailscale serve --bg 8000' without user terminal intervention."""
+    return remote_access_service.auto_configure_serve()

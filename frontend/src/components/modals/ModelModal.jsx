@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from '../../constants/icons';
+import { api } from '../../services/api';
 
 function parseModelTier(rawName) {
   if (!rawName) return { name: '', tier: '' };
@@ -28,10 +29,8 @@ function isModelActive(itemModel, currentModel) {
   const itemNorm = normalizeModel(itemModel);
   const curNorm = normalizeModel(currentModel);
 
-  // Exact match (e.g. "gemini 3.8 flash low" === "gemini 3.8 flash low")
   if (itemNorm === curNorm) return true;
 
-  // If itemModel specifies a tier, require exact match (don't partial match)
   const itemTier = parseModelTier(itemModel).tier.toLowerCase();
   const curTier = parseModelTier(currentModel).tier.toLowerCase();
 
@@ -39,7 +38,6 @@ function isModelActive(itemModel, currentModel) {
     return itemNorm === curNorm;
   }
 
-  // If currentModel has no tier yet, only match the first item with matching base name
   if (!curTier && itemTier) {
     return itemNorm.startsWith(curNorm) && itemTier === 'low';
   }
@@ -54,14 +52,45 @@ export default function ModelModal({
   availableModels = [],
   onSelectModel,
 }) {
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedModels, setScannedModels] = useState([]);
+
+  // On-demand scanning: when modal opens, query IDE models via CDP if list only has 1 or 0 options
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    const fetchOnDemandModels = async () => {
+      try {
+        setIsScanning(true);
+        const res = await api.scanAvailableModels();
+        if (isMounted && res && res.success && Array.isArray(res.available_models) && res.available_models.length > 0) {
+          setScannedModels(res.available_models);
+        }
+      } catch {
+      } finally {
+        if (isMounted) setIsScanning(false);
+      }
+    };
+
+    fetchOnDemandModels();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const list =
-    Array.isArray(availableModels) && availableModels.length > 0
-      ? availableModels
-      : currentModel
-        ? [currentModel]
-        : [];
+  // Prefer scanned models if available, otherwise fall back to prop availableModels, then currentModel
+  const candidateList =
+    scannedModels.length > 0
+      ? scannedModels
+      : Array.isArray(availableModels) && availableModels.length > 0
+        ? availableModels
+        : currentModel
+          ? [currentModel]
+          : [];
 
   return (
     <div
@@ -78,7 +107,15 @@ export default function ModelModal({
               <div className="w-4 h-4">{Icon.cpu}</div>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-[#E8EAED]">Plan Models</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[#E8EAED]">Plan Models</h3>
+                {isScanning && (
+                  <span className="flex items-center gap-1 text-[10px] text-blue-400 font-mono animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    Scanning IDE models...
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-[#747C87]">Synchronized live with Antigravity IDE</p>
             </div>
           </div>
@@ -92,12 +129,12 @@ export default function ModelModal({
         </div>
 
         <div className="space-y-1.5 max-h-[55vh] overflow-y-auto pr-1">
-          {list.length === 0 ? (
+          {candidateList.length === 0 ? (
             <div className="p-6 text-center text-xs text-[#747C87]">
               Connecting to IDE to detect plan models…
             </div>
           ) : (
-            list.map(m => {
+            candidateList.map(m => {
               const { name, tier } = parseModelTier(m);
               const isActive = isModelActive(m, currentModel);
 
@@ -145,6 +182,13 @@ export default function ModelModal({
                 </button>
               );
             })
+          )}
+
+          {isScanning && candidateList.length <= 1 && (
+            <div className="px-3 py-2 text-[11px] font-mono text-[#828c9e] flex items-center gap-2 justify-center">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+              <span>Checking effort tiers and available models...</span>
+            </div>
           )}
         </div>
       </div>
