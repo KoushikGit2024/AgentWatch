@@ -25,7 +25,6 @@ export default function App() {
   const [taskManagerOpen, setTaskManagerOpen] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [fileTreeOpen, setFileTreeOpen] = useState(false);
   const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
   const [activeFileViewer, setActiveFileViewer] = useState(null);
   const [portForwardingOpen, setPortForwardingOpen] = useState(false);
@@ -231,7 +230,7 @@ export default function App() {
           setHistoryOpen(true);
           fetchHistoryChats();
         }}
-        onOpenFiles={() => setFileTreeOpen(true)}
+        onOpenFiles={() => setActiveFileViewer({ cleanPath: '', openTree: true })}
         onOpenPortForwarding={() => setPortForwardingOpen(true)}
       />
 
@@ -368,8 +367,6 @@ export default function App() {
         isApprovaling={isApprovaling}
         handleApproval={handleApproval}
         handleDismissApproval={handleDismissApproval}
-        fileTreeOpen={fileTreeOpen}
-        setFileTreeOpen={setFileTreeOpen}
         handleOpenFile={handleOpenFile}
         activeFileViewer={activeFileViewer}
         setActiveFileViewer={setActiveFileViewer}

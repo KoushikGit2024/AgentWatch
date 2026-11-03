@@ -12,6 +12,7 @@ import {
 } from './FileViewerHelpers';
 import { BinaryFileViewport } from './BinaryFileViewport';
 import { FileViewerTabBar } from './FileViewerTabBar';
+import { FileViewerTreePanel } from './FileViewerTreePanel';
 import {
   FileViewerErrorViewport,
   FileViewerFooterBar,
@@ -25,6 +26,7 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
   const [copiedPath, setCopiedPath] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isTreeOpen, setIsTreeOpen] = useState(false);
 
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -91,6 +93,9 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
     });
 
     setActiveTabPath(pathKey);
+    if (targetFile.openTree) {
+      setIsTreeOpen(true);
+    }
     setIsMinimized(false); // Auto restore if minimized when a new file or tab is opened
   }, [targetFile]);
 
@@ -153,6 +158,28 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
   ]);
 
   // Close all tabs and dismiss modal completely
+  const handleOpenFileFromTree = useCallback((path) => {
+    if (!path) return;
+    const pathKey = path.replace(/\\/g, '/');
+    const filename = pathKey.split('/').pop() || 'File';
+    setTabs(prev => {
+      const existingIdx = prev.findIndex(t => t.path === pathKey);
+      if (existingIdx !== -1) return prev;
+      return [
+        ...prev,
+        {
+          id: pathKey,
+          path: pathKey,
+          filename,
+          startLine: null,
+          endLine: null,
+          hasHighlight: false,
+        },
+      ];
+    });
+    setActiveTabPath(pathKey);
+  }, []);
+
   const handleCloseAll = useCallback(() => {
     setTabs([]);
     setActiveTabPath(null);
@@ -237,8 +264,8 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleCloseAll, activeTabPath, handleCloseTab, isMaximized]);
 
-  // If no tabs are open and no targetFile, render nothing
-  if (tabs.length === 0) return null;
+  // If no tabs are open and no targetFile or openTree request, render nothing
+  if (tabs.length === 0 && !targetFile?.openTree) return null;
 
   const fileData = activeDataState.fileData;
   const viewMode = activeDataState.viewMode;
@@ -285,8 +312,8 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
     >
       <div
         className={`w-full ${
-          isMaximized ? 'h-full max-h-full' : 'max-w-5xl h-[92vh] sm:h-[88vh]'
-        } bg-[#17191C] border border-[#30343A] rounded-xl shadow-2xl flex flex-col overflow-hidden select-text animate-in fade-in zoom-in-95 duration-150`}
+          isMaximized ? 'h-full max-h-full rounded-none' : 'max-w-6xl h-[92vh] sm:h-[88vh] rounded-2xl'
+        } bg-[#121417] border border-[#272B30] shadow-2xl flex flex-col overflow-hidden select-text animate-in fade-in zoom-in-95 duration-150`}
         onClick={e => e.stopPropagation()}
       >
       {/* IDE Horizontal Tab Bar */}
@@ -295,7 +322,8 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
         activeTabPath={activeTabPath}
         setActiveTabPath={setActiveTabPath}
         handleCloseTab={handleCloseTab}
-        onToggleTreeDrawer={onToggleTreeDrawer}
+        isTreeOpen={isTreeOpen}
+        onToggleTree={() => setIsTreeOpen(prev => !prev)}
         canTogglePreview={canTogglePreview}
         viewMode={viewMode}
         activePath={activePath}
@@ -311,19 +339,44 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
         handleCloseAll={handleCloseAll}
       />
 
-      {/* Subheader: Active File Path */}
-      <div className="px-3 sm:px-4 py-1 bg-[#15171A] border-b border-[#262A30] text-[11px] font-mono text-[#747C87] flex items-center justify-between select-all shrink-0">
-        <span className="truncate">{activePath}</span>
-        {fileInfo.label && (
-          <span className="px-1.5 py-0.2 rounded text-[10px] font-mono uppercase bg-[#101113] text-[#A0A6AF] border border-[#30343A] shrink-0 ml-2">
-            {fileInfo.label}
-          </span>
-        )}
-      </div>
+      {/* Subheader: Active File Path & Breadcrumb */}
+      {activePath && (
+        <div className="px-3.5 sm:px-4 py-1.5 bg-[#15171B] border-b border-[#22262B] text-[11px] font-mono text-[#8A929B] flex items-center justify-between select-all shrink-0">
+          <div className="flex items-center gap-1.5 truncate min-w-0">
+            <span className="text-[#5D6570] text-[10px]">path:</span>
+            <span className="truncate text-[#C4C7C5]">{activePath}</span>
+          </div>
+          {fileInfo.label && (
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-medium uppercase tracking-wider bg-[#1A1D22] text-[#A0A6AF] border border-[#2D3138] shrink-0 ml-2">
+              {fileInfo.label}
+            </span>
+          )}
+        </div>
+      )}
 
-      {/* Viewport Body */}
-      <div className="flex-1 min-h-0 overflow-hidden bg-[#101113] flex flex-col relative w-full">
-        {activeDataState.isLoading ? (
+      {/* Middle Row: Collapsible Tree Panel + Main Viewport Body */}
+      <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative w-full">
+        {/* Left Tree Explorer Panel */}
+        <FileViewerTreePanel
+          isOpen={isTreeOpen}
+          onClose={() => setIsTreeOpen(false)}
+          activeFilePath={activePath}
+          onOpenFile={handleOpenFileFromTree}
+        />
+
+        {/* Viewport Body */}
+        <div className="flex-1 min-h-0 overflow-hidden bg-[#101113] flex flex-col relative w-full">
+        {!activePath ? (
+          <div className="flex flex-col items-center justify-center py-20 text-[#747C87] space-y-3 flex-1 select-none">
+            <div className="w-10 h-10 rounded-xl bg-[#1A1D22] border border-[#2D3138] flex items-center justify-center text-amber-400 shadow-sm">
+              <div className="w-5 h-5">{Icon.folder}</div>
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-xs font-medium text-[#E8EAED]">No File Selected</p>
+              <p className="text-[11px] font-mono text-[#747C87]">Choose a file from the explorer on the left to preview or edit</p>
+            </div>
+          </div>
+        ) : activeDataState.isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 text-[#A0A6AF] space-y-2 flex-1">
             <span className="w-5 h-5 rounded-full border-2 border-[#7C9FC5] border-t-transparent animate-spin" />
             <span className="text-xs font-mono">Loading file contents...</span>
@@ -352,7 +405,22 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
         ) : viewMode === 'preview' && isMarkdown ? (
           <MarkdownPreviewViewport content={fileData?.content} />
         ) : (
-          <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden">
+          <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden group/editor">
+            {/* Hover Floating Copy Code Button */}
+            {fileData?.content && (
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                title="Copy entire file content"
+                className="absolute top-3 right-6 z-20 opacity-0 group-hover/editor:opacity-100 transition-all duration-150 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#16181C]/90 hover:bg-[#202328] border border-[#2D3138] hover:border-[#3D424B] text-[11px] font-mono text-[#C4C7C5] hover:text-[#E8EAED] shadow-md backdrop-blur-md cursor-pointer select-none"
+              >
+                <div className="w-3.5 h-3.5 text-cyan-400">
+                  {copiedContent ? Icon.check : Icon.copy}
+                </div>
+                <span>{copiedContent ? 'Copied!' : 'Copy Code'}</span>
+              </button>
+            )}
+
             <Editor
               height="100%"
               width="100%"
@@ -377,6 +445,7 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
             />
           </div>
         )}
+        </div>
       </div>
 
       {/* Footer Bar */}

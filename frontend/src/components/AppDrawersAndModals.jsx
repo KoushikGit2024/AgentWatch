@@ -12,7 +12,6 @@ import InteractionModal from './modals/InteractionModal';
 import ApprovalModal from './modals/ApprovalModal';
 import FileViewerModal from './modals/FileViewerModal';
 import PortForwardingModal from './modals/PortForwardingModal';
-import FileTreeDrawer from './FileTreeDrawer';
 import { toast } from '../services/toastService';
 
 export function AppDrawersAndModals({
@@ -80,8 +79,6 @@ export function AppDrawersAndModals({
   handleApproval,
   handleDismissApproval,
 
-  fileTreeOpen,
-  setFileTreeOpen,
   handleOpenFile,
 
   activeFileViewer,
@@ -188,16 +185,9 @@ export function AppDrawersAndModals({
         onDismiss={handleDismissApproval}
       />
 
-      <FileTreeDrawer
-        isOpen={fileTreeOpen}
-        onClose={() => setFileTreeOpen(false)}
-        onOpenFile={handleOpenFile}
-      />
-
       <FileViewerModal
         targetFile={activeFileViewer}
         onClose={() => setActiveFileViewer(null)}
-        onToggleTreeDrawer={() => setFileTreeOpen(prev => !prev)}
       />
 
       <PortForwardingModal
