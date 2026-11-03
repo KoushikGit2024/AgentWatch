@@ -51,39 +51,77 @@ export function HourlyActivityHistogram({
       </div>
 
       {/* Interactive Floating Hover Details Card */}
-      {hoveredBucket && (
-        <div className="p-2.5 rounded-lg bg-[#11141d] border border-blue-500/30 shadow-lg flex flex-wrap items-center justify-between gap-3 text-xs font-mono animate-in fade-in duration-150">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold text-[11px]">
-              Bucket {hoveredBucket.hour}
-            </span>
-            <span className="text-[#F1F3F5] font-bold">
-              {Number(hoveredBucket.count).toLocaleString()} events
-            </span>
+      {hoveredBucket && (() => {
+        const total = Number(hoveredBucket.count) || 0;
+        const c2 = hoveredBucket.status?.['2xx'] || 0;
+        const c3 = hoveredBucket.status?.['3xx'] || 0;
+        const c4 = hoveredBucket.status?.['4xx'] || 0;
+        const c5 = (hoveredBucket.status?.['5xx'] || 0) + (hoveredBucket.levels?.ERROR || 0);
+        const sysLogs = Math.max(0, total - (c2 + c3 + c4 + c5));
+
+        const info = hoveredBucket.levels?.INFO || 0;
+        const warn = hoveredBucket.levels?.WARNING || 0;
+        const err = (hoveredBucket.levels?.ERROR || 0) + (hoveredBucket.levels?.CRITICAL || 0);
+        const dbg = hoveredBucket.levels?.DEBUG || 0;
+
+        return (
+          <div className="p-2.5 rounded-lg bg-[#11141d] border border-blue-500/30 shadow-lg flex flex-wrap items-center justify-between gap-3 text-xs font-mono animate-in fade-in duration-150">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold text-[11px]">
+                Bucket {hoveredBucket.hour}
+              </span>
+              <span className="text-[#F1F3F5] font-bold">
+                {total.toLocaleString()} events
+              </span>
+            </div>
+            {colorMode === 'status' ? (
+              <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  2xx: {c2.toLocaleString()}
+                </span>
+                <span className="flex items-center gap-1 text-sky-400">
+                  <span className="w-2 h-2 rounded-full bg-sky-400" />
+                  3xx: {c3.toLocaleString()}
+                </span>
+                <span className="flex items-center gap-1 text-amber-400">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  4xx: {c4.toLocaleString()}
+                </span>
+                <span className="flex items-center gap-1 text-rose-400">
+                  <span className="w-2 h-2 rounded-full bg-rose-400" />
+                  5xx / Err: {c5.toLocaleString()}
+                </span>
+                {sysLogs > 0 && (
+                  <span className="flex items-center gap-1 text-blue-400">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    App / Internal: {sysLogs.toLocaleString()}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-blue-400">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  INFO: {info.toLocaleString()}
+                </span>
+                <span className="flex items-center gap-1 text-amber-400">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  WARN: {warn.toLocaleString()}
+                </span>
+                <span className="flex items-center gap-1 text-rose-400">
+                  <span className="w-2 h-2 rounded-full bg-rose-400" />
+                  ERR: {err.toLocaleString()}
+                </span>
+                <span className="flex items-center gap-1 text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  DEBUG: {dbg.toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-3 text-[11px]">
-            <span className="flex items-center gap-1 text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              2xx: {(hoveredBucket.status?.['2xx'] || 0).toLocaleString()}
-            </span>
-            <span className="flex items-center gap-1 text-sky-400">
-              <span className="w-2 h-2 rounded-full bg-sky-400" />
-              3xx: {(hoveredBucket.status?.['3xx'] || 0).toLocaleString()}
-            </span>
-            <span className="flex items-center gap-1 text-amber-400">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              4xx: {(hoveredBucket.status?.['4xx'] || 0).toLocaleString()}
-            </span>
-            <span className="flex items-center gap-1 text-rose-400">
-              <span className="w-2 h-2 rounded-full bg-rose-400" />
-              5xx / Err:{' '}
-              {(
-                (hoveredBucket.status?.['5xx'] || 0) + (hoveredBucket.levels?.ERROR || 0)
-              ).toLocaleString()}
-            </span>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Bar Graph rendered via SVG with crisp flat stacked segments & integrated axis ticks */}
       <div
@@ -154,7 +192,7 @@ export function HourlyActivityHistogram({
                 { count: c3, fill: '#38bdf8' }, // 3xx Sky
                 { count: c4, fill: '#fbbf24' }, // 4xx Amber
                 { count: c5, fill: '#f43f5e' }, // 5xx / Error Rose
-                { count: other, fill: '#3b82f6' }, // Other Blue
+                { count: other, fill: '#3b82f6' }, // App / Internal Logs Blue
               ].filter(s => s.count > 0);
             } else {
               const info = h.levels?.INFO || 0;
@@ -200,69 +238,18 @@ export function HourlyActivityHistogram({
               </g>
             );
           })}
-
-          {/* Integrated SVG Axis Timestamps directly anchored under corresponding hours */}
-          {[
-            { hour: '00:00', idx: 0 },
-            { hour: '04:00', idx: 4 },
-            { hour: '08:00', idx: 8 },
-            { hour: '12:00', idx: 12 },
-            { hour: '16:00', idx: 16 },
-            { hour: '20:00', idx: 20 },
-            { hour: '23:00', idx: 23 },
-          ].map(tick => {
-            const slotWidth = 480 / 24;
-            const tickX = tick.idx * slotWidth + slotWidth / 2;
-            return (
-              <text
-                key={tick.hour}
-                x={tickX}
-                y="110"
-                textAnchor={tick.idx === 0 ? 'start' : tick.idx === 23 ? 'end' : 'middle'}
-                fill="#828c9e"
-                fontSize="9"
-                fontFamily="monospace"
-              >
-                {tick.hour}
-              </text>
-            );
-          })}
         </svg>
       </div>
 
-      {/* Legend Row */}
-      <div className="flex items-center justify-between gap-3 pt-1 text-[10px] font-mono text-[#828c9e]">
-        <div className="flex items-center gap-3.5 flex-wrap">
-          {colorMode === 'status' ? (
-            <>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#10b981]" /> 2xx Success
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#38bdf8]" /> 3xx Redirect
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#fbbf24]" /> 4xx Client
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#f43f5e]" /> 5xx / Error
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-400" /> INFO
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-400" /> WARNING
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-500" /> ERROR
-              </span>
-            </>
-          )}
-        </div>
-        <div className="text-[10px] text-[#828c9e]">Hover bar for detailed metrics</div>
+      {/* Axis hour labels */}
+      <div className="flex justify-between items-center px-1 text-[10px] font-mono text-[#828c9e] select-none">
+        <span>00:00</span>
+        <span>04:00</span>
+        <span>08:00</span>
+        <span>12:00</span>
+        <span>16:00</span>
+        <span>20:00</span>
+        <span>23:00</span>
       </div>
     </div>
   );
