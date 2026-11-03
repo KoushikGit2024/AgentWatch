@@ -71,7 +71,8 @@ class StepOutputResolver:
 
         try:
             # Read up to max_bytes with graceful error handling
-            with open(target_file, "r", encoding="utf-8", errors="replace") as f:
+            from services.shared_file_reader import open_shared_read
+            with open_shared_read(target_file, encoding="utf-8") as f:
                 full_text = f.read(self.max_bytes)
 
             # Extract clean stdout/stderr if wrapper banner exists

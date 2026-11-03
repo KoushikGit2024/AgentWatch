@@ -131,7 +131,8 @@ class ConversationService:
             session_id = transcript_path.parent.parent.parent.name
             session_dir = transcript_path.parent.parent.parent
 
-            with open(transcript_path, "r", encoding="utf-8") as f:
+            from services.shared_file_reader import open_shared_read
+            with open_shared_read(transcript_path, encoding="utf-8") as f:
                 for line in f:
                     try:
                         step = json.loads(line)

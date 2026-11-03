@@ -266,6 +266,23 @@ if ($tailscaleExe) {
     }
 }
 
+# 6.5. Port 8000 Collision Sentinel: Check if already in use and cleanup stale AgentWatch instances
+$existingConn = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+if ($existingConn) {
+    $stalePid = $existingConn.OwningProcess
+    $staleProc = Get-Process -Id $stalePid -ErrorAction SilentlyContinue
+    if ($staleProc -and ($staleProc.ProcessName -like "*python*" -or $staleProc.ProcessName -like "*uvicorn*")) {
+        Write-Host "[PORT SENTINEL] Port 8000 is occupied by previous AgentWatch/Python process (PID: $stalePid). Terminating cleanly..." -ForegroundColor Yellow
+        try {
+            Stop-Process -Id $stalePid -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 800
+            Write-Host "[PORT SENTINEL] Port 8000 freed successfully." -ForegroundColor Green
+        } catch {
+            Write-Host "[PORT SENTINEL] Notice: Could not terminate PID $stalePid automatically." -ForegroundColor Gray
+        }
+    }
+}
+
 # 7. Launch AgentWatch
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "Launching AgentWatch at http://127.0.0.1:8000" -ForegroundColor Green
