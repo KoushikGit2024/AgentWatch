@@ -1,3 +1,4 @@
+import os
 import time
 import pytest
 from fastapi.testclient import TestClient
@@ -45,3 +46,48 @@ def test_terminal_session_lifecycle():
     del_res = client.delete(f"/api/v1/terminal/sessions/{session_id}")
     assert del_res.status_code == 200
     assert del_res.json()["success"] is True
+
+
+def test_terminal_persistent_cd_navigation():
+    """Verify persistent directory navigation with cd."""
+    # 1. Create a clean session
+    create_res = client.post("/api/v1/terminal/sessions", json={"shell_type": "powershell"})
+    assert create_res.status_code == 200
+    session_id = create_res.json()["session_id"]
+    initial_cwd = create_res.json()["cwd"]
+
+    try:
+        # 2. Execute cd frontend
+        cd_res = client.post(
+            f"/api/v1/terminal/sessions/{session_id}/execute",
+            json={"command": "cd frontend"}
+        )
+        assert cd_res.status_code == 200
+        cd_data = cd_res.json()
+        assert cd_data["success"] is True
+        assert cd_data["cwd"].endswith("frontend")
+
+        # 3. Check output endpoint reports new cwd
+        out_res = client.get(f"/api/v1/terminal/sessions/{session_id}/output?tail=10")
+        assert out_res.status_code == 200
+        assert out_res.json()["cwd"].endswith("frontend")
+
+        # 4. Navigate back up with cd ..
+        cd_back = client.post(
+            f"/api/v1/terminal/sessions/{session_id}/execute",
+            json={"command": "cd .."}
+        )
+        assert cd_back.status_code == 200
+        assert cd_back.json()["cwd"] == initial_cwd
+
+        # 5. Test nonexistent directory fails gracefully without changing cwd
+        bad_cd = client.post(
+            f"/api/v1/terminal/sessions/{session_id}/execute",
+            json={"command": "cd definitely_nonexistent_dir_12345"}
+        )
+        assert bad_cd.status_code == 200
+        assert bad_cd.json()["cwd"] == initial_cwd
+        out_bad = client.get(f"/api/v1/terminal/sessions/{session_id}/output?tail=5")
+        assert any("cannot find the path specified" in l.lower() for l in out_bad.json()["lines"])
+    finally:
+        client.delete(f"/api/v1/terminal/sessions/{session_id}")

@@ -54,11 +54,16 @@ export default function AntigravityTerminalPanel({
             ...prev,
             [currentSessionId]: res.lines || [],
           }));
-          // update running state in session list
+          // update running state and cwd in session list
           setSessions(prev =>
             prev.map(s =>
               s.session_id === currentSessionId
-                ? { ...s, is_running: res.is_running, exit_code: res.exit_code }
+                ? {
+                    ...s,
+                    is_running: res.is_running,
+                    exit_code: res.exit_code,
+                    cwd: res.cwd || s.cwd,
+                  }
                 : s
             )
           );
@@ -98,28 +103,45 @@ export default function AntigravityTerminalPanel({
     try {
       const res = await api.createTerminalSession(shellType);
       if (res && res.success) {
-        await loadSessions();
+        setSessions(prev => [...prev, {
+          session_id: res.session_id,
+          shell_type: res.shell_type,
+          cwd: res.cwd,
+          is_running: false,
+          created_at: new Date().toISOString(),
+        }]);
         setCurrentSessionId(res.session_id);
+        toast.success(`Spawned new ${res.shell_type} terminal tab`, 'Terminal Created');
       }
-    } catch {}
+    } catch {
+      toast.error('Failed to create new terminal session tab', 'Terminal Error');
+    }
   };
 
-  const handleCloseTab = async (sessionId, e) => {
-    if (e) e.stopPropagation();
+  const handleCloseTab = async (sessionIdToClose) => {
     try {
-      await api.closeTerminalSession(sessionId);
-      const remaining = sessions.filter(s => s.session_id !== sessionId);
-      setSessions(remaining);
-      if (currentSessionId === sessionId && remaining.length > 0) {
-        setCurrentSessionId(remaining[0].session_id);
-      }
+      await api.closeTerminalSession(sessionIdToClose);
+      setSessions(prev => {
+        const next = prev.filter(s => s.session_id !== sessionIdToClose);
+        if (currentSessionId === sessionIdToClose && next.length > 0) {
+          setCurrentSessionId(next[0].session_id);
+        }
+        return next;
+      });
     } catch {}
   };
 
   const handleExecuteCommand = async (cmd) => {
     if (!currentSessionId) return;
     try {
-      await api.executeTerminalCommand(currentSessionId, cmd);
+      const resExec = await api.executeTerminalCommand(currentSessionId, cmd);
+      if (resExec && resExec.cwd) {
+        setSessions(prev =>
+          prev.map(s =>
+            s.session_id === currentSessionId ? { ...s, cwd: resExec.cwd } : s
+          )
+        );
+      }
       // Immediately fetch latest output without waiting for timer
       const res = await api.getTerminalSessionOutput(currentSessionId, 400);
       if (res && res.success) {
@@ -127,6 +149,13 @@ export default function AntigravityTerminalPanel({
           ...prev,
           [currentSessionId]: res.lines || [],
         }));
+        if (res.cwd) {
+          setSessions(prev =>
+            prev.map(s =>
+              s.session_id === currentSessionId ? { ...s, cwd: res.cwd } : s
+            )
+          );
+        }
       }
     } catch {}
   };
@@ -149,7 +178,7 @@ export default function AntigravityTerminalPanel({
         setSessions(prev =>
           prev.map(s =>
             s.session_id === currentSessionId
-              ? { ...s, is_running: false, exit_code: -1 }
+              ? { ...s, is_running: false, exit_code: -1, cwd: res.cwd || s.cwd }
               : s
           )
         );
@@ -163,33 +192,30 @@ export default function AntigravityTerminalPanel({
     <div
       id="workbench.parts.panel"
       className={`fixed left-0 right-0 bottom-0 z-40 bg-[#181818] border-t border-[#2B2B2B] shadow-2xl flex flex-col font-sans select-none transition-all duration-150 ${
-        isMaximized ? 'h-[75dvh]' : 'h-[280px] sm:h-[300px]'
+        isMaximized ? 'h-[85vh]' : 'h-80 sm:h-96'
       }`}
     >
+      {/* Visual Studio Code Style Header Tabs */}
       <TerminalTabsHeader
-        tabs={sessions.map(s => ({
-          id: s.session_id,
-          title: s.shell_type || 'shell',
-          isRunning: s.is_running,
-          exitCode: s.exit_code,
-        }))}
-        currentTabId={currentSessionId}
-        onSelectTab={id => setCurrentSessionId(id)}
-        onNewTab={() => handleCreateNewTab('powershell')}
-        onCloseTab={handleCloseTab}
-        onKillTerminal={handleKillCurrentProcess}
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        onSelectSession={setCurrentSessionId}
+        onCloseSession={handleCloseTab}
+        onCreateTab={handleCreateNewTab}
         isMaximized={isMaximized}
         onToggleMaximize={() => setIsMaximized(v => !v)}
         onClosePanel={onClose}
       />
 
-      <div className="flex-1 flex flex-col min-h-0 bg-[#181818] text-[#CCCCCC]">
-        {/* Sticky Filter Header */}
-        <div className="flex items-center justify-between px-3 py-1 bg-[#1E1E1E] border-b border-[#2B2B2B] text-xs font-mono">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[#858585]">$</span>
-            <span className="text-[#E8EAED] truncate font-medium">
-              {currentSession?.current_command || currentSession?.shell_type || 'shell'}
+      {/* Terminal View Body */}
+      <div className="flex-1 flex flex-col bg-[#141414] overflow-hidden min-h-0">
+        {/* Sub-toolbar: Active Directory Breadcrumb & Output Filter */}
+        <div className="flex items-center justify-between px-3 py-1 bg-[#1A1A1A] border-b border-[#252525] text-xs font-mono text-[#858585]">
+          <div className="flex items-center gap-2 truncate">
+            <span className="text-[#AAAAAA]">{currentSession?.shell_type || 'powershell'}</span>
+            <span>•</span>
+            <span className="text-emerald-400 font-bold truncate" title={currentSession?.cwd || ''}>
+              {currentSession?.cwd || 'workspace'}
             </span>
             {currentSession?.is_running && (
               <span className="w-2 h-2 rounded-full bg-[#0078D4] animate-pulse shrink-0" />
@@ -236,8 +262,9 @@ export default function AntigravityTerminalPanel({
           )}
         </div>
 
-        {/* Interactive Command Input Line */}
+        {/* Interactive Command Input Line with sessionStorage history and draft remembering */}
         <TerminalInputLine
+          sessionId={currentSession?.session_id || 'default'}
           isRunning={Boolean(currentSession?.is_running)}
           onExecute={handleExecuteCommand}
           cwd={currentSession?.cwd || ''}

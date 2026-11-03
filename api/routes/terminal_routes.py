@@ -25,8 +25,7 @@ async def list_terminal_sessions():
     """List all open interactive terminal tabs."""
     sessions = terminal_session_service.list_sessions()
     if not sessions:
-        # Create a default session automatically so frontend always has a ready tab
-        def_session = terminal_session_service.get_or_create_default_session()
+        terminal_session_service.get_or_create_default_session()
         sessions = terminal_session_service.list_sessions()
     return {"success": True, "sessions": sessions}
 
@@ -66,6 +65,7 @@ async def execute_command(session_id: str, payload: ExecuteCommandRequest):
         "session_id": session_id,
         "command": payload.command,
         "is_running": session.is_running,
+        "cwd": session.cwd,
     }
 
 
@@ -93,6 +93,6 @@ async def get_session_output(session_id: str, tail: int = Query(default=300, ge=
         "session_id": session_id,
         "is_running": session.is_running,
         "exit_code": session.exit_code,
+        "cwd": session.cwd,
         "lines": lines,
     }
-

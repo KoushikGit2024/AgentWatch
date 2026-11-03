@@ -3,15 +3,18 @@ Runs user commands asynchronously in workspace root, buffers output ring,
 and avoids constant polling overhead by only reading when clients request or stream.
 Uses background thread streaming with standard subprocess.Popen for robust cross-platform
 and Windows Uvicorn event loop compatibility (eliminating NotImplementedError on Windows selector loops).
+Includes persistent working directory tracking for cd / chdir / Set-Location.
 """
 
 import os
 import sys
 import uuid
+import re
 import logging
 import threading
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, Any, Optional, List
 from collections import deque
 
@@ -19,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 # Max output lines kept in memory per session tab to guarantee minimal RAM usage
 MAX_BUFFER_LINES = 2000
+
+CD_PATTERN = re.compile(r"^(?:cd|chdir|Set-Location)\s*(.*)$", re.IGNORECASE)
 
 
 class TerminalProcess:
@@ -99,7 +104,6 @@ class TerminalSessionService:
             try:
                 pid = proc.process.pid
                 if sys.platform == "win32":
-                    # Forcefully kill the entire process tree (/T = tree, /F = force)
                     subprocess.run(
                         ["taskkill", "/PID", str(pid), "/T", "/F"],
                         stdout=subprocess.DEVNULL,
@@ -124,6 +128,32 @@ class TerminalSessionService:
                     pass
         return False
 
+    def _handle_cd_command(self, proc: TerminalProcess, raw_target: str) -> bool:
+        """Resolve cd/chdir/Set-Location paths persistently and update proc.cwd."""
+        target = raw_target.strip().strip("'\"")
+
+        # cd without arguments -> default to user home or default_cwd
+        if not target or target == "~":
+            resolved = os.path.expanduser("~")
+        elif target == "/":
+            resolved = os.path.abspath(os.sep)
+        elif target == "-":
+            resolved = self.default_cwd
+        else:
+            resolved = os.path.abspath(os.path.join(proc.cwd, target))
+
+        if os.path.isdir(resolved):
+            proc.cwd = resolved
+            proc.append_line(f"[Directory changed to: {resolved}]")
+            proc.is_running = False
+            proc.exit_code = 0
+            return True
+        else:
+            proc.append_line(f"cd: The system cannot find the path specified: '{target}'")
+            proc.is_running = False
+            proc.exit_code = 1
+            return True
+
     def execute_command(self, session_id: str, command: str) -> bool:
         proc = self.get_session(session_id)
         if not proc:
@@ -141,6 +171,11 @@ class TerminalSessionService:
         proc.is_running = True
         proc.exit_code = None
         proc.append_line(f"\n$ {clean_cmd}")
+
+        # Check for standalone cd / chdir / Set-Location
+        cd_match = CD_PATTERN.match(clean_cmd)
+        if cd_match:
+            return self._handle_cd_command(proc, cd_match.group(1))
 
         # Choose shell execution command based on OS
         if sys.platform == "win32":
