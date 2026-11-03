@@ -258,16 +258,20 @@ class AntigravityAdapter:
         """Return MD5 hash of the latest captured screenshot for bandwidth deduplication."""
         return self._cached_screenshot_hash
 
-    async def get_active_model_and_plan(self) -> Dict[str, Any]:
-        """Read the active model name, available model list, and mode dynamically from Antigravity."""
+    async def get_active_model_and_plan(self, allow_dropdown_scan: bool = False) -> Dict[str, Any]:
+        """Read the active model name, available model list, and mode dynamically from Antigravity.
+        By default, uses 100% passive non-invasive DOM reading (dispatch_read_model) to avoid
+        focus stealing, synthetic clicks, and collisions with active prompt dispatching.
+        Interactive dropdown scanning is only executed if explicitly requested (allow_dropdown_scan=True).
+        """
         now = time.time()
         target_ws = self.active_chat_url or self.active_target_url
         if not target_ws:
             self.discover_cdp()
             target_ws = self.active_chat_url or self.active_target_url
 
-        # Check if we should re-scan available models from IDE dropdown (every 60s or if empty)
-        if target_ws and (not self._cached_available_models or (now - self._last_models_scan_time > 60.0)):
+        # Only perform invasive dropdown scanning if explicitly authorized and cache is stale/empty
+        if allow_dropdown_scan and target_ws and (not self._cached_available_models or (now - self._last_models_scan_time > 120.0)):
             from integrations.antigravity.cdp_actions import dispatch_scan_available_models
 
             scanned = await dispatch_scan_available_models(target_ws)
@@ -299,6 +303,7 @@ class AntigravityAdapter:
                 "cached": False,
             }
 
+        # 100% passive read: reads aria-label and text without synthetic clicks or focus changes
         from integrations.antigravity.cdp_actions import dispatch_read_model
 
         result = await dispatch_read_model(target_ws)
@@ -321,7 +326,6 @@ class AntigravityAdapter:
             "available_modes": ["Fast", "Planning"],
             "cached": False,
         }
-
     async def set_active_model(self, model_name: str) -> bool:
         """Switch active model in Antigravity session."""
         target_ws = self.active_chat_url or self.active_target_url

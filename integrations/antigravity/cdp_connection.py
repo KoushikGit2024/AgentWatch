@@ -33,7 +33,7 @@ async def cdp_connect(
             timeout=open_timeout + 0.3,
         )
         yield ws
-    except (asyncio.TimeoutError, websockets.InvalidURI, websockets.WebSocketException, OSError) as err:
+    except (asyncio.TimeoutError, websockets.InvalidURI, websockets.WebSocketException, OSError, ConnectionResetError) as err:
         logger.warning("CDP connection to %s failed/timed out (%s): %s", target_url, type(err).__name__, err)
         from integrations.antigravity.adapter import antigravity_adapter
         antigravity_adapter.mark_target_unresponsive(target_url, error_message=str(err))
@@ -42,6 +42,5 @@ async def cdp_connect(
         if ws:
             try:
                 await ws.close()
-            except Exception:
+            except (ConnectionResetError, OSError, Exception):
                 pass
-

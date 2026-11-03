@@ -3,10 +3,6 @@ setlocal enabledelayedexpansion
 
 title AgentWatch Launcher
 
-echo ==========================================================
-echo          AgentWatch Automatic Build ^& Launch
-echo ==========================================================
-
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0run.ps1"
 
 if %ERRORLEVEL% neq 0 (

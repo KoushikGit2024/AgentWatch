@@ -8,12 +8,7 @@ from typing import Any, Dict
 logger = logging.getLogger("integrations.antigravity.cdp_prompt_actions")
 
 
-async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
-    """
-    Dispatch prompt text directly into Antigravity IDE workbench via CDP.
-    Focuses the contenteditable or textarea message input, clears existing text via Ctrl+A + Backspace,
-    inserts prompt via native CDP Input.insertText, and clicks the Send message button.
-    """
+async def _execute_send_prompt_cdp(target_url: str, message: str) -> Dict[str, Any]:
     try:
         from integrations.antigravity.cdp_connection import cdp_connect
 
@@ -247,8 +242,35 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
             }
     except Exception as exc:
         logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
-        return {"success": False, "error": str(exc)}
 
+async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
+    """
+    Dispatch prompt text directly into Antigravity IDE workbench via CDP.
+    Includes auto-recovery for ConnectionResetError / WinError 10054:
+    if the connection was reset by remote IDE reload, triggers immediate re-discovery
+    and retries once against the freshly discovered active target.
+    """
+    try:
+        return await _execute_send_prompt_cdp(target_url, message)
+    except (ConnectionResetError, OSError) as conn_err:
+        logger.warning(
+            "CDP connection reset during prompt dispatch (%s). Attempting immediate target rediscovery...",
+            conn_err,
+        )
+        try:
+            from integrations.antigravity.adapter import antigravity_adapter
+            antigravity_adapter.discover_cdp(force=True)
+            new_target = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+            if new_target and new_target != target_url:
+                logger.info("Retrying prompt dispatch on fresh CDP target: %s", new_target)
+                await asyncio.sleep(0.3)
+                return await _execute_send_prompt_cdp(new_target, message)
+        except Exception as retry_err:
+            logger.error("Auto-recovery retry failed: %s", retry_err)
+        return {"success": False, "error": f"Connection reset by remote host: {conn_err}"}
+    except Exception as exc:
+        logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
+        return {"success": False, "error": str(exc)}
 
 async def dispatch_stop_generation(target_url: str) -> Dict[str, Any]:
     """
@@ -373,4 +395,3 @@ async def dispatch_stop_generation(target_url: str) -> Dict[str, Any]:
     except Exception as exc:
         logger.error("Failed to dispatch stop via CDP: %s", str(exc))
         return {"success": False, "error": str(exc)}
-
