@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Outer Watch Case / Hex-Chamfered Bezel (Solid Industrial Tech Slate) -->
+  <rect x="2" y="2" width="44" height="44" rx="10" fill="#14181F" stroke="#2D3542" stroke-width="2.5" />
+
+  <!-- Outer Watch Chrono Dial Ring -->
+  <circle cx="24" cy="24" r="19" stroke="#1F2633" stroke-width="1.5" />
+  
+  <!-- Outer Chrono Ticks (Solid Crisp Sky Blue) -->
+  <line x1="24" y1="3.5" x2="24" y2="7.5" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round" />
+  <line x1="24" y1="40.5" x2="24" y2="44.5" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round" />
+  <line x1="3.5" y1="24" x2="7.5" y2="24" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round" />
+  <line x1="40.5" y1="24" x2="44.5" y2="24" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round" />
+
+  <!-- Bold Central Square Robo Agent Head (Larger & Prominent, viewBox 8 to 40) -->
+  <!-- Top Center Robo Antenna with Sensor Orb -->
+  <line x1="24" y1="8" x2="24" y2="12" stroke="#0284C7" stroke-width="2.5" stroke-linecap="round" />
+  <circle cx="24" cy="7.5" r="2.2" fill="#38BDF8" />
+
+  <!-- Robo Ear Modules -->
+  <rect x="6.5" y="19" width="3.5" height="10" rx="1.5" fill="#0284C7" stroke="#38BDF8" stroke-width="1" />
+  <rect x="38" y="19" width="3.5" height="10" rx="1.5" fill="#0284C7" stroke="#38BDF8" stroke-width="1" />
+
+  <!-- Main Robo Head Block (Solid Bold Tech Gray with Cyan Accent Rim) -->
+  <rect x="9.5" y="12" width="29" height="25" rx="5" fill="#181D24" stroke="#38BDF8" stroke-width="2" />
+
+  <!-- Front Visor / Sensor Screen -->
+  <rect x="13.5" y="16" width="21" height="9.5" rx="3" fill="#0A0D12" stroke="#1E2838" stroke-width="1.2" />
+
+  <!-- Big Glowing Square Pixel Eyes (Solid Electric Cyan) -->
+  <rect x="16" y="18.5" width="5.5" height="4.5" rx="1" fill="#38BDF8" />
+  <rect x="26.5" y="18.5" width="5.5" height="4.5" rx="1" fill="#38BDF8" />
+
+  <!-- Robo Mouth / Audio Equalizer Status Indicators -->
+  <line x1="16" y1="30" x2="19.5" y2="30" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" />
+  <line x1="22" y1="30" x2="26" y2="30" stroke="#22C55E" stroke-width="2" stroke-linecap="round" />
+  <line x1="28.5" y1="30" x2="32" y2="30" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" />
+</svg>
