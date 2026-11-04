@@ -2,7 +2,13 @@ import { useCallback } from 'react';
 import { api } from '../services/api';
 import { toast } from '../services/toastService';
 
-export function useAgentControls({ setAppState, setChatMessages, fetchAppState, fetchChatMessages, isMountedRef }) {
+export function useAgentControls({
+  setAppState,
+  setChatMessages,
+  fetchAppState,
+  fetchChatMessages,
+  isMountedRef,
+}) {
   const handleSetModel = useCallback(
     async model => {
       try {
@@ -57,4 +63,3 @@ export function useAgentControls({ setAppState, setChatMessages, fetchAppState, 
     handleStopAgent,
   };
 }
-

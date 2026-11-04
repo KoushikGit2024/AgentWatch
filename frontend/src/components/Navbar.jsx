@@ -44,7 +44,7 @@ export default function Navbar({
     };
   }, [mobileMenuOpen]);
 
-  const handleManualReconnect = async (e) => {
+  const handleManualReconnect = async e => {
     e.stopPropagation();
     if (isReconnecting) return;
     setIsReconnecting(true);
@@ -53,7 +53,10 @@ export default function Navbar({
       if (res?.connected || res?.status === 'active') {
         toast.success('Reconnected to Antigravity IDE workbench', 'CDP Live');
       } else {
-        toast.info('Probing CDP ports... Ensure IDE is started with --remote-debugging-port=9000', 'CDP Probe');
+        toast.info(
+          'Probing CDP ports... Ensure IDE is started with --remote-debugging-port=9000',
+          'CDP Probe'
+        );
       }
       if (onRefreshAppState) onRefreshAppState();
     } catch (err) {
@@ -111,8 +114,8 @@ export default function Navbar({
                     cdpStatus?.latency_ms ? ` (${cdpStatus.latency_ms}ms)` : ''
                   }`
                 : isReconnecting
-                ? 'Reconnecting to Antigravity IDE on port 9000...'
-                : 'CDP Standby · Click to reconnect to Antigravity IDE'
+                  ? 'Reconnecting to Antigravity IDE on port 9000...'
+                  : 'CDP Standby · Click to reconnect to Antigravity IDE'
             }
             className={`flex items-center gap-1.5 mt-0.5 text-[10px] text-[#A0A6AF] font-mono select-none ${
               !isConnected ? 'cursor-pointer hover:text-[#E8EAED]' : ''
@@ -123,8 +126,8 @@ export default function Navbar({
                 isConnected
                   ? 'bg-[#79B89A] pulse-live'
                   : isReconnecting || cdpStatus?.status === 'reconnecting'
-                  ? 'bg-amber-400 animate-pulse'
-                  : 'bg-[#747C87]'
+                    ? 'bg-amber-400 animate-pulse'
+                    : 'bg-[#747C87]'
               }`}
             />
             <span className="truncate">
@@ -133,8 +136,8 @@ export default function Navbar({
                     cdpStatus?.latency_ms ? ` · ${cdpStatus.latency_ms}ms` : ''
                   }`
                 : isReconnecting || cdpStatus?.status === 'reconnecting'
-                ? 'Reconnecting...'
-                : 'Standby · Reconnect'}
+                  ? 'Reconnecting...'
+                  : 'Standby · Reconnect'}
             </span>
             {chatTitle && (
               <span
@@ -362,6 +365,16 @@ export default function Navbar({
                     {recoveryCount}
                   </span>
                 )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAction(onOpenPortForwarding)}
+                className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
+              >
+                <div className="w-4 h-4 p-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                  {Icon.globe}
+                </div>
+                <span>Ports</span>
               </button>
               <button
                 type="button"

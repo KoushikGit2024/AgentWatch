@@ -53,12 +53,12 @@ export function useTailscalePorts(isOpen = false) {
     }
   };
 
-  const handleRemovePort = async (externalPort) => {
+  const handleRemovePort = async externalPort => {
     try {
       const res = await api.removePortForward(externalPort);
       if (res?.success) {
         toast.info(`Port ${externalPort} forwarding stopped`, 'Tailscale');
-        setForwards((prev) => prev.filter((item) => item.external_port !== externalPort));
+        setForwards(prev => prev.filter(item => item.external_port !== externalPort));
         return true;
       }
       throw new Error(res?.error || 'Failed to remove port');
@@ -79,4 +79,3 @@ export function useTailscalePorts(isOpen = false) {
     handleRemovePort,
   };
 }
-

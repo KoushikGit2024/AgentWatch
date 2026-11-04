@@ -51,77 +51,76 @@ export function HourlyActivityHistogram({
       </div>
 
       {/* Interactive Floating Hover Details Card */}
-      {hoveredBucket && (() => {
-        const total = Number(hoveredBucket.count) || 0;
-        const c2 = hoveredBucket.status?.['2xx'] || 0;
-        const c3 = hoveredBucket.status?.['3xx'] || 0;
-        const c4 = hoveredBucket.status?.['4xx'] || 0;
-        const c5 = (hoveredBucket.status?.['5xx'] || 0) + (hoveredBucket.levels?.ERROR || 0);
-        const sysLogs = Math.max(0, total - (c2 + c3 + c4 + c5));
+      {hoveredBucket &&
+        (() => {
+          const total = Number(hoveredBucket.count) || 0;
+          const c2 = hoveredBucket.status?.['2xx'] || 0;
+          const c3 = hoveredBucket.status?.['3xx'] || 0;
+          const c4 = hoveredBucket.status?.['4xx'] || 0;
+          const c5 = (hoveredBucket.status?.['5xx'] || 0) + (hoveredBucket.levels?.ERROR || 0);
+          const sysLogs = Math.max(0, total - (c2 + c3 + c4 + c5));
 
-        const info = hoveredBucket.levels?.INFO || 0;
-        const warn = hoveredBucket.levels?.WARNING || 0;
-        const err = (hoveredBucket.levels?.ERROR || 0) + (hoveredBucket.levels?.CRITICAL || 0);
-        const dbg = hoveredBucket.levels?.DEBUG || 0;
+          const info = hoveredBucket.levels?.INFO || 0;
+          const warn = hoveredBucket.levels?.WARNING || 0;
+          const err = (hoveredBucket.levels?.ERROR || 0) + (hoveredBucket.levels?.CRITICAL || 0);
+          const dbg = hoveredBucket.levels?.DEBUG || 0;
 
-        return (
-          <div className="p-2.5 rounded-lg bg-[#11141d] border border-blue-500/30 shadow-lg flex flex-wrap items-center justify-between gap-3 text-xs font-mono animate-in fade-in duration-150">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold text-[11px]">
-                Bucket {hoveredBucket.hour}
-              </span>
-              <span className="text-[#F1F3F5] font-bold">
-                {total.toLocaleString()} events
-              </span>
-            </div>
-            {colorMode === 'status' ? (
-              <div className="flex flex-wrap items-center gap-3 text-[11px]">
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  2xx: {c2.toLocaleString()}
+          return (
+            <div className="p-2.5 rounded-lg bg-[#11141d] border border-blue-500/30 shadow-lg flex flex-wrap items-center justify-between gap-3 text-xs font-mono animate-in fade-in duration-150">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold text-[11px]">
+                  Bucket {hoveredBucket.hour}
                 </span>
-                <span className="flex items-center gap-1 text-sky-400">
-                  <span className="w-2 h-2 rounded-full bg-sky-400" />
-                  3xx: {c3.toLocaleString()}
-                </span>
-                <span className="flex items-center gap-1 text-amber-400">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  4xx: {c4.toLocaleString()}
-                </span>
-                <span className="flex items-center gap-1 text-rose-400">
-                  <span className="w-2 h-2 rounded-full bg-rose-400" />
-                  5xx / Err: {c5.toLocaleString()}
-                </span>
-                {sysLogs > 0 && (
+                <span className="text-[#F1F3F5] font-bold">{total.toLocaleString()} events</span>
+              </div>
+              {colorMode === 'status' ? (
+                <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    2xx: {c2.toLocaleString()}
+                  </span>
+                  <span className="flex items-center gap-1 text-sky-400">
+                    <span className="w-2 h-2 rounded-full bg-sky-400" />
+                    3xx: {c3.toLocaleString()}
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-400">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    4xx: {c4.toLocaleString()}
+                  </span>
+                  <span className="flex items-center gap-1 text-rose-400">
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                    5xx / Err: {c5.toLocaleString()}
+                  </span>
+                  {sysLogs > 0 && (
+                    <span className="flex items-center gap-1 text-blue-400">
+                      <span className="w-2 h-2 rounded-full bg-blue-400" />
+                      App / Internal: {sysLogs.toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3 text-[11px]">
                   <span className="flex items-center gap-1 text-blue-400">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    App / Internal: {sysLogs.toLocaleString()}
+                    INFO: {info.toLocaleString()}
                   </span>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-3 text-[11px]">
-                <span className="flex items-center gap-1 text-blue-400">
-                  <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  INFO: {info.toLocaleString()}
-                </span>
-                <span className="flex items-center gap-1 text-amber-400">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  WARN: {warn.toLocaleString()}
-                </span>
-                <span className="flex items-center gap-1 text-rose-400">
-                  <span className="w-2 h-2 rounded-full bg-rose-400" />
-                  ERR: {err.toLocaleString()}
-                </span>
-                <span className="flex items-center gap-1 text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-slate-400" />
-                  DEBUG: {dbg.toLocaleString()}
-                </span>
-              </div>
-            )}
-          </div>
-        );
-      })()}
+                  <span className="flex items-center gap-1 text-amber-400">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    WARN: {warn.toLocaleString()}
+                  </span>
+                  <span className="flex items-center gap-1 text-rose-400">
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                    ERR: {err.toLocaleString()}
+                  </span>
+                  <span className="flex items-center gap-1 text-slate-400">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    DEBUG: {dbg.toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       {/* Bar Graph rendered via SVG with crisp flat stacked segments & integrated axis ticks */}
       <div

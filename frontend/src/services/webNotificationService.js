@@ -143,4 +143,3 @@ class WebNotificationService {
 }
 
 export const webNotificationService = new WebNotificationService();
-

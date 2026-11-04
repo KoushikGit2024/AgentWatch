@@ -2,7 +2,6 @@ import React from 'react';
 import { File, Key } from 'lucide-react';
 import { EXTENSION_MAP, SPECIAL_FILES } from './fileIconMaps';
 
-
 const DEFAULT_FILE_INFO = {
   icon: File,
   color: 'text-zinc-400',

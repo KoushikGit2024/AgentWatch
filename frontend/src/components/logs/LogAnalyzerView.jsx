@@ -82,7 +82,6 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
     setShowDeleteConfirm(true);
   };
 
-
   useEffect(() => {
     fetchLogFiles();
   }, []);
@@ -284,7 +283,8 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
                 Delete {activeFileMeta.filename}?
               </h4>
               <p className="text-xs text-[#828c9e] mt-1.5 leading-relaxed">
-                If this is today&apos;s active log file, its contents will be safely truncated. Older log files will be permanently deleted.
+                If this is today&apos;s active log file, its contents will be safely truncated.
+                Older log files will be permanently deleted.
               </p>
             </div>
             <div className="flex gap-2 pt-1">
@@ -311,4 +311,3 @@ export function LogAnalyzerView({ onOpenFileInViewer }) {
     </div>
   );
 }
-

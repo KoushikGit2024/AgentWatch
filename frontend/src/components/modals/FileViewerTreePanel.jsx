@@ -41,7 +41,12 @@ function TreeNode({
 
   const isExpanded = queryLower ? true : expandedPaths.has(node.path);
   const fullPath = node.full_path || node.path;
-  const isSelected = !isDir && activeFilePath && (activeFilePath === fullPath || activeFilePath.endsWith('/' + node.name) || activeFilePath.endsWith('\\' + node.name));
+  const isSelected =
+    !isDir &&
+    activeFilePath &&
+    (activeFilePath === fullPath ||
+      activeFilePath.endsWith('/' + node.name) ||
+      activeFilePath.endsWith('\\' + node.name));
 
   return (
     <div className="select-none text-xs">
@@ -87,7 +92,9 @@ function TreeNode({
               <FileIcon path={node.name} className="w-3.5 h-3.5 shrink-0" />
             </div>
           )}
-          <span className={`font-mono text-[11px] truncate ${isDir ? 'font-medium text-[#E8EAED]' : ''}`}>
+          <span
+            className={`font-mono text-[11px] truncate ${isDir ? 'font-medium text-[#E8EAED]' : ''}`}
+          >
             {node.name}
           </span>
         </div>
@@ -119,12 +126,7 @@ function TreeNode({
   );
 }
 
-export function FileViewerTreePanel({
-  isOpen,
-  onClose,
-  activeFilePath,
-  onOpenFile,
-}) {
+export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFile }) {
   const [treeData, setTreeData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -215,9 +217,7 @@ export function FileViewerTreePanel({
               disabled={isLoading}
               className="p-1 rounded text-[#747C87] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer"
             >
-              <div className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`}>
-                {Icon.refresh}
-              </div>
+              <div className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`}>{Icon.refresh}</div>
             </button>
             {onClose && (
               <button
@@ -311,4 +311,3 @@ export function FileViewerTreePanel({
     </aside>
   );
 }
-

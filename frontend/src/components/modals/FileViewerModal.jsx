@@ -13,10 +13,7 @@ import {
 import { BinaryFileViewport } from './BinaryFileViewport';
 import { FileViewerTabBar } from './FileViewerTabBar';
 import { FileViewerTreePanel } from './FileViewerTreePanel';
-import {
-  FileViewerErrorViewport,
-  FileViewerFooterBar,
-} from './FileViewerViewports';
+import { FileViewerErrorViewport, FileViewerFooterBar } from './FileViewerViewports';
 
 export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawer }) {
   const [tabs, setTabs] = useState([]);
@@ -126,7 +123,8 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
         const media = classifyFileMedia(activePath, data);
         let defaultMode = 'code';
         if (activeTab?.hasHighlight) defaultMode = 'code';
-        else if (media.isImage || media.isVideo || media.isAudio || media.isMarkdown) defaultMode = 'preview';
+        else if (media.isImage || media.isVideo || media.isAudio || media.isMarkdown)
+          defaultMode = 'preview';
 
         setTabDataMap(prev => ({
           ...prev,
@@ -158,7 +156,7 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
   ]);
 
   // Close all tabs and dismiss modal completely
-  const handleOpenFileFromTree = useCallback((path) => {
+  const handleOpenFileFromTree = useCallback(path => {
     if (!path) return;
     const pathKey = path.replace(/\\/g, '/');
     const filename = pathKey.split('/').pop() || 'File';
@@ -312,150 +310,157 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
     >
       <div
         className={`w-full ${
-          isMaximized ? 'h-full max-h-full rounded-none' : 'max-w-6xl h-[92vh] sm:h-[88vh] rounded-2xl'
+          isMaximized
+            ? 'h-full max-h-full rounded-none'
+            : 'max-w-6xl h-[92vh] sm:h-[88vh] rounded-2xl'
         } bg-[#121417] border border-[#272B30] shadow-2xl flex flex-col overflow-hidden select-text animate-in fade-in zoom-in-95 duration-150`}
         onClick={e => e.stopPropagation()}
       >
-      {/* IDE Horizontal Tab Bar */}
-      <FileViewerTabBar
-        tabs={tabs}
-        activeTabPath={activeTabPath}
-        setActiveTabPath={setActiveTabPath}
-        handleCloseTab={handleCloseTab}
-        isTreeOpen={isTreeOpen}
-        onToggleTree={() => setIsTreeOpen(prev => !prev)}
-        canTogglePreview={canTogglePreview}
-        viewMode={viewMode}
-        activePath={activePath}
-        setTabDataMap={setTabDataMap}
-        copiedPath={copiedPath}
-        copiedContent={copiedContent}
-        fileData={fileData}
-        handleCopyPath={handleCopyPath}
-        handleCopyCode={handleCopyCode}
-        setIsMinimized={setIsMinimized}
-        isMaximized={isMaximized}
-        setIsMaximized={setIsMaximized}
-        handleCloseAll={handleCloseAll}
-      />
-
-      {/* Subheader: Active File Path & Breadcrumb */}
-      {activePath && (
-        <div className="px-3.5 sm:px-4 py-1.5 bg-[#15171B] border-b border-[#22262B] text-[11px] font-mono text-[#8A929B] flex items-center justify-between select-all shrink-0">
-          <div className="flex items-center gap-1.5 truncate min-w-0">
-            <span className="text-[#5D6570] text-[10px]">path:</span>
-            <span className="truncate text-[#C4C7C5]">{activePath}</span>
-          </div>
-          {fileInfo.label && (
-            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-medium uppercase tracking-wider bg-[#1A1D22] text-[#A0A6AF] border border-[#2D3138] shrink-0 ml-2">
-              {fileInfo.label}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Middle Row: Collapsible Tree Panel + Main Viewport Body */}
-      <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative w-full">
-        {/* Left Tree Explorer Panel */}
-        <FileViewerTreePanel
-          isOpen={isTreeOpen}
-          onClose={() => setIsTreeOpen(false)}
-          activeFilePath={activePath}
-          onOpenFile={handleOpenFileFromTree}
+        {/* IDE Horizontal Tab Bar */}
+        <FileViewerTabBar
+          tabs={tabs}
+          activeTabPath={activeTabPath}
+          setActiveTabPath={setActiveTabPath}
+          handleCloseTab={handleCloseTab}
+          isTreeOpen={isTreeOpen}
+          onToggleTree={() => setIsTreeOpen(prev => !prev)}
+          canTogglePreview={canTogglePreview}
+          viewMode={viewMode}
+          activePath={activePath}
+          setTabDataMap={setTabDataMap}
+          copiedPath={copiedPath}
+          copiedContent={copiedContent}
+          fileData={fileData}
+          handleCopyPath={handleCopyPath}
+          handleCopyCode={handleCopyCode}
+          setIsMinimized={setIsMinimized}
+          isMaximized={isMaximized}
+          setIsMaximized={setIsMaximized}
+          handleCloseAll={handleCloseAll}
         />
 
-        {/* Viewport Body */}
-        <div className="flex-1 min-h-0 overflow-hidden bg-[#101113] flex flex-col relative w-full">
-        {!activePath ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#747C87] space-y-3 flex-1 select-none">
-            <div className="w-10 h-10 rounded-xl bg-[#1A1D22] border border-[#2D3138] flex items-center justify-center text-amber-400 shadow-sm">
-              <div className="w-5 h-5">{Icon.folder}</div>
+        {/* Subheader: Active File Path & Breadcrumb */}
+        {activePath && (
+          <div className="px-3.5 sm:px-4 py-1.5 bg-[#15171B] border-b border-[#22262B] text-[11px] font-mono text-[#8A929B] flex items-center justify-between select-all shrink-0">
+            <div className="flex items-center gap-1.5 truncate min-w-0">
+              <span className="text-[#5D6570] text-[10px]">path:</span>
+              <span className="truncate text-[#C4C7C5]">{activePath}</span>
             </div>
-            <div className="text-center space-y-1">
-              <p className="text-xs font-medium text-[#E8EAED]">No File Selected</p>
-              <p className="text-[11px] font-mono text-[#747C87]">Choose a file from the explorer on the left to preview or edit</p>
-            </div>
-          </div>
-        ) : activeDataState.isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#A0A6AF] space-y-2 flex-1">
-            <span className="w-5 h-5 rounded-full border-2 border-[#7C9FC5] border-t-transparent animate-spin" />
-            <span className="text-xs font-mono">Loading file contents...</span>
-          </div>
-        ) : activeDataState.error ? (
-          <FileViewerErrorViewport
-            error={activeDataState.error}
-            activePath={activePath}
-            onRetry={() => {
-              setTabDataMap(prev => ({
-                ...prev,
-                [activePath]: null,
-              }));
-            }}
-          />
-        ) : fileData?.is_binary ? (
-          <BinaryFileViewport fileData={fileData} activePath={activePath} />
-        ) : isMedia && (!isSvg || viewMode === 'preview') ? (
-          <MediaPreviewViewport
-            isImage={isImage}
-            isVideo={isVideo}
-            isAudio={isAudio}
-            fileData={fileData}
-            filePath={activePath}
-          />
-        ) : viewMode === 'preview' && isMarkdown ? (
-          <MarkdownPreviewViewport content={fileData?.content} />
-        ) : (
-          <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden group/editor">
-            {/* Hover Floating Copy Code Button */}
-            {fileData?.content && (
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                title="Copy entire file content"
-                className="absolute top-3 right-6 z-20 opacity-0 group-hover/editor:opacity-100 transition-all duration-150 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#16181C]/90 hover:bg-[#202328] border border-[#2D3138] hover:border-[#3D424B] text-[11px] font-mono text-[#C4C7C5] hover:text-[#E8EAED] shadow-md backdrop-blur-md cursor-pointer select-none"
-              >
-                <div className="w-3.5 h-3.5 text-cyan-400">
-                  {copiedContent ? Icon.check : Icon.copy}
-                </div>
-                <span>{copiedContent ? 'Copied!' : 'Copy Code'}</span>
-              </button>
+            {fileInfo.label && (
+              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-medium uppercase tracking-wider bg-[#1A1D22] text-[#A0A6AF] border border-[#2D3138] shrink-0 ml-2">
+                {fileInfo.label}
+              </span>
             )}
-
-            <Editor
-              height="100%"
-              width="100%"
-              theme="vs-dark"
-              language={getMonacoLanguage(fileData?.extension, fileData?.filename || activePath)}
-              value={fileData?.content || ''}
-              onMount={handleEditorDidMount}
-              options={{
-                readOnly: true,
-                domReadOnly: true,
-                fontSize: 12,
-                fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-                lineNumbers: 'on',
-                glyphMargin: Boolean(activeTab?.hasHighlight),
-                minimap: { enabled: (fileData?.total_lines || 0) > 80 },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                wordWrap: 'off',
-                renderLineHighlight: 'all',
-                padding: { top: 10, bottom: 10 },
-              }}
-            />
           </div>
         )}
-        </div>
-      </div>
 
-      {/* Footer Bar */}
-      <FileViewerFooterBar
-        activeTab={activeTab}
-        fileData={fileData}
-        activePath={activePath}
-        language={getMonacoLanguage(fileData?.extension, fileData?.filename || activePath)}
-        tabsCount={tabs.length}
-      />
+        {/* Middle Row: Collapsible Tree Panel + Main Viewport Body */}
+        <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative w-full">
+          {/* Left Tree Explorer Panel */}
+          <FileViewerTreePanel
+            isOpen={isTreeOpen}
+            onClose={() => setIsTreeOpen(false)}
+            activeFilePath={activePath}
+            onOpenFile={handleOpenFileFromTree}
+          />
+
+          {/* Viewport Body */}
+          <div className="flex-1 min-h-0 overflow-hidden bg-[#101113] flex flex-col relative w-full">
+            {!activePath ? (
+              <div className="flex flex-col items-center justify-center py-20 text-[#747C87] space-y-3 flex-1 select-none">
+                <div className="w-10 h-10 rounded-xl bg-[#1A1D22] border border-[#2D3138] flex items-center justify-center text-amber-400 shadow-sm">
+                  <div className="w-5 h-5">{Icon.folder}</div>
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-xs font-medium text-[#E8EAED]">No File Selected</p>
+                  <p className="text-[11px] font-mono text-[#747C87]">
+                    Choose a file from the explorer on the left to preview or edit
+                  </p>
+                </div>
+              </div>
+            ) : activeDataState.isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-[#A0A6AF] space-y-2 flex-1">
+                <span className="w-5 h-5 rounded-full border-2 border-[#7C9FC5] border-t-transparent animate-spin" />
+                <span className="text-xs font-mono">Loading file contents...</span>
+              </div>
+            ) : activeDataState.error ? (
+              <FileViewerErrorViewport
+                error={activeDataState.error}
+                activePath={activePath}
+                onRetry={() => {
+                  setTabDataMap(prev => ({
+                    ...prev,
+                    [activePath]: null,
+                  }));
+                }}
+              />
+            ) : fileData?.is_binary ? (
+              <BinaryFileViewport fileData={fileData} activePath={activePath} />
+            ) : isMedia && (!isSvg || viewMode === 'preview') ? (
+              <MediaPreviewViewport
+                isImage={isImage}
+                isVideo={isVideo}
+                isAudio={isAudio}
+                fileData={fileData}
+                filePath={activePath}
+              />
+            ) : viewMode === 'preview' && isMarkdown ? (
+              <MarkdownPreviewViewport content={fileData?.content} />
+            ) : (
+              <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden group/editor">
+                {/* Hover Floating Copy Code Button */}
+                {fileData?.content && (
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    title="Copy entire file content"
+                    className="absolute top-3 right-6 z-20 opacity-0 group-hover/editor:opacity-100 transition-all duration-150 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#16181C]/90 hover:bg-[#202328] border border-[#2D3138] hover:border-[#3D424B] text-[11px] font-mono text-[#C4C7C5] hover:text-[#E8EAED] shadow-md backdrop-blur-md cursor-pointer select-none"
+                  >
+                    <div className="w-3.5 h-3.5 text-cyan-400">
+                      {copiedContent ? Icon.check : Icon.copy}
+                    </div>
+                    <span>{copiedContent ? 'Copied!' : 'Copy Code'}</span>
+                  </button>
+                )}
+
+                <Editor
+                  height="100%"
+                  width="100%"
+                  theme="vs-dark"
+                  language={getMonacoLanguage(
+                    fileData?.extension,
+                    fileData?.filename || activePath
+                  )}
+                  value={fileData?.content || ''}
+                  onMount={handleEditorDidMount}
+                  options={{
+                    readOnly: true,
+                    domReadOnly: true,
+                    fontSize: 12,
+                    fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+                    lineNumbers: 'on',
+                    glyphMargin: Boolean(activeTab?.hasHighlight),
+                    minimap: { enabled: (fileData?.total_lines || 0) > 80 },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    wordWrap: 'off',
+                    renderLineHighlight: 'all',
+                    padding: { top: 10, bottom: 10 },
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer Bar */}
+        <FileViewerFooterBar
+          activeTab={activeTab}
+          fileData={fileData}
+          activePath={activePath}
+          language={getMonacoLanguage(fileData?.extension, fileData?.filename || activePath)}
+          tabsCount={tabs.length}
+        />
       </div>
     </div>
   );

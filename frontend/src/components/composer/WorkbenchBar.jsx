@@ -128,7 +128,9 @@ export default function WorkbenchBar({
                   disabled={isLoadingTerminal}
                   className="p-1 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#23272D] transition cursor-pointer disabled:opacity-40"
                 >
-                  <div className={`w-3.5 h-3.5 ${isLoadingTerminal ? 'animate-spin text-[#7C9FC5]' : ''}`}>
+                  <div
+                    className={`w-3.5 h-3.5 ${isLoadingTerminal ? 'animate-spin text-[#7C9FC5]' : ''}`}
+                  >
                     {Icon.refreshCw}
                   </div>
                 </button>

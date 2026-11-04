@@ -59,9 +59,7 @@ export default function AssetCard({
         ) : (
           <div className="flex flex-col items-center gap-1.5 text-[#A0A6AF]">
             <FileIcon path={att.original_name} className="w-8 h-8" />
-            <span className="text-[10px] font-mono uppercase tracking-wider">
-              {att.category}
-            </span>
+            <span className="text-[10px] font-mono uppercase tracking-wider">{att.category}</span>
           </div>
         )}
 
@@ -85,10 +83,7 @@ export default function AssetCard({
 
       {/* Info */}
       <div className="min-w-0 space-y-1">
-        <p
-          className="text-xs font-medium text-[#E8EAED] truncate"
-          title={att.original_name}
-        >
+        <p className="text-xs font-medium text-[#E8EAED] truncate" title={att.original_name}>
           {att.original_name}
         </p>
         <div className="flex items-center justify-between text-[10px] text-[#747C87] font-mono">
@@ -110,7 +105,9 @@ export default function AssetCard({
         <button
           type="button"
           onClick={e => onDeleteSingle(att.filename, e)}
-          title={isChatScope ? 'Delete chat upload permanently' : 'Delete out-of-chat upload permanently'}
+          title={
+            isChatScope ? 'Delete chat upload permanently' : 'Delete out-of-chat upload permanently'
+          }
           className="p-1 rounded text-[#747C87] hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
         >
           <div className="w-3.5 h-3.5">{Icon.trash}</div>
@@ -119,4 +116,3 @@ export default function AssetCard({
     </div>
   );
 }
-

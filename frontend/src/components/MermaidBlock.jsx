@@ -86,7 +86,9 @@ export default function MermaidBlock({ chartCode }) {
       <div className="p-3 w-full max-w-full overflow-x-auto flex justify-center items-center">
         {renderError ? (
           <div className="text-left w-full space-y-2">
-            <div className="text-xs text-rose-400 font-mono">Failed to render diagram: {renderError}</div>
+            <div className="text-xs text-rose-400 font-mono">
+              Failed to render diagram: {renderError}
+            </div>
             <pre className="p-2.5 rounded bg-zinc-950 text-[11px] font-mono text-zinc-400 overflow-x-auto">
               <code>{chartCode}</code>
             </pre>
@@ -107,4 +109,3 @@ export default function MermaidBlock({ chartCode }) {
     </div>
   );
 }
-

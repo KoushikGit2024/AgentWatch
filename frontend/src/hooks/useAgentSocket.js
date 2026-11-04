@@ -52,16 +52,15 @@ export function useAgentSocket({
           if (Array.isArray(data.messages)) {
             const incomingCid = data.conversation_id;
             const isChatSwitched = Boolean(
-              incomingCid &&
-              activeConvIdRef?.current &&
-              activeConvIdRef.current !== incomingCid
+              incomingCid && activeConvIdRef?.current && activeConvIdRef.current !== incomingCid
             );
 
             if (isChatSwitched) {
               if (setIsChatLoading) setIsChatLoading(true);
               if (activeConvIdRef) activeConvIdRef.current = incomingCid;
               setChatMessages(data.messages);
-              oldestTurnIndexRef.current = typeof data.oldest_index === 'number' ? data.oldest_index : null;
+              oldestTurnIndexRef.current =
+                typeof data.oldest_index === 'number' ? data.oldest_index : null;
               setHasMoreHistory(Boolean(data.has_more));
               if (setIsChatLoading) setTimeout(() => setIsChatLoading(false), 200);
             } else {

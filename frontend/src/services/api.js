@@ -36,7 +36,10 @@ const request = async (url, options = {}) => {
   // Provide a generous 15-second default timeout to prevent indefinite UI hangs while accommodating slower disk / git operations
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timeoutId = controller
-    ? setTimeout(() => controller.abort(new Error('Request timed out after 15 seconds')), options.timeoutMs || 15000)
+    ? setTimeout(
+        () => controller.abort(new Error('Request timed out after 15 seconds')),
+        options.timeoutMs || 15000
+      )
     : null;
 
   let res;
@@ -55,7 +58,6 @@ const request = async (url, options = {}) => {
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
-
 
   if (res.status === 401) {
     handleAuthFailure(res.status);
@@ -405,7 +407,7 @@ export const api = {
     return res.json();
   },
 
-    async sendTestPush(payload = {}) {
+  async sendTestPush(payload = {}) {
     const res = await request('/api/v1/push/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -448,10 +450,11 @@ export const api = {
 
   // Terminal & Background Task logs
   async getTaskLog(taskId, tailBytes = 50000) {
-    const res = await request(`/api/v1/tasks/${encodeURIComponent(taskId)}?tail_bytes=${tailBytes}`);
+    const res = await request(
+      `/api/v1/tasks/${encodeURIComponent(taskId)}?tail_bytes=${tailBytes}`
+    );
     return res.json();
   },
-
 
   // On-demand plan models scanner
   async scanAvailableModels() {

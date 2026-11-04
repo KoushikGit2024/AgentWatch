@@ -185,10 +185,7 @@ export function AppDrawersAndModals({
         onDismiss={handleDismissApproval}
       />
 
-      <FileViewerModal
-        targetFile={activeFileViewer}
-        onClose={() => setActiveFileViewer(null)}
-      />
+      <FileViewerModal targetFile={activeFileViewer} onClose={() => setActiveFileViewer(null)} />
 
       <PortForwardingModal
         isOpen={portForwardingOpen}

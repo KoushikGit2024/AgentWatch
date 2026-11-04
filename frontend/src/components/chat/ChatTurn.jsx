@@ -288,7 +288,8 @@ const ChatTurn = memo(function ChatTurn({
                   )}
                 </div>
                 <p className="text-[#C4C9D2] leading-relaxed">
-                  {turn.error.message || 'There was a network issue connecting to the model server.'}
+                  {turn.error.message ||
+                    'There was a network issue connecting to the model server.'}
                 </p>
                 {turn.error.raw_error && (
                   <div className="p-2 rounded bg-[#120D0F] border border-rose-950/80 font-mono text-[11px] text-rose-300/80 max-h-24 overflow-y-auto whitespace-pre-wrap break-all">

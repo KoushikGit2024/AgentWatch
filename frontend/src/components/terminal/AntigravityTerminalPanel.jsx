@@ -5,10 +5,7 @@ import { toast } from '../../services/toastService';
 import TerminalTabsHeader from './TerminalTabsHeader';
 import TerminalInputLine from './TerminalInputLine';
 
-export default function AntigravityTerminalPanel({
-  isOpen,
-  onClose,
-}) {
+export default function AntigravityTerminalPanel({ isOpen, onClose }) {
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -95,21 +92,24 @@ export default function AntigravityTerminalPanel({
   const currentSession = sessions.find(s => s.session_id === currentSessionId) || sessions[0];
   const activeLines = (currentSession && sessionOutputs[currentSession.session_id]) || [];
 
-  const filteredLines = activeLines.filter(l =>
-    !filterText || l.toLowerCase().includes(filterText.toLowerCase())
+  const filteredLines = activeLines.filter(
+    l => !filterText || l.toLowerCase().includes(filterText.toLowerCase())
   );
 
   const handleCreateNewTab = async (shellType = 'powershell') => {
     try {
       const res = await terminalApi.createSession(shellType);
       if (res && res.success) {
-        setSessions(prev => [...prev, {
-          session_id: res.session_id,
-          shell_type: res.shell_type,
-          cwd: res.cwd,
-          is_running: false,
-          created_at: new Date().toISOString(),
-        }]);
+        setSessions(prev => [
+          ...prev,
+          {
+            session_id: res.session_id,
+            shell_type: res.shell_type,
+            cwd: res.cwd,
+            is_running: false,
+            created_at: new Date().toISOString(),
+          },
+        ]);
         setCurrentSessionId(res.session_id);
         toast.success(`Spawned new ${res.shell_type} terminal tab`, 'Terminal Created');
       }
@@ -118,7 +118,7 @@ export default function AntigravityTerminalPanel({
     }
   };
 
-  const handleCloseTab = async (sessionIdToClose) => {
+  const handleCloseTab = async sessionIdToClose => {
     try {
       await terminalApi.closeSession(sessionIdToClose);
       setSessions(prev => {
@@ -131,15 +131,13 @@ export default function AntigravityTerminalPanel({
     } catch {}
   };
 
-  const handleExecuteCommand = async (cmd) => {
+  const handleExecuteCommand = async cmd => {
     if (!currentSessionId) return;
     try {
       const resExec = await terminalApi.executeCommand(currentSessionId, cmd);
       if (resExec && resExec.cwd) {
         setSessions(prev =>
-          prev.map(s =>
-            s.session_id === currentSessionId ? { ...s, cwd: resExec.cwd } : s
-          )
+          prev.map(s => (s.session_id === currentSessionId ? { ...s, cwd: resExec.cwd } : s))
         );
       }
       // Immediately fetch latest output without waiting for timer
@@ -151,9 +149,7 @@ export default function AntigravityTerminalPanel({
         }));
         if (res.cwd) {
           setSessions(prev =>
-            prev.map(s =>
-              s.session_id === currentSessionId ? { ...s, cwd: res.cwd } : s
-            )
+            prev.map(s => (s.session_id === currentSessionId ? { ...s, cwd: res.cwd } : s))
           );
         }
       }
@@ -233,7 +229,9 @@ export default function AntigravityTerminalPanel({
               type="button"
               onClick={() => setAutoScroll(v => !v)}
               className={`px-2 py-0.5 rounded text-[11px] font-mono transition cursor-pointer ${
-                autoScroll ? 'bg-[#0078D4]/20 text-[#0078D4] border border-[#0078D4]/40' : 'text-[#858585] hover:text-[#CCCCCC]'
+                autoScroll
+                  ? 'bg-[#0078D4]/20 text-[#0078D4] border border-[#0078D4]/40'
+                  : 'text-[#858585] hover:text-[#CCCCCC]'
               }`}
             >
               Follow Tail
@@ -250,7 +248,10 @@ export default function AntigravityTerminalPanel({
           {filteredLines.length > 0 ? (
             <div className="space-y-0.5">
               {filteredLines.map((line, idx) => (
-                <div key={idx} className="whitespace-pre-wrap break-all hover:bg-[#202020] px-1 rounded">
+                <div
+                  key={idx}
+                  className="whitespace-pre-wrap break-all hover:bg-[#202020] px-1 rounded"
+                >
                   {line}
                 </div>
               ))}

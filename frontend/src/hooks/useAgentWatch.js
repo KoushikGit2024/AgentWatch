@@ -42,7 +42,8 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         const incoming = data.messages || [];
         if (reset) {
           setChatMessages(incoming);
-          oldestTurnIndexRef.current = typeof data.oldest_index === 'number' ? data.oldest_index : null;
+          oldestTurnIndexRef.current =
+            typeof data.oldest_index === 'number' ? data.oldest_index : null;
           setHasMoreHistory(Boolean(data.has_more));
         } else {
           setChatMessages(prev => mergeTurnsPreservingHistory(prev, incoming));
@@ -90,7 +91,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     handleInteractionSubmit,
     handleRespondDirectQuestion,
   } = interactionOps;
-
 
   const auxData = useAgentAuxData(isMountedRef);
 
@@ -185,7 +185,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     } catch {}
   }, []);
 
-
   const loadOlderMessages = useCallback(async () => {
     if (isLoadingOlderRef.current) return false;
     const cursor = oldestTurnIndexRef.current;
@@ -221,8 +220,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     }
     return false;
   }, []);
-
-
 
   const handleSendPrompt = useCallback(
     async (prompt, attachments = []) => {
@@ -285,8 +282,6 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     },
     [fetchChatMessages]
   );
-
-
 
   const { handleSetModel, handleSetMode, handleStopAgent } = useAgentControls({
     setAppState,

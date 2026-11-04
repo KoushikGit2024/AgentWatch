@@ -317,22 +317,14 @@ const StreamItem = memo(function StreamItem({
           )}
 
           {isQuestion && item.question_data && (
-            <QuestionCard
-              item={item}
-              isWorking={isWorking}
-              onRespond={onRespondQuestion}
-            />
+            <QuestionCard item={item} isWorking={isWorking} onRespond={onRespondQuestion} />
           )}
         </div>
       )}
 
       {/* Standalone Interactive Question Card outside collapsed chevron when waiting */}
       {isQuestion && item.question_data && !isOpen && (
-        <QuestionCard
-          item={item}
-          isWorking={isWorking}
-          onRespond={onRespondQuestion}
-        />
+        <QuestionCard item={item} isWorking={isWorking} onRespond={onRespondQuestion} />
       )}
 
       {(item.requires_permission || effectiveApproval) &&

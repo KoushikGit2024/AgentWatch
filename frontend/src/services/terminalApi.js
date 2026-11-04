@@ -23,11 +23,14 @@ export const terminalApi = {
   },
 
   async executeCommand(sessionId, command) {
-    const res = await request(`/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command }),
-    });
+    const res = await request(
+      `/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}/execute`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      }
+    );
     return res.json();
   },
 
@@ -39,8 +42,9 @@ export const terminalApi = {
   },
 
   async getSessionOutput(sessionId, tail = 300) {
-    const res = await request(`/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}/output?tail=${tail}`);
+    const res = await request(
+      `/api/v1/terminal/sessions/${encodeURIComponent(sessionId)}/output?tail=${tail}`
+    );
     return res.json();
   },
 };
-

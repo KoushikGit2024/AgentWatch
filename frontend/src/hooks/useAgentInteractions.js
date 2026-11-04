@@ -171,7 +171,14 @@ export function useAgentInteractions({ fetchChatMessages, isMountedRef }) {
     } finally {
       if (isMountedRef.current) setIsSubmitting(false);
     }
-  }, [pendingInteraction, isSubmitting, selectedOptions, customResponse, fetchChatMessages, isMountedRef]);
+  }, [
+    pendingInteraction,
+    isSubmitting,
+    selectedOptions,
+    customResponse,
+    fetchChatMessages,
+    isMountedRef,
+  ]);
 
   const handleRespondDirectQuestion = useCallback(
     async (chosenLabels, customText = null) => {

@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '../../constants/icons';
 
-export default function QuestionCard({
-  item,
-  isWorking = false,
-  onRespond,
-}) {
+export default function QuestionCard({ item, isWorking = false, onRespond }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [customText, setCustomText] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -30,9 +26,11 @@ export default function QuestionCard({
     };
   });
 
-  const isResolved = Boolean(resolvedDecision || item?.status === 'done' || item?.requires_permission === false);
+  const isResolved = Boolean(
+    resolvedDecision || item?.status === 'done' || item?.requires_permission === false
+  );
 
-  const toggleOption = (id) => {
+  const toggleOption = id => {
     if (isResolved || isSubmitting) return;
     if (isMulti) {
       setSelectedIds(prev => {
@@ -53,9 +51,7 @@ export default function QuestionCard({
     if (explicitOption) {
       chosenLabels = [explicitOption.label];
     } else {
-      chosenLabels = options
-        .filter(opt => selectedIds.has(opt.id))
-        .map(opt => opt.label);
+      chosenLabels = options.filter(opt => selectedIds.has(opt.id)).map(opt => opt.label);
     }
 
     if (chosenLabels.length === 0 && !customText.trim()) return;
@@ -134,7 +130,9 @@ export default function QuestionCard({
                     )}
                   </div>
                   {opt.description && (
-                    <p className="text-[10px] text-[#8C93A0] mt-0.5 leading-relaxed">{opt.description}</p>
+                    <p className="text-[10px] text-[#8C93A0] mt-0.5 leading-relaxed">
+                      {opt.description}
+                    </p>
                   )}
                 </div>
               </div>
@@ -143,7 +141,7 @@ export default function QuestionCard({
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     handleSendResponse(opt);
                   }}
@@ -174,7 +172,7 @@ export default function QuestionCard({
               <input
                 type="text"
                 value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
+                onChange={e => setCustomText(e.target.value)}
                 placeholder="Type specific directions for the agent..."
                 className="w-full px-3 py-1.5 rounded-lg bg-[#0F1012] border border-[#30343A] text-xs text-[#E8EAED] placeholder-[#747C87] outline-none focus:border-blue-500/70"
               />
@@ -198,4 +196,3 @@ export default function QuestionCard({
     </div>
   );
 }
-

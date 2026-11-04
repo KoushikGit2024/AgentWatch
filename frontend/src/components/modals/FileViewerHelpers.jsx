@@ -9,17 +9,23 @@ export function classifyFileMedia(filePath = '', fileData = null) {
     fileData?.media_type === 'image';
   const isVideo =
     ['mp4', 'webm', 'mov', 'm4v', 'ogg'].includes(ext) || fileData?.media_type === 'video';
-  const isAudio =
-    ['mp3', 'wav', 'm4a', 'flac'].includes(ext) || fileData?.media_type === 'audio';
+  const isAudio = ['mp3', 'wav', 'm4a', 'flac'].includes(ext) || fileData?.media_type === 'audio';
   const isSvg = ext === 'svg';
   const isMedia = isImage || isVideo || isAudio || Boolean(fileData?.is_media);
   const isMarkdown = Boolean(
     !isMedia &&
-      (filePath.endsWith('.md') || filePath.endsWith('.markdown') || fileData?.extension === 'md')
+    (filePath.endsWith('.md') || filePath.endsWith('.markdown') || fileData?.extension === 'md')
   );
-  return { isImage, isVideo, isAudio, isSvg, isMedia, isMarkdown, canTogglePreview: isMarkdown || isSvg };
+  return {
+    isImage,
+    isVideo,
+    isAudio,
+    isSvg,
+    isMedia,
+    isMarkdown,
+    canTogglePreview: isMarkdown || isSvg,
+  };
 }
-
 
 export function getMonacoLanguage(ext = '', filename = '') {
   const cleanExt = (ext || '').toLowerCase().replace(/^\./, '');
@@ -218,7 +224,6 @@ export function MediaPreviewViewport({ isImage, isVideo, isAudio, fileData, file
                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(fileData.content) }}
                 />
               ) : (
-
                 <img
                   src={rawUrl}
                   alt={fileData?.filename || 'Image Preview'}

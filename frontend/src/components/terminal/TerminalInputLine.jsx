@@ -66,7 +66,7 @@ export default function TerminalInputLine({
   }, [sessionId]);
 
   // Handle user input typing & sync to sessionStorage
-  const handleInputChange = (e) => {
+  const handleInputChange = e => {
     const val = e.target.value;
     setCommandText(val);
     draftRef.current = val;
@@ -90,14 +90,17 @@ export default function TerminalInputLine({
     // Sourced from recent user history + common presets
     const candidates = [...history.slice().reverse(), ...COMMON_CLI_PRESETS];
     for (const cand of candidates) {
-      if (cand.toLowerCase().startsWith(commandText.toLowerCase()) && cand.length > commandText.length) {
+      if (
+        cand.toLowerCase().startsWith(commandText.toLowerCase()) &&
+        cand.length > commandText.length
+      ) {
         return cand.slice(commandText.length);
       }
     }
     return '';
   }, [commandText, history, isRunning]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
     if (isRunning) return;
     const clean = commandText.trim();
@@ -105,7 +108,8 @@ export default function TerminalInputLine({
 
     // Update history in sessionStorage (deduplicated consecutive items, max 100)
     setHistory(prev => {
-      const updated = prev[prev.length - 1] === clean ? prev : [...prev, clean].slice(-MAX_HISTORY_ITEMS);
+      const updated =
+        prev[prev.length - 1] === clean ? prev : [...prev, clean].slice(-MAX_HISTORY_ITEMS);
       try {
         sessionStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
       } catch {}
@@ -123,7 +127,7 @@ export default function TerminalInputLine({
     if (onExecute) onExecute(clean);
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = e => {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (history.length === 0) return;
@@ -144,7 +148,10 @@ export default function TerminalInputLine({
         setHistoryIdx(nextIdx);
         setCommandText(history[nextIdx] || '');
       }
-    } else if (e.key === 'Tab' || (e.key === 'ArrowRight' && inputRef.current?.selectionStart === commandText.length)) {
+    } else if (
+      e.key === 'Tab' ||
+      (e.key === 'ArrowRight' && inputRef.current?.selectionStart === commandText.length)
+    ) {
       if (ghostSuggestion) {
         e.preventDefault();
         const completed = commandText + ghostSuggestion;
@@ -201,7 +208,7 @@ export default function TerminalInputLine({
           placeholder={
             isRunning
               ? "Process is running... Use '+' above for a new terminal, or click Interrupt to stop."
-              : "Type terminal command and press Enter..."
+              : 'Type terminal command and press Enter...'
           }
           className="w-full bg-transparent border-none outline-none text-[#CCCCCC] placeholder-[#555555] font-mono text-xs disabled:cursor-not-allowed disabled:text-[#666666] relative z-10"
           autoFocus={!isRunning}

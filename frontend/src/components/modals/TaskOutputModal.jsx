@@ -133,10 +133,11 @@ export default function TaskOutputModal({ task, isOpen, onClose }) {
         {/* Footer */}
         <div className="px-3 sm:px-4 py-1.5 bg-[#141619] border-t border-[#262A30] text-[11px] font-mono text-[#747C87] flex items-center justify-between shrink-0 select-none">
           <span>{logData?.filename ? `Log: ${logData.filename}` : 'Task stdout/stderr'}</span>
-          <span>{logData?.total_bytes ? `${logData.total_bytes.toLocaleString()} bytes` : '0 bytes'}</span>
+          <span>
+            {logData?.total_bytes ? `${logData.total_bytes.toLocaleString()} bytes` : '0 bytes'}
+          </span>
         </div>
       </div>
     </div>
   );
 }
-

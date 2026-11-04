@@ -26,7 +26,7 @@ export default function PortForwardingModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     const portNum = parseInt(inputPort, 10);
     if (!portNum || portNum < 1024 || portNum > 65535) return;
@@ -54,7 +54,7 @@ export default function PortForwardingModal({ isOpen, onClose }) {
     >
       <div
         className="w-full max-w-lg bg-[#131518] border border-[#262A30] rounded-2xl shadow-2xl p-5 space-y-4"
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#22252A] pb-3">
@@ -85,7 +85,10 @@ export default function PortForwardingModal({ isOpen, onClose }) {
         </div>
 
         {/* Quick-Add Form */}
-        <form onSubmit={handleSubmit} className="space-y-2.5 bg-[#181A1E] border border-[#22252A] rounded-xl p-3">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-2.5 bg-[#181A1E] border border-[#22252A] rounded-xl p-3"
+        >
           <div className="text-[11px] font-medium text-[#A0A6AF]">Forward a Local Dev Port</div>
           <div className="flex items-center gap-2">
             <input
@@ -94,14 +97,14 @@ export default function PortForwardingModal({ isOpen, onClose }) {
               max="65535"
               placeholder="Port (e.g. 5173)"
               value={inputPort}
-              onChange={(e) => setInputPort(e.target.value)}
+              onChange={e => setInputPort(e.target.value)}
               className="w-32 bg-[#121316] border border-[#2B2F36] focus:border-blue-500/50 rounded-lg px-2.5 py-1.5 text-xs text-[#E8EAED] font-mono outline-none"
             />
             <input
               type="text"
               placeholder="Label (e.g. Vite Dev)"
               value={inputLabel}
-              onChange={(e) => setInputLabel(e.target.value)}
+              onChange={e => setInputLabel(e.target.value)}
               className="flex-1 bg-[#121316] border border-[#2B2F36] focus:border-blue-500/50 rounded-lg px-2.5 py-1.5 text-xs text-[#E8EAED] outline-none"
             />
             <button
@@ -121,7 +124,7 @@ export default function PortForwardingModal({ isOpen, onClose }) {
           {/* Preset Pills */}
           <div className="flex items-center gap-1.5 pt-0.5 overflow-x-auto">
             <span className="text-[10px] text-[#555A63] shrink-0">Presets:</span>
-            {PRESET_PORTS.map((preset) => (
+            {PRESET_PORTS.map(preset => (
               <button
                 key={preset.port}
                 type="button"
@@ -147,10 +150,11 @@ export default function PortForwardingModal({ isOpen, onClose }) {
           <div className="space-y-1.5 max-h-[36vh] overflow-y-auto pr-1">
             {forwards.length === 0 ? (
               <div className="p-5 text-center text-xs text-[#747C87] border border-dashed border-[#262A30] rounded-xl">
-                No custom ports currently forwarded. Forward a port above to serve it privately on your Tailnet.
+                No custom ports currently forwarded. Forward a port above to serve it privately on
+                your Tailnet.
               </div>
             ) : (
-              forwards.map((item) => (
+              forwards.map(item => (
                 <div
                   key={item.external_port}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-[#181A1E] border border-[#22252A] hover:border-[#30343A] transition"
@@ -217,4 +221,3 @@ export default function PortForwardingModal({ isOpen, onClose }) {
     </div>
   );
 }
-

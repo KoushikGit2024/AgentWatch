@@ -17,11 +17,7 @@ function parseModelTier(rawName) {
 }
 
 function normalizeModel(str) {
-  return (str || '')
-    .toLowerCase()
-    .replace(/[()]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (str || '').toLowerCase().replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function isModelActive(itemModel, currentModel) {
@@ -64,7 +60,13 @@ export default function ModelModal({
       try {
         setIsScanning(true);
         const res = await api.scanAvailableModels();
-        if (isMounted && res && res.success && Array.isArray(res.available_models) && res.available_models.length > 0) {
+        if (
+          isMounted &&
+          res &&
+          res.success &&
+          Array.isArray(res.available_models) &&
+          res.available_models.length > 0
+        ) {
           setScannedModels(res.available_models);
         }
       } catch {

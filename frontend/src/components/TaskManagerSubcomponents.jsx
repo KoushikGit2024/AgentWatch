@@ -1,17 +1,11 @@
 import React from 'react';
 import { Icon } from '../constants/icons';
 
-export function ProcessRow({
-  proc,
-  idx,
-  terminatingPid,
-  onEndTask,
-}) {
+export function ProcessRow({ proc, idx, terminatingPid, onEndTask }) {
   const isAntigravity = proc.name.toLowerCase().includes('antigravity');
   const isChrome = proc.name.toLowerCase().includes('chrome');
   const isTerminating =
-    terminatingPid &&
-    (proc.pids?.includes(terminatingPid) || proc.pid === terminatingPid);
+    terminatingPid && (proc.pids?.includes(terminatingPid) || proc.pid === terminatingPid);
 
   return (
     <div
@@ -21,18 +15,12 @@ export function ProcessRow({
     >
       {/* Name and Group Count */}
       <div className="col-span-5 flex items-center gap-2 min-w-0">
-        <span className="w-5 text-[10px] font-mono text-zinc-500 shrink-0">
-          #{idx + 1}
-        </span>
+        <span className="w-5 text-[10px] font-mono text-zinc-500 shrink-0">#{idx + 1}</span>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 truncate">
             <span
               className={`font-medium truncate ${
-                isAntigravity
-                  ? 'text-blue-300'
-                  : isChrome
-                    ? 'text-zinc-100'
-                    : 'text-zinc-200'
+                isAntigravity ? 'text-blue-300' : isChrome ? 'text-zinc-100' : 'text-zinc-200'
               }`}
             >
               {proc.name}
@@ -43,9 +31,7 @@ export function ProcessRow({
               </span>
             )}
           </div>
-          {proc.pid && (
-            <span className="text-[10px] font-mono text-zinc-500">PID: {proc.pid}</span>
-          )}
+          {proc.pid && <span className="text-[10px] font-mono text-zinc-500">PID: {proc.pid}</span>}
           {proc.is_self && (
             <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-950/70 text-cyan-400 border border-cyan-800/40 ml-1">
               AgentWatch
@@ -76,9 +62,7 @@ export function ProcessRow({
             ? `${(proc.memory_mb / 1024).toFixed(2)} GB`
             : `${proc.memory_mb.toLocaleString()} MB`}
         </div>
-        <div className="text-[10px] font-mono text-zinc-500">
-          {proc.memory_percent}%
-        </div>
+        <div className="text-[10px] font-mono text-zinc-500">{proc.memory_percent}%</div>
       </div>
 
       {/* End Task Button */}
@@ -142,16 +126,12 @@ export function SystemSummaryGauges({ summary }) {
             <div className="w-3.5 h-3.5 text-blue-400">{Icon.activity}</div>
             Memory (RAM)
           </span>
-          <span className="font-mono text-zinc-200 font-semibold">
-            {summary.memory_percent}%
-          </span>
+          <span className="font-mono text-zinc-200 font-semibold">{summary.memory_percent}%</span>
         </div>
         <div className="mt-2.5 w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-300 ${
-              summary.memory_percent > 85
-                ? 'bg-rose-500'
-                : 'bg-blue-500'
+              summary.memory_percent > 85 ? 'bg-rose-500' : 'bg-blue-500'
             }`}
             style={{ width: `${Math.min(summary.memory_percent, 100)}%` }}
           />
