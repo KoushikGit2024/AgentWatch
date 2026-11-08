@@ -361,6 +361,10 @@ class AntigravityAdapter:
 
     async def send_prompt(self, message: str) -> Dict[str, Any]:
         """Deliver user prompt directly into Antigravity input."""
+        # Always prioritize active chat target over workbench window
+        if not self.active_chat_url:
+            await self.refresh_active_context(force=True)
+
         target_ws = self.active_chat_url or self.active_target_url
         if not target_ws:
             self.discover_cdp()
@@ -370,7 +374,13 @@ class AntigravityAdapter:
             return {"success": False, "error": "Antigravity CDP not connected"}
         from integrations.antigravity.cdp_actions import dispatch_send_prompt
 
-        return await dispatch_send_prompt(target_ws, message)
+        res = await dispatch_send_prompt(target_ws, message)
+        # If prompt dispatch failed on workbench target, force refresh chat target and retry once
+        if not res.get("success") and target_ws != self.active_chat_url:
+            await self.refresh_active_context(force=True)
+            if self.active_chat_url and self.active_chat_url != target_ws:
+                res = await dispatch_send_prompt(self.active_chat_url, message)
+        return res
 
     async def stop_generation(self) -> Dict[str, Any]:
         """Dispatch stop signal to active Antigravity session."""

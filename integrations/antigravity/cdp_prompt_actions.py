@@ -23,12 +23,14 @@ async def _execute_send_prompt_cdp(target_url: str, message: str) -> Dict[str, A
                     '[placeholder*="Follow up"]',
                     'div[contenteditable="true"][role="textbox"]',
                     'div[contenteditable="true"]',
-                    'textarea.monaco-inputbox',
-                    'textarea'
+                    'textarea.monaco-inputbox'
                 ];
                 let el = null;
                 for (const sel of selectors) {
                     const candidates = Array.from(document.querySelectorAll(sel)).filter(node => {
+                        // Explicitly exclude VS Code terminal helper and editor IME textareas
+                        if (node.closest('.xterm, .terminal, .overflow-guard, .monaco-editor')) return false;
+                        if (node.classList.contains('xterm-helper-textarea') || node.classList.contains('ime-text-area')) return false;
                         const rect = node.getBoundingClientRect();
                         return rect.width > 0 && rect.height > 0 && !node.disabled;
                     });
@@ -37,7 +39,7 @@ async def _execute_send_prompt_cdp(target_url: str, message: str) -> Dict[str, A
                         break;
                     }
                 }
-                if (!el) return { found: false, error: 'Input element not found' };
+                if (!el) return { found: false, error: 'Chat input element not found' };
                 el.focus();
                 if (typeof el.click === 'function') el.click();
                 return { found: true, tag: el.tagName };
