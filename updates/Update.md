@@ -5,6 +5,12 @@ description: Step-by-step diagnostic, universal adapter, and auto-calibration sk
 
 # AgentWatch V2 — Universal IDE Diagnostic, Calibration & Architecture Guide (`Update.md`)
 
+> **Environment Calibration Baseline**:
+> - **Target Application**: **Google Antigravity IDE** (App Version `v2.6.0`, VS Code Engine `v1.107.0`, Extension Variant `vs-code`)
+> - **Last Calibrated & Verified**: **2026-11-12 01:10 IST (+05:30)**
+> - **CDP Port**: `9000` (DevTools Webview RPC)
+> - **Database / History Engine**: SQLite `conversation_summaries.db` + Gemini Brain Transcripts
+
 When a user asks you to **"update"**, **"run an update"**, **"sync with IDE"**, **"audit endpoints"**, or reports that a UI action (model switcher, terminal execution, task killer, queue sender, or decision cards) is unresponsive in **Google Antigravity, Cursor, Windsurf, VS Code with AI extensions, or any custom Agentic IDE**, **you MUST follow this universal calibration procedure**.
 
 ---
@@ -37,6 +43,9 @@ AgentWatch V2 is engineered to connect to **any Agentic AI Integrated IDE**:
 | **Model / Effort Tiers** | `[data-testid="model-selector"]` | Model selector dropdown | Cascade model switcher | Model configuration menu | Calibrated selector query |
 | **Decision / Approvals** | Inline `ask_question` / Modals | Command approval bar | Cascade permission dialog | Inline terminal approval | Standard DOM action triggers |
 | **Terminal & Tasks** | `[data-testid="running-items-panel"]` | Bottom terminal tabs | Cascade execution runner | Integrated VS Code terminal | Multi-tab interactive runner |
+| **Past Conversations** | SQLite `conversation_summaries.db` + brain logs | Local session index | Cascade project history | Local state storage | Session index / transcripts |
+| **Session Switching** | SPA `/c/<cid>` + CDP click dispatch | Session link click | Session switch command | Webview navigation | DOM link click / URL update |
+| **Direct File Editing**| Atomic disk write via temp file replace | Direct fs API | Cascade workspace save | VS Code workspace edit | Workspace atomic write |
 
 ---
 
@@ -80,6 +89,12 @@ AgentWatch V2 is engineered to connect to **any Agentic AI Integrated IDE**:
 
 ### 6. Tailscale Dynamic Port Forwarding (`controls_tailscale.py` / `useTailscalePorts.js`)
 - Exposes local services securely over Tailscale VPN without public internet exposure.
+
+### 7. Past Conversations Sync, Search & Chat Switching (`conversation_history_service.py` / `cdp_session_actions.py`)
+- Reads Antigravity's official SQLite database (`~/.gemini/antigravity/conversation_summaries.db`) for 1:1 titles and workspace metadata.
+- Full-text keyword search and cursor/offset lazy pagination (`offset`, `limit`) with infinite scroll.
+- CDP session switching (`dispatch_switch_conversation`) and clean blank slate initialization (`dispatch_new_conversation`).
+- Direct file editor saving (`services/file_editor_service.py`) straight to disk.
 
 ---
 
@@ -205,6 +220,10 @@ Apply updates to the corresponding module:
 | **Interactive Terminal Execution** | `services/terminal_session_service.py` | Process tree termination (`taskkill`) & shell execution args |
 | **Queued Messages Card** | `integrations/antigravity/cdp_queue_actions.py` | Queued messages card, Send now, Edit, and Delete buttons |
 | **Decision & Prompt Dispatches**| `integrations/antigravity/cdp_question_actions.py` | Action decision buttons & confirmation triggers |
+| **Past Conversations Index** | `services/conversation_history_service.py` | Official SQLite `conversation_summaries.db` queries & fallback transcript parsers |
+| **Active Session Switching** | `integrations/antigravity/cdp_session_actions.py` | `dispatch_switch_conversation`, `dispatch_new_conversation`, and sidebar selectors |
+| **Fresh Chat DOM Detection** | `integrations/antigravity/session_tracker.py` | Distinguishing empty new conversation viewports from sidebar row cascade IDs |
+| **Direct File Editing** | `services/file_editor_service.py` | Atomic temp file write and safe path boundary restrictions |
 
 ---
 

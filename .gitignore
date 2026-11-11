@@ -67,3 +67,9 @@ htmlcov/
 scratch/
 uploads/*
 !uploads/.gitkeep
+
+# static/
+
+
+# AgentWatch Runtime Backups & Cache
+.agentwatch/

@@ -144,7 +144,7 @@ export function FileViewerTabBar({
           title="Copy file path"
           className="aw-focus-ring p-1.5 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer"
         >
-          <div className="w-3.5 h-3.5">{copiedPath ? Icon.check : Icon.copy}</div>
+          <div className="w-3.5 h-3.5">{copiedPath ? Icon.check : Icon.fileText}</div>
         </button>
 
         {fileData?.content && !fileData?.is_binary && (
@@ -154,7 +154,7 @@ export function FileViewerTabBar({
             title="Copy file content"
             className="aw-focus-ring p-1.5 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer"
           >
-            <div className="w-3.5 h-3.5">{copiedContent ? Icon.check : Icon.fileText}</div>
+            <div className="w-3.5 h-3.5">{copiedContent ? Icon.check : Icon.copy}</div>
           </button>
         )}
 
