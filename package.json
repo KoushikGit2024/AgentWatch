@@ -1,0 +1,12 @@
+{
+  "name": "agentwatch-root",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "build": "npm --prefix frontend run build",
+    "dev": "npm --prefix frontend run dev",
+    "lint": "npm --prefix frontend run lint",
+    "format": "npm --prefix frontend run format"
+  }
+}
+

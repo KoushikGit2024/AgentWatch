@@ -111,26 +111,41 @@ if (Test-Path $frontendDir) {
     }
 
     if ($foundNpm) {
-        Push-Location $frontendDir
-        try {
-            if (-not (Test-Path $nodeModules)) {
-                Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
-                & $foundNpm install
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Frontend dependency installation failed."
-                }
-            }
+        $needsBuild = $true
+        if (Test-Path $distIndex) {
+            $distMtime = (Get-Item $distIndex).LastWriteTimeUtc
+            $sourceFiles = Get-ChildItem -Path (Join-Path $frontendDir "src"), (Join-Path $frontendDir "public"), (Join-Path $frontendDir "package.json"), (Join-Path $frontendDir "vite.config.js") -Recurse -File -ErrorAction SilentlyContinue
+            $newestSrc = $sourceFiles | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 
-            Write-Host "Building frontend..." -ForegroundColor Cyan
-            & $foundNpm run build
-            if ($LASTEXITCODE -ne 0) {
-                throw "Frontend build failed."
+            if ($newestSrc -and ($newestSrc.LastWriteTimeUtc -le $distMtime)) {
+                $needsBuild = $false
             }
-        } finally {
-            Pop-Location
         }
 
-        Write-Host "Frontend build completed." -ForegroundColor Green
+        if (-not $needsBuild) {
+            Write-Host "Frontend build is already up-to-date. Skipping build." -ForegroundColor Green
+        } else {
+            Push-Location $frontendDir
+            try {
+                if (-not (Test-Path $nodeModules)) {
+                    Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
+                    & $foundNpm install
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "Frontend dependency installation failed."
+                    }
+                }
+
+                Write-Host "Changes detected. Building frontend..." -ForegroundColor Cyan
+                & $foundNpm run build
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Frontend build failed."
+                }
+            } finally {
+                Pop-Location
+            }
+
+            Write-Host "Frontend build completed." -ForegroundColor Green
+        }
     } elseif (Test-Path $distIndex) {
         Write-Host "Using existing frontend build." -ForegroundColor Gray
     } else {

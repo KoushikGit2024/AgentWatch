@@ -23,7 +23,6 @@ const ChatTurn = memo(function ChatTurn({
     : null;
 
   const [copied, setCopied] = useState(false);
-  const [reaction, setReaction] = useState(null);
   const [previewItem, setPreviewItem] = useState(null);
   const [isUserTextExpanded, setIsUserTextExpanded] = useState(true);
 
@@ -322,29 +321,19 @@ const ChatTurn = memo(function ChatTurn({
               type="button"
               onClick={handleCopy}
               title="Copy response"
-              className="p-1.5 rounded hover:text-emerald-400 hover:bg-[#1D2024] transition cursor-pointer"
+              className="p-1.5 rounded hover:text-emerald-400 hover:bg-[#1D2024] transition cursor-pointer flex items-center gap-1 text-[11px] font-mono"
             >
               {copied ? (
-                <div className="w-3.5 h-3.5 text-emerald-400">{Icon.check}</div>
+                <>
+                  <div className="w-3.5 h-3.5 text-emerald-400">{Icon.check}</div>
+                  <span className="text-emerald-400">Copied</span>
+                </>
               ) : (
-                <div className="w-3.5 h-3.5">{Icon.copy}</div>
+                <>
+                  <div className="w-3.5 h-3.5">{Icon.copy}</div>
+                  <span className="hidden group-hover:inline">Copy</span>
+                </>
               )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setReaction(prev => (prev === 'up' ? null : 'up'))}
-              title="Helpful response"
-              className={`p-1.5 rounded transition cursor-pointer ${reaction === 'up' ? 'text-blue-400 bg-blue-500/15' : 'hover:text-[#E8EAED] hover:bg-[#1D2024]'}`}
-            >
-              <div className="w-3.5 h-3.5">{Icon.thumbsUp}</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setReaction(prev => (prev === 'down' ? null : 'down'))}
-              title="Needs improvement"
-              className={`p-1.5 rounded transition cursor-pointer ${reaction === 'down' ? 'text-rose-400 bg-rose-500/15' : 'hover:text-[#E8EAED] hover:bg-[#1D2024]'}`}
-            >
-              <div className="w-3.5 h-3.5">{Icon.thumbsDown}</div>
             </button>
           </div>
         )}

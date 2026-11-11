@@ -253,7 +253,34 @@ export const api = {
   },
 
   async getHistoryChats() {
-    const res = await request('/chat-history');
+    const res = await request('/api/v1/sessions/chat-history');
+    return res.json();
+  },
+
+  async getConversations(offset = 0, limit = 20, query = '', refresh = false) {
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    });
+    if (query) params.set('q', query);
+    if (refresh) params.set('refresh', 'true');
+    const res = await request(`/api/v1/sessions/conversations?${params.toString()}`);
+    return res.json();
+  },
+
+  async switchConversation(conversationId) {
+    const res = await request('/api/v1/sessions/switch-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: conversationId }),
+    });
+    return res.json();
+  },
+
+  async createNewConversation() {
+    const res = await request('/api/v1/sessions/new-chat', {
+      method: 'POST',
+    });
     return res.json();
   },
 

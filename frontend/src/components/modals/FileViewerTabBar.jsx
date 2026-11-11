@@ -22,6 +22,9 @@ export function FileViewerTabBar({
   isMaximized,
   setIsMaximized,
   handleCloseAll,
+  isDirty,
+  isSaving,
+  onSaveFile,
 }) {
   return (
     <div className="flex items-center justify-between border-b border-[#22262B] bg-[#121417] px-2 select-none overflow-hidden shrink-0">
@@ -66,21 +69,51 @@ export function FileViewerTabBar({
                     : `L${tab.startLine}-${tab.endLine}`}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={e => handleCloseTab(e, tab.path)}
-                className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition cursor-pointer"
-                title="Close tab (Ctrl+W)"
-              >
-                <div className="w-3 h-3">{Icon.x}</div>
-              </button>
+        {/* Dirty indicator or close button */}
+        <button
+          type="button"
+          onClick={e => handleCloseTab(e, tab.path)}
+          className={`p-0.5 rounded transition cursor-pointer flex items-center justify-center ${
+            isDirty && isActive
+              ? 'text-amber-400 group-hover:text-rose-400 opacity-100'
+              : 'opacity-0 group-hover:opacity-100 hover:text-rose-400'
+          }`}
+          title={isDirty && isActive ? 'Unsaved changes (Click to close)' : 'Close tab (Ctrl+W)'}
+        >
+          {isDirty && isActive ? (
+            <span className="w-2 h-2 rounded-full bg-amber-400 group-hover:hidden" />
+          ) : null}
+          <div className={`w-3 h-3 ${isDirty && isActive ? 'hidden group-hover:block' : ''}`}>
+            {Icon.x}
+          </div>
+        </button>
             </div>
           );
         })}
       </div>
 
       {/* Right Action Icons */}
-      <div className="flex items-center gap-1 shrink-0 py-1 pr-1">
+      <div className="flex items-center gap-1.5 shrink-0 py-1 pr-1">
+        {/* Sync Changes to Disk Button */}
+        <button
+          type="button"
+          onClick={onSaveFile}
+          disabled={isSaving || !isDirty}
+          title={isDirty ? 'Sync changes to disk (Ctrl+S)' : 'File is synchronized with device'}
+          className={`aw-focus-ring flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono border transition ${
+            isDirty
+              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/50 cursor-pointer shadow-sm animate-pulse'
+              : 'bg-[#181B1F] text-[#747C87] border-[#2A2E35] opacity-60 cursor-default'
+          }`}
+        >
+          <div className="w-3.5 h-3.5">
+            {isSaving ? Icon.refresh : isDirty ? Icon.check : Icon.checkCheck || Icon.check}
+          </div>
+          <span className="font-semibold">
+            {isSaving ? 'Syncing...' : isDirty ? 'Sync Changes' : 'Synced'}
+          </span>
+        </button>
+
         {canTogglePreview && (
           <button
             type="button"

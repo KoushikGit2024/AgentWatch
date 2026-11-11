@@ -47,6 +47,7 @@ export function AppDrawersAndModals({
   setHistoryOpen,
   historyChats,
   isHistoryLoading,
+  onSwitchConversation,
 
   reviewChangesOpen,
   setReviewChangesOpen,
@@ -127,11 +128,16 @@ export function AppDrawersAndModals({
       <HistoryDrawer
         isOpen={historyOpen}
         onClose={() => setHistoryOpen(false)}
-        chats={historyChats}
-        isLoading={isHistoryLoading}
-        onSelectChat={title => {
-          setHistoryOpen(false);
-          toast.info(`Selected conversation: ${title}`, 'History');
+        activeConversationId={appState.active_conversation_id}
+        onSelectConversation={(cid, title) => {
+          if (onSwitchConversation) {
+            onSwitchConversation(cid, title);
+          }
+        }}
+        onNewConversation={() => {
+          if (onSwitchConversation) {
+            onSwitchConversation('', 'New Conversation');
+          }
         }}
       />
 
