@@ -44,11 +44,20 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
     try:
         dom_probe_js = """
         (() => {
-            const view = document.querySelector('[data-testid="conversation-view"][data-cascade-id]') || document.querySelector('[data-cascade-id]');
+            // Check if there are active turns or if we are in an empty/new chat state
+            const turns = document.querySelectorAll('[data-turn-index], [data-testid*="turn"], [data-testid*="message"]');
             const breadcrumb = document.querySelector('[data-testid="breadcrumb-segment"]');
+            
+            // Only look for conversation-view with data-cascade-id, NEVER match sidebar rows
+            const view = document.querySelector('[data-testid="conversation-view"][data-cascade-id]');
+            
+            // If there is no breadcrumb and 0 turns rendered, it is a brand-new blank conversation
+            const isFreshChat = !breadcrumb && turns.length === 0;
+
             return {
-                cascadeId: view ? view.getAttribute('data-cascade-id') : null,
+                cascadeId: isFreshChat ? null : (view ? view.getAttribute('data-cascade-id') : null),
                 breadcrumb: breadcrumb ? breadcrumb.innerText.trim() : null,
+                isFreshChat: isFreshChat,
                 docTitle: document.title || ''
             };
         })()
@@ -90,12 +99,16 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as exc:
         logger.debug("Chat iframe DOM probe notice: %s", exc)
 
-    # Use DOM cascadeId if present, else fallback to URL conv_id
-    effective_conv_id = dom_cascade_id or conv_id
+    # If it's a fresh/empty chat, do not fall back to old URL or cascade id
+    if eval_val.get("isFreshChat"):
+        effective_conv_id = None
+        chat_title = "New Conversation"
+    else:
+        effective_conv_id = dom_cascade_id or conv_id
 
     return {
         "conversation_id": effective_conv_id,
-        "conversation_title": chat_title,
+        "conversation_title": chat_title or ("New Conversation" if not effective_conv_id else None),
         "workspace_name": workspace_name,
         "workspace_path": workspace_path,
         "chat_target_url": ws_url,
