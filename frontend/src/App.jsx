@@ -104,6 +104,7 @@ export default function App() {
     handleSetMode,
     handleStopAgent,
     handleSwitchConversation,
+    handleStartNewConversation,
     fetchAppState,
     fetchTimelineEvents,
     fetchSystemLogs,
@@ -343,6 +344,7 @@ export default function App() {
         historyChats={historyChats}
         isHistoryLoading={isHistoryLoading}
         onSwitchConversation={handleSwitchConversation}
+        onStartNewConversation={handleStartNewConversation}
         reviewChangesOpen={reviewChangesOpen}
         setReviewChangesOpen={setReviewChangesOpen}
         activeModal={activeModal}

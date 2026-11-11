@@ -48,6 +48,7 @@ export function AppDrawersAndModals({
   historyChats,
   isHistoryLoading,
   onSwitchConversation,
+  onStartNewConversation,
 
   reviewChangesOpen,
   setReviewChangesOpen,
@@ -135,7 +136,9 @@ export function AppDrawersAndModals({
           }
         }}
         onNewConversation={() => {
-          if (onSwitchConversation) {
+          if (onStartNewConversation) {
+            onStartNewConversation();
+          } else if (onSwitchConversation) {
             onSwitchConversation('', 'New Conversation');
           }
         }}

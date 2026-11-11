@@ -28,6 +28,7 @@ class ConversationService:
         ]
         self.brain_base = self.brain_bases[0]
         self._stopped_active: bool = False
+        self._new_chat_pending: bool = False
         self._resolved_approvals: Dict[str, str] = {}
         self._latest_pending_approval: Optional[Dict[str, Any]] = None
         self._cached_key: Optional[tuple] = None
@@ -37,6 +38,13 @@ class ConversationService:
         """Signal that the user requested emergency stop so the UI immediately reflects it."""
         self._stopped_active = True
         self._cached_key = None
+
+    def mark_new_chat_pending(self):
+        """Signal that user started a fresh conversation, immediately wiping cached chat turns."""
+        self._new_chat_pending = True
+        self._cached_key = None
+        self._cached_turns = []
+        self._latest_pending_approval = None
 
     def mark_approval_resolved(
         self, step_id: Optional[str], decision: str, target: Optional[str] = None
@@ -65,6 +73,10 @@ class ConversationService:
         Prefers transcript_full.jsonl to ensure full, untruncated messages are parsed.
         Checks all known brain directories (~/.gemini/antigravity and ~/.gemini/antigravity-ide).
         """
+        if self._new_chat_pending and not conversation_id:
+            return None
+        if conversation_id in ("__new__", "new", "__new_chat_pending__"):
+            return None
         try:
             bases = getattr(self, "brain_bases", [self.brain_base])
             if conversation_id:
@@ -145,6 +157,7 @@ class ConversationService:
 
                         if stype == "USER_INPUT" and content:
                             self._stopped_active = False
+                            self._new_chat_pending = False
                             clean = TranscriptStepParser.clean_user_content(content)
                             if clean:
                                 if current_agent_turn:

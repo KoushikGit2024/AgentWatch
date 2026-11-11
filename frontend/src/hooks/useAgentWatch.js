@@ -352,6 +352,19 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     [fetchChatMessages]
   );
 
+  const handleStartNewConversation = useCallback(() => {
+    activeConvIdRef.current = null;
+    oldestTurnIndexRef.current = null;
+    setChatMessages([]);
+    setHasMoreHistory(false);
+    setIsChatLoading(false);
+    setAppState(prev => ({
+      ...prev,
+      active_conversation_id: null,
+      active_conversation_title: 'New Conversation',
+    }));
+  }, []);
+
   return {
     appState,
     snapshotData,
@@ -389,6 +402,7 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     handleSetMode,
     handleStopAgent,
     handleSwitchConversation,
+    handleStartNewConversation,
     fetchAppState,
     fetchSnapshot,
   };

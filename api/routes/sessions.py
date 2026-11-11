@@ -64,10 +64,13 @@ async def switch_conversation(payload: SelectChatRequest):
 @router.post("/new-chat")
 async def new_conversation():
     """
-    Trigger New Conversation session in Antigravity IDE via CDP.
+    Trigger New Conversation session in Antigravity IDE via CDP,
+    and wipe active chat stream immediately.
     """
     from integrations.antigravity.adapter import antigravity_adapter
     from integrations.antigravity.cdp_session_actions import dispatch_new_conversation
+    from services.conversation_service import conversation_service
+    from services.websocket_manager import websocket_manager
 
     target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
     if not target_ws:
@@ -76,6 +79,22 @@ async def new_conversation():
 
     if not target_ws:
         raise HTTPException(status_code=503, detail="Antigravity IDE not connected via CDP")
+
+    # Reset active state on adapter & service
+    conversation_service.mark_new_chat_pending()
+    antigravity_adapter.active_conversation_id = None
+    antigravity_adapter.active_conversation_title = "New Conversation"
+
+    # Broadcast wipe to all connected websocket clients immediately
+    if websocket_manager.active_connections:
+        await websocket_manager.broadcast({
+            "type": "chat_update",
+            "conversation_id": None,
+            "messages": [],
+            "total": 0,
+            "oldest_index": 0,
+            "has_more": False,
+        })
 
     res = await dispatch_new_conversation(target_ws)
     return res
