@@ -1,18 +1,22 @@
 """
 Service for discovering, indexing, caching, and searching past Antigravity conversations.
-Scans Gemini Brain directories directly from disk without blocking event loop.
+Uses Antigravity's official conversation_summaries.db SQLite database for 100% exact
+titles, workspaces, and timestamps (matching Antigravity IDE sidebar), falling back
+to direct transcript scanning when needed.
 """
 
-import os
 import json
-import time
 import logging
+import sqlite3
+import time
+import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("services.conversation_history_service")
 
-CACHE_TTL_SECONDS = 10.0
+CACHE_TTL_SECONDS = 5.0
 
 
 class ConversationHistoryService:
@@ -21,13 +25,96 @@ class ConversationHistoryService:
         self._last_cache_time: float = 0.0
 
         home = Path.home()
+        self.db_paths = [
+            home / ".gemini" / "antigravity" / "conversation_summaries.db",
+            home / ".gemini" / "antigravity-ide" / "conversation_summaries.db",
+        ]
         self.brain_bases = [
             home / ".gemini" / "antigravity" / "brain",
             home / ".gemini" / "antigravity-ide" / "brain",
         ]
 
-    def _extract_title_from_transcript(self, transcript_path: Path) -> Optional[str]:
-        """Extract a readable title from the first meaningful user prompt in transcript."""
+    def _parse_iso_to_epoch(self, dt_str: Optional[str]) -> float:
+        """Parse SQLite datetime string into Unix epoch timestamp."""
+        if not dt_str:
+            return 0.0
+        try:
+            # Handles '2026-11-11 18:46:33.8944779+00:00' or standard ISO
+            # Truncate fractional seconds beyond 6 digits for standard python datetime
+            clean_str = dt_str.strip()
+            if "+" in clean_str:
+                dt_part, tz_part = clean_str.rsplit("+", 1)
+                if "." in dt_part:
+                    main_part, frac = dt_part.split(".", 1)
+                    clean_str = f"{main_part}.{frac[:6]}+{tz_part}"
+            elif clean_str.endswith("Z"):
+                clean_str = clean_str[:-1] + "+00:00"
+            dt = datetime.fromisoformat(clean_str)
+            return dt.timestamp()
+        except Exception:
+            return 0.0
+
+    def _extract_workspace_name(self, uris_raw: Optional[str]) -> str:
+        """Extract user-friendly workspace/folder name from workspace_uris JSON."""
+        if not uris_raw:
+            return "Workspace"
+        try:
+            uris = json.loads(uris_raw)
+            if isinstance(uris, list) and uris:
+                first_uri = uris[0]
+                unquoted = urllib.parse.unquote(first_uri)
+                # Parse trailing directory name
+                parts = [p for p in unquoted.replace("\\", "/").split("/") if p]
+                if parts:
+                    return parts[-1]
+        except Exception:
+            pass
+        return "Workspace"
+
+    def _load_from_sqlite_databases(self) -> Dict[str, Dict[str, Any]]:
+        """Query official conversation_summaries.db to get official titles & metadata."""
+        db_records: Dict[str, Dict[str, Any]] = {}
+
+        for db_file in self.db_paths:
+            if not db_file.exists():
+                continue
+            try:
+                # Open read-only URI connection to avoid locks
+                uri = f"file:{db_file.as_posix()}?mode=ro"
+                with sqlite3.connect(uri, uri=True, timeout=2.0) as con:
+                    cur = con.cursor()
+                    rows = cur.execute(
+                        """
+                        SELECT conversation_id, title, preview, workspace_uris, last_modified_time
+                        FROM conversation_summaries
+                        """
+                    ).fetchall()
+                    for r in rows:
+                        cid, title, preview, uris, mtime_str = r
+                        if not cid:
+                            continue
+                        clean_title = (title or "").strip()
+                        if not clean_title:
+                            clean_title = (preview or "").strip()
+                        epoch_time = self._parse_iso_to_epoch(mtime_str)
+                        ws_name = self._extract_workspace_name(uris)
+
+                        # Store or update with latest mtime
+                        if cid not in db_records or epoch_time > db_records[cid]["updated_at"]:
+                            db_records[cid] = {
+                                "conversation_id": cid,
+                                "title": clean_title,
+                                "preview": preview or "",
+                                "updated_at": epoch_time,
+                                "workspace": ws_name,
+                            }
+            except Exception as e:
+                logger.warning("Could not read conversation summaries from %s: %s", db_file, e)
+
+        return db_records
+
+    def _extract_fallback_title(self, transcript_path: Path) -> Optional[str]:
+        """Extract fallback title from transcript when DB has no title."""
         try:
             with open(transcript_path, "r", encoding="utf-8", errors="ignore") as f:
                 for line in f:
@@ -36,89 +123,98 @@ class ConversationHistoryService:
                         continue
                     data = json.loads(line)
                     content = data.get("content") or ""
-                    # Handle USER_INPUT or USER_EXPLICIT prompts
                     if data.get("type") == "USER_INPUT" or data.get("source") == "USER_EXPLICIT":
-                        # Clean XML tags like <USER_REQUEST>
                         import re
-
                         clean = re.sub(r"<[^>]+>", " ", content).strip()
                         clean = " ".join(clean.split())
                         if clean:
-                            return clean[:120]
-                    # Fallback to general content
-                    if content and isinstance(content, str) and len(content.strip()) > 3:
-                        import re
-
-                        clean = re.sub(r"<[^>]+>", " ", content).strip()
-                        clean = " ".join(clean.split())
-                        if clean:
-                            return clean[:120]
+                            return clean[:100]
         except Exception:
             pass
         return None
 
     def _discover_conversations(self) -> List[Dict[str, Any]]:
-        """Scan all brain directories and build metadata for each conversation."""
+        """Combine official SQLite summaries with brain directory data."""
+        # 1. Fetch official titles and workspaces from Antigravity DB
+        db_records = self._load_from_sqlite_databases()
+
         conversations = []
         seen_ids = set()
 
+        # 2. Match with brain directories for size and presence
         for base in self.brain_bases:
             if not base.exists():
                 continue
-
             try:
                 for conv_dir in base.iterdir():
                     if not conv_dir.is_dir() or conv_dir.name.startswith("."):
                         continue
-
                     cid = conv_dir.name
                     if cid in seen_ids:
                         continue
 
+                    # Locate transcript file
                     transcript_file = conv_dir / ".system_generated" / "logs" / "transcript.jsonl"
                     if not transcript_file.exists():
-                        # Try compact transcript or direct file
                         transcript_file = (
                             conv_dir / ".system_generated" / "logs" / "transcript_full.jsonl"
                         )
-                        if not transcript_file.exists():
-                            continue
 
-                    try:
-                        st = transcript_file.stat()
-                        mtime = st.st_mtime
-                        file_size = st.st_size
-                    except OSError:
-                        mtime = 0.0
-                        file_size = 0
+                    file_size = 0
+                    disk_mtime = 0.0
+                    if transcript_file.exists():
+                        try:
+                            st = transcript_file.stat()
+                            disk_mtime = st.st_mtime
+                            file_size = st.st_size
+                        except OSError:
+                            pass
 
-                    title = self._extract_title_from_transcript(transcript_file)
+                    # Pull metadata from DB record if present
+                    record = db_records.get(cid)
+                    if record and record["title"]:
+                        title = record["title"]
+                    elif transcript_file.exists():
+                        title = self._extract_fallback_title(transcript_file)
+                    else:
+                        title = None
+
                     display_title = title if title else f"Conversation {cid[:8]}"
-
-                    # Detect workspace if present in conversation directory or files
-                    detected_workspace = None
-                    try:
-                        # Check if any artifacts or code files exist
-                        for child in conv_dir.iterdir():
-                            if child.name not in [".system_generated", "scratch", ".user_uploaded"]:
-                                detected_workspace = child.name
-                                break
-                    except Exception:
-                        pass
+                    workspace = (record.get("workspace") if record else None) or "Workspace"
+                    updated_at = (
+                        record["updated_at"]
+                        if record and record["updated_at"] > 0
+                        else disk_mtime
+                    )
 
                     conversations.append(
                         {
                             "conversation_id": cid,
                             "title": display_title,
-                            "updated_at": mtime,
+                            "updated_at": updated_at,
                             "size_bytes": file_size,
-                            "workspace": detected_workspace or "Workspace",
+                            "workspace": workspace,
                             "brain_path": str(conv_dir),
                         }
                     )
                     seen_ids.add(cid)
             except Exception as e:
                 logger.error("Error scanning brain directory %s: %s", base, e)
+
+        # 3. Add any DB conversations that might exist outside the scanned brain roots
+        for cid, record in db_records.items():
+            if cid not in seen_ids:
+                conversations.append(
+                    {
+                        "conversation_id": cid,
+                        "title": record["title"] or f"Conversation {cid[:8]}",
+                        "updated_at": record["updated_at"],
+                        "size_bytes": 0,
+                        "workspace": record.get("workspace", "Workspace"),
+                        "brain_path": "",
+                    }
+                )
+                seen_ids.add(cid)
 
         # Sort descending by latest modified time
         conversations.sort(key=lambda c: c["updated_at"], reverse=True)
@@ -143,9 +239,7 @@ class ConversationHistoryService:
         limit: int = 20,
         force_refresh: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Return filtered and paginated conversation items with infinite-scroll metadata.
-        """
+        """Return filtered and paginated conversation items with infinite-scroll metadata."""
         all_convs = self.get_all_conversations(force_refresh=force_refresh)
 
         if query and query.strip():
