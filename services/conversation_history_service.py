@@ -12,7 +12,7 @@ import time
 import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("services.conversation_history_service")
 
@@ -54,22 +54,27 @@ class ConversationHistoryService:
         except Exception:
             return 0.0
 
-    def _extract_workspace_name(self, uris_raw: Optional[str]) -> str:
-        """Extract user-friendly workspace/folder name from workspace_uris JSON."""
+    def _extract_workspace_info(self, uris_raw: Optional[str]) -> Tuple[str, Optional[str]]:
+        """Extract user-friendly workspace name and absolute path from workspace_uris JSON."""
         if not uris_raw:
-            return "Workspace"
+            return "Workspace", None
         try:
             uris = json.loads(uris_raw)
             if isinstance(uris, list) and uris:
                 first_uri = uris[0]
-                unquoted = urllib.parse.unquote(first_uri)
-                # Parse trailing directory name
+                unquoted = urllib.parse.unquote(urllib.parse.unquote(first_uri))
+                clean = unquoted.replace("file://", "").lstrip("/")
+                clean_path = clean.replace("/", "\\") if ":" in clean else clean
                 parts = [p for p in unquoted.replace("\\", "/").split("/") if p]
-                if parts:
-                    return parts[-1]
+                ws_name = parts[-1] if parts else "Workspace"
+                return ws_name, clean_path
         except Exception:
             pass
-        return "Workspace"
+        return "Workspace", None
+
+    def _extract_workspace_name(self, uris_raw: Optional[str]) -> str:
+        name, _ = self._extract_workspace_info(uris_raw)
+        return name
 
     def _load_from_sqlite_databases(self) -> Dict[str, Dict[str, Any]]:
         """Query official conversation_summaries.db to get official titles & metadata."""
@@ -97,7 +102,7 @@ class ConversationHistoryService:
                         if not clean_title:
                             clean_title = (preview or "").strip()
                         epoch_time = self._parse_iso_to_epoch(mtime_str)
-                        ws_name = self._extract_workspace_name(uris)
+                        ws_name, ws_path = self._extract_workspace_info(uris)
 
                         # Store or update with latest mtime
                         if cid not in db_records or epoch_time > db_records[cid]["updated_at"]:
@@ -107,6 +112,7 @@ class ConversationHistoryService:
                                 "preview": preview or "",
                                 "updated_at": epoch_time,
                                 "workspace": ws_name,
+                                "workspace_path": ws_path,
                             }
             except Exception as e:
                 logger.warning("Could not read conversation summaries from %s: %s", db_file, e)
@@ -181,6 +187,7 @@ class ConversationHistoryService:
 
                     display_title = title if title else f"Conversation {cid[:8]}"
                     workspace = (record.get("workspace") if record else None) or "Workspace"
+                    workspace_path = record.get("workspace_path") if record else None
                     updated_at = (
                         record["updated_at"]
                         if record and record["updated_at"] > 0
@@ -194,6 +201,7 @@ class ConversationHistoryService:
                             "updated_at": updated_at,
                             "size_bytes": file_size,
                             "workspace": workspace,
+                            "workspace_path": workspace_path,
                             "brain_path": str(conv_dir),
                         }
                     )
@@ -211,6 +219,7 @@ class ConversationHistoryService:
                         "updated_at": record["updated_at"],
                         "size_bytes": 0,
                         "workspace": record.get("workspace", "Workspace"),
+                        "workspace_path": record.get("workspace_path"),
                         "brain_path": "",
                     }
                 )

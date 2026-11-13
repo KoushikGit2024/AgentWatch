@@ -35,16 +35,26 @@ def _resolve_target_path(clean_path: str) -> Path:
         clean_path = clean_path.lstrip("/")
 
     target = Path(clean_path)
+    from services.workspace_context import workspace_context
+    active_ws = workspace_context.get_active_workspace_path()
     repo_root = Path(__file__).resolve().parent.parent.parent
 
     if not target.is_absolute():
-        target = (repo_root / target).resolve()
+        # Check active workspace first, then repo root
+        ws_candidate = (active_ws / target).resolve()
+        if ws_candidate.exists():
+            target = ws_candidate
+        else:
+            target = (repo_root / target).resolve()
     else:
         target = target.resolve()
 
     if not target.exists():
+        ws_fallback = (active_ws / clean_path.lstrip("/\\")).resolve()
         fallback = (repo_root / clean_path.lstrip("/\\")).resolve()
-        if fallback.exists():
+        if ws_fallback.exists():
+            target = ws_fallback
+        elif fallback.exists():
             target = fallback
         else:
             basename = Path(clean_path).name
@@ -275,28 +285,30 @@ EXCLUDED_TREE_DIRS = {
 
 @router.get("/api/v1/files/tree")
 def get_project_file_tree(
-    subpath: str = Query(default="", description="Optional subfolder relative to repo root"),
+    subpath: str = Query(default="", description="Optional subfolder relative to workspace root"),
+    conversation_id: Optional[str] = Query(default=None, description="Optional conversation ID to scope workspace"),
 ):
     """
     Safely traverse and return a hierarchical tree of files and directories
-    in the project workspace, ignoring heavy build/cache folders.
+    in the active project workspace, ignoring heavy build/cache folders.
     """
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    base_dir = repo_root
+    from services.workspace_context import workspace_context
+    ws_root, ws_name = workspace_context.get_active_workspace(conversation_id)
+    base_dir = ws_root
     if subpath.strip():
         clean_sub = subpath.strip().lstrip("/\\")
-        candidate = (repo_root / clean_sub).resolve()
+        candidate = (ws_root / clean_sub).resolve()
         # Path traversal guard
-        if candidate.is_relative_to(repo_root) and candidate.exists() and candidate.is_dir():
+        if candidate.is_relative_to(ws_root) and candidate.exists() and candidate.is_dir():
             base_dir = candidate
 
     def build_tree(current_path: Path, max_depth: int = 5) -> dict:
         is_dir = current_path.is_dir()
         rel_path = (
-            current_path.relative_to(repo_root).as_posix() if current_path != repo_root else ""
+            current_path.relative_to(ws_root).as_posix() if current_path != ws_root else ""
         )
         node = {
-            "name": current_path.name or repo_root.name,
+            "name": current_path.name or ws_name,
             "path": rel_path,
             "full_path": current_path.as_posix(),
             "type": "directory" if is_dir else "file",
@@ -327,7 +339,7 @@ def get_project_file_tree(
         return node
 
     tree = build_tree(base_dir, max_depth=6)
-    return {"tree": tree, "root_name": repo_root.name, "root_path": repo_root.as_posix()}
+    return {"tree": tree, "root_name": ws_name, "root_path": ws_root.as_posix()}
 
 
 @router.get("/api/v1/artifacts")

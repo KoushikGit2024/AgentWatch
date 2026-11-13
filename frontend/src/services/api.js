@@ -307,9 +307,12 @@ export const api = {
     return res.json();
   },
 
-  async getFileTree(subpath = '') {
-    const query = subpath ? `?subpath=${encodeURIComponent(subpath)}` : '';
-    const res = await request(`/api/v1/files/tree${query}`);
+  async getFileTree(subpath = '', conversationId = null) {
+    const params = new URLSearchParams();
+    if (subpath) params.append('subpath', subpath);
+    if (conversationId) params.append('conversation_id', conversationId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await request(`/api/v1/files/tree${qs}`);
     return res.json();
   },
 

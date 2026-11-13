@@ -16,7 +16,7 @@ import { FileViewerTabBar } from './FileViewerTabBar';
 import { FileViewerTreePanel } from './FileViewerTreePanel';
 import { FileViewerErrorViewport, FileViewerFooterBar } from './FileViewerViewports';
 
-export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawer }) {
+export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawer, conversationId }) {
   const [tabs, setTabs] = useState([]);
   const [activeTabPath, setActiveTabPath] = useState(null);
   const [tabDataMap, setTabDataMap] = useState({});
@@ -355,6 +355,7 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
         <div className="flex-1 flex overflow-hidden min-h-0 bg-[#0E1013] relative">
           <FileViewerTreePanel
             isOpen={isTreeOpen}
+            conversationId={conversationId}
             activeFilePath={activePath}
             onOpenFile={path => {
               if (!path) return;

@@ -20,10 +20,13 @@ class FileEditorService:
         self.repo_root = Path(__file__).resolve().parent.parent
 
     def is_path_safe(self, target_path: Path) -> bool:
-        """Ensure file path is strictly within repo root or Gemini brain directories."""
+        """Ensure file path is strictly within active workspace, repo root, or Gemini brain directories."""
         try:
             resolved = target_path.resolve()
+            from services.workspace_context import workspace_context
+            active_ws = workspace_context.get_active_workspace_path()
             allowed_roots = [
+                active_ws.resolve(),
                 self.repo_root.resolve(),
                 (Path.home() / ".gemini" / "antigravity" / "brain").resolve(),
                 (Path.home() / ".gemini" / "antigravity-ide" / "brain").resolve(),

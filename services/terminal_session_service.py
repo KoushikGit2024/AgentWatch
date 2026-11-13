@@ -57,14 +57,20 @@ class TerminalSessionService:
 
     def get_or_create_default_session(self) -> TerminalProcess:
         if not self.sessions:
-            return self.create_session("powershell" if sys.platform == "win32" else "bash")
+            from services.workspace_context import workspace_context
+            active_ws = workspace_context.get_active_workspace_path()
+            return self.create_session("powershell" if sys.platform == "win32" else "bash", cwd=str(active_ws))
         return next(iter(self.sessions.values()))
 
     def create_session(self, shell_type: str = "powershell", cwd: Optional[str] = None) -> TerminalProcess:
         session_id = f"term-{uuid.uuid4().hex[:8]}"
-        target_cwd = cwd or self.default_cwd
+        if not cwd:
+            from services.workspace_context import workspace_context
+            target_cwd = str(workspace_context.get_active_workspace_path())
+        else:
+            target_cwd = cwd
         if not os.path.exists(target_cwd):
-            target_cwd = os.getcwd()
+            target_cwd = self.default_cwd or os.getcwd()
 
         proc = TerminalProcess(session_id, shell_type, target_cwd)
         welcome_banner = (

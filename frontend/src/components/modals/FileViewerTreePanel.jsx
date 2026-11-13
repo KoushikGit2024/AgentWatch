@@ -126,8 +126,9 @@ function TreeNode({
   );
 }
 
-export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFile }) {
+export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFile, conversationId }) {
   const [treeData, setTreeData] = useState(null);
+  const [rootName, setRootName] = useState('Project Explorer');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,9 +138,12 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
     setIsLoading(true);
     setError(null);
     try {
-      const res = await api.getFileTree();
+      const res = await api.getFileTree('', conversationId);
       if (res?.tree) {
         setTreeData(res.tree);
+        if (res.root_name) {
+          setRootName(res.root_name);
+        }
         setExpandedPaths(prev => {
           const next = new Set(prev);
           next.add('');
@@ -161,13 +165,13 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [conversationId]);
 
   useEffect(() => {
-    if (isOpen && !treeData && !isLoading) {
+    if (isOpen) {
       loadTree();
     }
-  }, [isOpen, treeData, isLoading, loadTree]);
+  }, [isOpen, conversationId, loadTree]);
 
   const toggleExpand = useCallback(path => {
     setExpandedPaths(prev => {
@@ -205,9 +209,9 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
       {/* Search Header */}
       <div className="p-2.5 border-b border-[#22262B] bg-[#101215] space-y-2 select-none shrink-0">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-[#A0A6AF] flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            Project Explorer
+          <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-[#A0A6AF] flex items-center gap-1.5 truncate max-w-[180px]" title={rootName}>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+            <span className="truncate">{rootName}</span>
           </span>
           <div className="flex items-center gap-1">
             <button
