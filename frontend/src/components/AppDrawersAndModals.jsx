@@ -1,16 +1,16 @@
 import React from 'react';
-import { ActivityTimelineDrawer } from './ActivityTimelineDrawer';
-import { SystemLogsDrawer } from './SystemLogsDrawer';
-import { TaskManagerDrawer } from './TaskManagerDrawer';
-import { RecoveryCenterModal } from './RecoveryCenterModal';
-import { HistoryDrawer } from './HistoryDrawer';
-import { ReviewChangesModal } from './ReviewChangesModal';
+import { ActivityTimelineDrawer } from './drawers/ActivityTimelineDrawer';
+import { SystemLogsDrawer } from './drawers/SystemLogsDrawer';
+import { TaskManagerDrawer } from './drawers/tasks/TaskManagerDrawer';
+import { RecoveryCenterModal } from './modals/RecoveryCenterModal';
+import { HistoryDrawer } from './drawers/HistoryDrawer';
+import { ReviewChangesModal } from './modals/ReviewChangesModal';
 import ModelModal from './modals/ModelModal';
 import ModeModal from './modals/ModeModal';
 import LightboxModal from './modals/LightboxModal';
 import InteractionModal from './modals/InteractionModal';
 import ApprovalModal from './modals/ApprovalModal';
-import FileViewerModal from './modals/FileViewerModal';
+import FileViewerModal from './modals/fileViewer/FileViewerModal';
 import PortForwardingModal from './modals/PortForwardingModal';
 import { toast } from '../services/toastService';
 

@@ -16,34 +16,19 @@ from typing import Optional
 
 from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
-from api.routes import (
-    health,
-    events,
-    sessions,
-    controls,
-    auth,
-    interactions,
-    git_review,
-    diagnostics,
-    attachments,
-    files,
-    queue_routes,
-    push,
-    tasks,
-    messages,
-    approvals,
-    controls_remote,
-    controls_tailscale,
-    terminal_routes,
-    file_actions,
-)
+from api.routes.auth import health, auth
+from api.routes.chat import sessions, messages, queue_routes, attachments
+from api.routes.files import files, file_actions, git_review
+from api.routes.interactions import interactions, approvals
+from api.routes.system import tasks, diagnostics, events, controls, terminal_routes
+from api.routes.networking import push, controls_remote, controls_tailscale
 from api.auth_middleware import dispatch_auth_middleware
 from security.authentication import check_auth_required, verify_session_token, is_local_request
-from services.log_buffer import attach_to_all_loggers, log_buffer_handler
-from services.conversation_service import conversation_service
-from services.interaction_service import interaction_service
-from services.websocket_manager import websocket_manager
-from integrations.antigravity.adapter import antigravity_adapter
+from services.monitoring.log_buffer import attach_to_all_loggers, log_buffer_handler
+from services.chat.conversation_service import conversation_service
+from services.interactions.interaction_service import interaction_service
+from services.networking.websocket_manager import websocket_manager
+from integrations.antigravity.core.adapter import antigravity_adapter
 
 from logging.handlers import TimedRotatingFileHandler
 
@@ -119,7 +104,7 @@ for u_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
 logger = logging.getLogger("main")
 
 
-from services.transcript_watcher import run_transcript_watcher
+from services.transcripts.transcript_watcher import run_transcript_watcher
 
 
 @asynccontextmanager

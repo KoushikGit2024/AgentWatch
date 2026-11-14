@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 import ChatStream from './components/chat/ChatStream';
 import PendingInteractionBanner from './components/chat/PendingInteractionBanner';
 import QueuedMessagesCard from './components/chat/QueuedMessagesCard';
-import { PromptComposer } from './components/PromptComposer';
+import { PromptComposer } from './components/composer/PromptComposer';
 import { AppDrawersAndModals } from './components/AppDrawersAndModals';
 import { ScreenViewport } from './components/ScreenViewport';
 import ToastContainer from './components/ToastContainer';
