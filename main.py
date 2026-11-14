@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pathlib import Path
 import asyncio
 import hashlib
@@ -172,6 +173,12 @@ if "*" in raw_origins or not raw_origins:
 else:
     origins = raw_origins
 
+allowed_hosts_list = [h.strip() for h in settings.allowed_hosts.split(",") if h.strip()]
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=allowed_hosts_list or ["localhost", "127.0.0.1", "testclient", "*.ts.net"],
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -207,6 +214,28 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Inject robust security and CSP headers to protect against XSS and clickjacking."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Strict Content Security Policy allowing local assets, Google Fonts, and secure WebSockets
+    if not request.url.path.startswith("/api/"):
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "
+            "img-src 'self' data: blob: file:; "
+            "worker-src 'self' blob:; "
+            "connect-src 'self' ws: wss: http: https: https://cdn.jsdelivr.net; "
+            "frame-ancestors 'self';"
+        )
+    return response
 
 
 @app.middleware("http")
@@ -259,6 +288,19 @@ async def serve_logo_svg():
     return JSONResponse(status_code=404, content={"detail": "Logo not found"})
 
 
+@app.get("/login.html")
+@app.get("/login")
+async def serve_login(request: Request):
+    """Serve standalone login page."""
+    login_file = STATIC_DIR / "login.html"
+    if login_file.exists():
+        return FileResponse(str(login_file))
+    dist_login = STATIC_DIR / "dist" / "login.html"
+    if dist_login.exists():
+        return FileResponse(str(dist_login))
+    return JSONResponse(status_code=404, content={"detail": "Login page not found"})
+
+
 @app.get("/")
 async def serve_index(request: Request):
     """Serve mobile dashboard index page."""
@@ -273,10 +315,9 @@ async def websocket_endpoint(websocket: WebSocket):
     """Real-time streaming WebSocket endpoint for conversation, status, and alerts."""
     # Origin and Authentication verification (Cross-Site WebSocket Hijacking protection)
     origin = websocket.headers.get("origin")
-    client_host = websocket.client.host if websocket.client else ""
-    is_local = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
+    auth_disabled = getattr(settings, "auth_disabled", False)
 
-    if origin and not is_local:
+    if origin:
         # Check if origin matches localhost, 127.0.0.1, or Tailscale domain (.ts.net)
         import re
         is_allowed_origin = bool(
@@ -287,12 +328,13 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close(code=1008)
             return
 
-    # Check authentication if APP_PASSWORD configured and request is non-local
-    if settings.app_password and not is_local:
+    # Check authentication if APP_PASSWORD configured and auth not explicitly disabled
+    if settings.app_password and not auth_disabled:
         token = websocket.query_params.get("token")
-        cookie_token = websocket.cookies.get("cw_auth_token")
+        cookie_token = websocket.cookies.get("cw_auth_token") or websocket.cookies.get("agentwatch_token")
         valid_auth = (token and verify_session_token(token)) or (cookie_token and verify_session_token(cookie_token))
         if not valid_auth:
+            client_host = websocket.client.host if websocket.client else "unknown"
             logger.warning("Rejected unauthenticated WebSocket connection from %s", client_host)
             await websocket.close(code=1008)
             return

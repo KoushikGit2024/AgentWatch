@@ -1,4 +1,4 @@
-﻿"""Optimized background terminal execution manager.
+"""Optimized background terminal execution manager.
 Runs user commands asynchronously in workspace root, buffers output ring,
 and avoids constant polling overhead by only reading when clients request or stream.
 Uses background thread streaming with standard subprocess.Popen for robust cross-platform
@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 # Max output lines kept in memory per session tab to guarantee minimal RAM usage
 MAX_BUFFER_LINES = 2000
 
-CD_PATTERN = re.compile(r"^(?:cd|chdir|Set-Location)\s*(.*)$", re.IGNORECASE)
+# Strict word-boundary pattern to avoid matching commands like cdk, cdrom, etc.
+CD_PATTERN = re.compile(r"^\s*(?:cd|chdir|Set-Location)\b(?:\s+(.*))?$", re.IGNORECASE)
 
 
 class TerminalProcess:
@@ -181,7 +182,7 @@ class TerminalSessionService:
         # Check for standalone cd / chdir / Set-Location
         cd_match = CD_PATTERN.match(clean_cmd)
         if cd_match:
-            return self._handle_cd_command(proc, cd_match.group(1))
+            return self._handle_cd_command(proc, cd_match.group(1) or "")
 
         # Choose shell execution command based on OS
         if sys.platform == "win32":
@@ -193,6 +194,14 @@ class TerminalSessionService:
             shell = "/bin/bash" if os.path.exists("/bin/bash") else "/bin/sh"
             cmd_args = [shell, "-c", clean_cmd]
 
+        # Ensure environment forces UTF-8 encoding across Windows tools
+        proc_env = os.environ.copy()
+        proc_env["PYTHONIOENCODING"] = "utf-8"
+        proc_env["PYTHONLEGACYWINDOWSSTDIO"] = "0"
+        if sys.platform == "win32":
+            proc_env["LANG"] = "en_US.UTF-8"
+            proc_env["LC_ALL"] = "en_US.UTF-8"
+
         try:
             subproc = subprocess.Popen(
                 cmd_args,
@@ -200,20 +209,41 @@ class TerminalSessionService:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,
-                text=True,
-                bufsize=1,
-                encoding="utf-8",
-                errors="replace",
+                bufsize=0,
+                env=proc_env,
             )
             proc.process = subproc
 
-            # Dedicated daemon reader thread - zero busy polling, works with all event loops
+            # Dedicated daemon reader thread with dual-decoding fallback (UTF-8 -> CP1252 / OEM)
             def _stream_reader():
                 try:
-                    for line in iter(subproc.stdout.readline, ""):
-                        if not line:
+                    for raw_line in iter(subproc.stdout.readline, b""):
+                        if not raw_line:
                             break
-                        proc.append_line(line.rstrip("\r\n"))
+                        # Attempt standard UTF-8 decode first
+                        try:
+                            line_str = raw_line.decode("utf-8")
+                        except UnicodeDecodeError:
+                            # If invalid UTF-8, prioritize Windows OEM (CP437) where 0xB0-0xDF are box-drawing glyphs
+                            try:
+                                line_str = raw_line.decode("cp437")
+                            except UnicodeDecodeError:
+                                try:
+                                    line_str = raw_line.decode("cp1252", errors="replace")
+                                except Exception:
+                                    line_str = raw_line.decode("utf-8", errors="ignore")
+
+                        # Normalize Windows tree stems and box borders to modern Unicode:
+                        # - In CP437, byte 0xA6 is 'ª' (Windows tree vertical line) -> '│'
+                        # - In CP1252, byte 0xA6 is '¦' (Broken Bar) -> '│'
+                        # - Residual corrupt replacement characters (U+FFFD) are stripped
+                        normalized_line = (
+                            line_str.replace("ª", "│")
+                            .replace("¦", "│")
+                            .replace("\ufffd", "")
+                            .rstrip("\r\n")
+                        )
+                        proc.append_line(normalized_line)
                     subproc.stdout.close()
                     subproc.wait()
                     proc.exit_code = subproc.returncode

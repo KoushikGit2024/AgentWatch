@@ -13,6 +13,7 @@ import ApprovalModal from './modals/ApprovalModal';
 import FileViewerModal from './modals/fileViewer/FileViewerModal';
 import PortForwardingModal from './modals/PortForwardingModal';
 import { toast } from '../services/toastService';
+import { api } from '../services/api';
 
 export function AppDrawersAndModals({
   timelineOpen,
@@ -119,6 +120,7 @@ export function AppDrawersAndModals({
         diagnostics={diagnostics}
         isLoading={isRecoveryLoading}
         onRefresh={fetchRecoveryItems}
+        onReconcileAction={api.reconcileAction}
         onOpenInteraction={() => {
           setRecoveryOpen(false);
           setViewMode('chat');

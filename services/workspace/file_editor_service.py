@@ -1,4 +1,4 @@
-﻿"""
+"""
 Service for safe direct remote file operations (save, create, delete).
 Enforces workspace boundaries and writes directly to disk.
 """
@@ -23,6 +23,11 @@ class FileEditorService:
         """Ensure file path is strictly within active workspace, repo root, or Gemini brain directories."""
         try:
             resolved = target_path.resolve()
+            # Forbid critical system/version control paths from any modifications
+            forbidden_names = {".git", ".venv", "node_modules", "__pycache__"}
+            if any(part in forbidden_names for part in resolved.parts):
+                return False
+
             from services.workspace.workspace_context import workspace_context
             active_ws = workspace_context.get_active_workspace_path()
             allowed_roots = [
@@ -31,6 +36,10 @@ class FileEditorService:
                 (Path.home() / ".gemini" / "antigravity" / "brain").resolve(),
                 (Path.home() / ".gemini" / "antigravity-ide" / "brain").resolve(),
             ]
+            # Disallow operating directly on root workspace directories
+            if any(resolved == root for root in allowed_roots):
+                return False
+
             for root in allowed_roots:
                 if root.exists():
                     try:

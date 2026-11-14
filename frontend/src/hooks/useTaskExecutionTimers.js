@@ -7,10 +7,12 @@ import { useState, useEffect, useRef } from 'react';
 export function useTaskExecutionTimers(tasks = []) {
   const [timers, setTimers] = useState({}); // { [taskId]: elapsedSeconds }
   const startTimesRef = useRef({}); // { [taskId]: timestampMs }
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
 
+  // Track task starts without restarting the interval
   useEffect(() => {
     const now = Date.now();
-
     tasks.forEach((task, idx) => {
       const id = task.tooltip_id || task.id || `task-${idx}`;
       if (task.is_running !== false) {
@@ -19,25 +21,29 @@ export function useTaskExecutionTimers(tasks = []) {
         }
       }
     });
+  }, [tasks]);
 
+  // Single persistent interval ticker
+  useEffect(() => {
     const interval = setInterval(() => {
       const current = Date.now();
-      const updated = {};
-      tasks.forEach((task, idx) => {
-        const id = task.tooltip_id || task.id || `task-${idx}`;
-        if (task.is_running !== false && startTimesRef.current[id]) {
-          const seconds = Math.floor((current - startTimesRef.current[id]) / 1000);
-          updated[id] = seconds;
-        } else if (timers[id] !== undefined) {
-          // Freeze final duration when completed
-          updated[id] = timers[id];
-        }
+      const currentTasks = tasksRef.current || [];
+      if (!currentTasks.length) return;
+
+      setTimers(prev => {
+        const updated = { ...prev };
+        currentTasks.forEach((task, idx) => {
+          const id = task.tooltip_id || task.id || `task-${idx}`;
+          if (task.is_running !== false && startTimesRef.current[id]) {
+            updated[id] = Math.floor((current - startTimesRef.current[id]) / 1000);
+          }
+        });
+        return updated;
       });
-      setTimers(prev => ({ ...prev, ...updated }));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [tasks]);
+  }, []);
 
   const formatDuration = seconds => {
     if (typeof seconds !== 'number' || isNaN(seconds)) return null;

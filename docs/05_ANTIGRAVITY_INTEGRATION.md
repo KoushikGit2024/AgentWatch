@@ -14,7 +14,7 @@
 1. **The Chrome DevTools Protocol (CDP) Adapter (Observation & UI Synchronization):**  
    Connects via HTTP and WebSockets to Chromium's remote debugging interface to capture live DOM snapshots, extract stylesheets, evaluate mode states, and synchronize viewport scrolling.
 2. **The Telemetry & Event Ingestion API (Deterministic State & Auditing):**  
-   Provides HTTP endpoints (`/api/v1/events/ingest`) where Antigravity hooks, sidecars, or plugin scripts deliver structured events (`PreToolUse`, `PostToolUse`, `AgentMessage`, `Stop`).
+   Provides HTTP endpoints (`/api/v1/events`) where Antigravity hooks, sidecars, or plugin scripts deliver structured events (`PreToolUse`, `PostToolUse`, `AgentMessage`, `Stop`).
 
 ---
 

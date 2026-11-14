@@ -5,7 +5,7 @@ import { toast } from '../../services/toastService';
 import TerminalTabsHeader from './TerminalTabsHeader';
 import TerminalInputLine from './TerminalInputLine';
 
-export default function AntigravityTerminalPanel({ isOpen, onClose }) {
+export default function AntigravityTerminalPanel({ isOpen, onClose, embedded = false }) {
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -121,14 +121,27 @@ export default function AntigravityTerminalPanel({ isOpen, onClose }) {
   const handleCloseTab = async sessionIdToClose => {
     try {
       await terminalApi.closeSession(sessionIdToClose);
-      setSessions(prev => {
-        const next = prev.filter(s => s.session_id !== sessionIdToClose);
-        if (currentSessionId === sessionIdToClose && next.length > 0) {
-          setCurrentSessionId(next[0].session_id);
+      const remaining = sessions.filter(s => s.session_id !== sessionIdToClose);
+      setSessions(remaining);
+      if (currentSessionId === sessionIdToClose) {
+        if (remaining.length > 0) {
+          setCurrentSessionId(remaining[0].session_id);
+        } else {
+          setCurrentSessionId(null);
+          if (onClose) onClose();
         }
-        return next;
-      });
-    } catch {}
+      } else if (remaining.length === 0) {
+        setCurrentSessionId(null);
+        if (onClose) onClose();
+      }
+    } catch {
+      const remaining = sessions.filter(s => s.session_id !== sessionIdToClose);
+      setSessions(remaining);
+      if (remaining.length === 0) {
+        setCurrentSessionId(null);
+        if (onClose) onClose();
+      }
+    }
   };
 
   const handleExecuteCommand = async cmd => {
@@ -184,20 +197,33 @@ export default function AntigravityTerminalPanel({ isOpen, onClose }) {
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div
       id="workbench.parts.panel"
-      className={`fixed left-0 right-0 bottom-0 z-40 bg-[#181818] border-t border-[#2B2B2B] shadow-2xl flex flex-col font-sans select-none transition-all duration-150 ${
-        isMaximized ? 'h-[85vh]' : 'h-80 sm:h-96'
-      }`}
+      className={
+        embedded
+          ? `w-full rounded-lg border border-[#30343A] bg-[#181818] shadow-lg flex flex-col font-sans select-none overflow-hidden transition-all duration-150 ${
+              isMaximized ? 'h-[75vh]' : 'h-64 sm:h-72'
+            }`
+          : `fixed left-0 right-0 bottom-0 z-40 bg-[#181818] border-t border-[#2B2B2B] shadow-2xl flex flex-col font-sans select-none transition-all duration-150 ${
+              isMaximized ? 'h-[85vh]' : 'h-80 sm:h-96'
+            }`
+      }
     >
       {/* Visual Studio Code Style Header Tabs */}
       <TerminalTabsHeader
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        onSelectSession={setCurrentSessionId}
-        onCloseSession={handleCloseTab}
-        onCreateTab={handleCreateNewTab}
+        tabs={sessions.map(s => ({
+          id: s.session_id,
+          title: s.shell_type || 'shell',
+          isRunning: s.is_running,
+          exitCode: s.exit_code,
+        }))}
+        currentTabId={currentSessionId}
+        onSelectTab={setCurrentSessionId}
+        onNewTab={() => handleCreateNewTab('powershell')}
+        onCloseTab={handleCloseTab}
         isMaximized={isMaximized}
         onToggleMaximize={() => setIsMaximized(v => !v)}
         onClosePanel={onClose}

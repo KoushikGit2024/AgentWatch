@@ -1,4 +1,4 @@
-﻿"""CDP Actions for Antigravity IDE Workbench with resilient self-healing.
+"""CDP Actions for Antigravity IDE Workbench with resilient self-healing.
 
 Decomposed modularly:
 - Prompt and Stop Actions: integrations.antigravity.cdp_prompt_actions
@@ -53,16 +53,21 @@ async def dispatch_stop_generation(target_url: str) -> Dict[str, Any]:
 
 async def dispatch_forward_approval(
     target_url: str,
-    option_id: Optional[str] = None,
-    custom_text: Optional[str] = None,
-    action: Optional[str] = None,
+    request_type: str = "command",
+    decision: str = "allow",
+    custom_response: Optional[str] = None,
+    option_label: Optional[str] = None,
+    expected_command: Optional[str] = None,
+    **kwargs,
 ) -> Dict[str, Any]:
     return await execute_with_cdp_recovery(
         _dispatch_forward_approval_raw,
         target_url,
-        option_id=option_id,
-        custom_text=custom_text,
-        action=action,
+        request_type=request_type,
+        decision=decision,
+        custom_response=custom_response,
+        option_label=option_label,
+        expected_command=expected_command,
         action_name="Forward Approval",
     )
 

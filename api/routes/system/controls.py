@@ -1,4 +1,4 @@
-﻿# Approval routes extracted to: api.routes.approvals
+# Approval routes extracted to: api.routes.approvals
 # Remote and configuration routes extracted to: api.routes.controls_remote
 import os
 import asyncio
@@ -171,114 +171,121 @@ async def send_message(payload: PromptSubmissionRequest):
                 detail="An identical request is currently in progress.",
             )
 
-    ag_status = antigravity_adapter.get_status()
-    cdp_connected = ag_status.get("cdp", {}).get("connected", False)
-
-    raw_msg = payload.message or getattr(payload, "prompt", None) or ""
-    prompt_msg = raw_msg
-    if payload.attachments:
-        attachment_lines = ["\n\n[Attached Files]:"]
-        for att in payload.attachments:
-            name = att.get("original_name") or att.get("filename") or "file"
-            path = att.get("storage_path") or att.get("relative_path") or ""
-            is_img = att.get("is_image", False)
-            tag = "Image" if is_img else "File"
-            attachment_lines.append(f"- {tag} ({name}): {path}")
-        prompt_msg = prompt_msg + "\n".join(attachment_lines)
-
-    is_testing = os.environ.get("ENVIRONMENT") == "testing" or settings.environment == "testing"
-    dispatch_res = {"success": True, "test_mode": True} if is_testing else {"success": False}
-    if not is_testing:
-        if not cdp_connected:
-            antigravity_adapter.discover_cdp(force=True)
-            ag_status = antigravity_adapter.get_status()
-            cdp_connected = ag_status.get("cdp", {}).get("connected", False)
-
-        if cdp_connected:
-            dispatch_res = await antigravity_adapter.send_prompt(prompt_msg)
-
-    if isinstance(dispatch_res, bool):
-        dispatched = dispatch_res
-        dispatch_details = {"success": dispatch_res}
-    elif isinstance(dispatch_res, dict):
-        dispatched = bool(dispatch_res.get("success", False))
-        dispatch_details = dispatch_res
-    else:
-        dispatched = bool(dispatch_res)
-        dispatch_details = {"success": dispatched}
-
-    response = {
-        "status": "submitted"
-        if dispatched
-        else ("cdp_dispatch_failed" if cdp_connected else "queued_offline"),
-        "action_lifecycle": "acknowledged" if dispatched else "offline_buffered",
-        "antigravity_connected": cdp_connected,
-        "message_length": len(raw_msg),
-        "attachments_count": len(payload.attachments or []),
-        "attachments": payload.attachments or [],
-        "target_session_id": payload.session_id,
-        "confirmed_execution": dispatched,
-        "dispatch_details": dispatch_details,
-        "reason": None
-        if dispatched
-        else (
-            dispatch_details.get("error", "Antigravity CDP is not currently connected on remote debugging port")
-            if isinstance(dispatch_details, dict)
-            else "Antigravity CDP is not currently connected on remote debugging port"
-        ),
-    }
-
-    if payload.idempotency_key:
-        _idempotency_repo.complete(
-            scope="prompt_send", idempotency_key=payload.idempotency_key, response=response
-        )
-
     try:
-        from repositories.event_repository import EventRepository
-        from models.schemas import EventDocument
-        import datetime
+        ag_status = antigravity_adapter.get_status()
+        cdp_connected = ag_status.get("cdp", {}).get("connected", False)
 
-        EventRepository().insert_event(
-            EventDocument(
-                session_id=payload.session_id or "default_session",
-                event_type="PromptSubmitted",
-                category="prompt",
-                summary=f"User prompt submitted ({len(prompt_msg)} chars)",
-                execution_state="dispatch_acknowledged" if cdp_connected else "request_accepted",
-                correlation_id=payload.idempotency_key,
-                timestamp=datetime.datetime.now(datetime.timezone.utc),
-                source="mobile_user",
-                source_confidence="observed",
-                sanitized_payload={
-                    "message_preview": prompt_msg[:150],
-                    "cdp_connected": cdp_connected,
-                },
+        raw_msg = payload.message or getattr(payload, "prompt", None) or ""
+        prompt_msg = raw_msg
+        if payload.attachments:
+            attachment_lines = ["\n\n[Attached Files]:"]
+            for att in payload.attachments:
+                name = att.get("original_name") or att.get("filename") or "file"
+                path = att.get("storage_path") or att.get("relative_path") or ""
+                is_img = att.get("is_image", False)
+                tag = "Image" if is_img else "File"
+                attachment_lines.append(f"- {tag} ({name}): {path}")
+            prompt_msg = (prompt_msg + "\n".join(attachment_lines)).strip()
+
+        is_testing = os.environ.get("ENVIRONMENT") == "testing" or settings.environment == "testing"
+        dispatch_res = {"success": True, "test_mode": True} if is_testing else {"success": False}
+        if not is_testing:
+            if not cdp_connected:
+                antigravity_adapter.discover_cdp(force=True)
+                ag_status = antigravity_adapter.get_status()
+                cdp_connected = ag_status.get("cdp", {}).get("connected", False)
+
+            if cdp_connected:
+                dispatch_res = await antigravity_adapter.send_prompt(prompt_msg)
+
+        if isinstance(dispatch_res, bool):
+            dispatched = dispatch_res
+            dispatch_details = {"success": dispatch_res}
+        elif isinstance(dispatch_res, dict):
+            dispatched = bool(dispatch_res.get("success", False))
+            dispatch_details = dispatch_res
+        else:
+            dispatched = bool(dispatch_res)
+            dispatch_details = {"success": dispatched}
+
+        response = {
+            "status": "submitted"
+            if dispatched
+            else ("cdp_dispatch_failed" if cdp_connected else "queued_offline"),
+            "action_lifecycle": "acknowledged" if dispatched else "offline_buffered",
+            "antigravity_connected": cdp_connected,
+            "message_length": len(raw_msg),
+            "attachments_count": len(payload.attachments or []),
+            "attachments": payload.attachments or [],
+            "target_session_id": payload.session_id,
+            "confirmed_execution": dispatched,
+            "dispatch_details": dispatch_details,
+            "reason": None
+            if dispatched
+            else (
+                dispatch_details.get("error", "Antigravity CDP is not currently connected on remote debugging port")
+                if isinstance(dispatch_details, dict)
+                else "Antigravity CDP is not currently connected on remote debugging port"
+            ),
+        }
+
+        if payload.idempotency_key:
+            _idempotency_repo.complete(
+                scope="prompt_send", idempotency_key=payload.idempotency_key, response=response
             )
-        )
-    except Exception:
-        pass
 
-    try:
-        paginated = _conversation_service.get_paginated_conversation(limit=15)
         try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(
-                websocket_manager.broadcast(
-                    {
-                        "type": "chat_update",
-                        "messages": paginated["messages"],
-                        "total": paginated["total"],
-                        "oldest_index": paginated["oldest_index"],
-                        "has_more": paginated["has_more"],
-                    }
+            from repositories.event_repository import EventRepository
+            from models.schemas import EventDocument
+            import datetime
+
+            EventRepository().insert_event(
+                EventDocument(
+                    session_id=payload.session_id or "default_session",
+                    event_type="PromptSubmitted",
+                    category="prompt",
+                    summary=f"User prompt submitted ({len(prompt_msg)} chars)",
+                    execution_state="dispatch_acknowledged" if cdp_connected else "request_accepted",
+                    correlation_id=payload.idempotency_key,
+                    timestamp=datetime.datetime.now(datetime.timezone.utc),
+                    source="mobile_user",
+                    source_confidence="observed",
+                    sanitized_payload={
+                        "message_preview": prompt_msg[:150],
+                        "cdp_connected": cdp_connected,
+                    },
                 )
             )
-        except RuntimeError:
+        except Exception:
             pass
-    except Exception:
-        pass
 
-    return response
+        try:
+            paginated = _conversation_service.get_paginated_conversation(limit=15)
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(
+                    websocket_manager.broadcast(
+                        {
+                            "type": "chat_update",
+                            "messages": paginated["messages"],
+                            "total": paginated["total"],
+                            "oldest_index": paginated["oldest_index"],
+                            "has_more": paginated["has_more"],
+                        }
+                    )
+                )
+            except RuntimeError:
+                pass
+        except Exception:
+            pass
+
+        return response
+    except Exception as exc:
+        if payload.idempotency_key:
+            _idempotency_repo.fail(
+                scope="prompt_send", idempotency_key=payload.idempotency_key, error_detail=str(exc)
+            )
+        raise
 
 
 @router.post("/stop")

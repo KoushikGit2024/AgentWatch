@@ -1,4 +1,4 @@
-﻿"""CDP Model & Mode Automation Dispatchers."""
+"""CDP Model & Mode Automation Dispatchers."""
 
 import asyncio
 import json
@@ -91,6 +91,8 @@ async def dispatch_switch_model(target_url: str, target_model: str) -> Dict[str,
             )
             reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=4.0))
             return reply.get("result", {}).get("result", {}).get("value", {}) or {"success": False}
+    except (ConnectionResetError, OSError, asyncio.TimeoutError):
+        raise
     except Exception as exc:
         logger.error("Failed to switch model via CDP: %s", str(exc))
         return {"success": False, "error": str(exc)}
@@ -152,6 +154,8 @@ async def dispatch_switch_mode(target_url: str, target_mode: str) -> Dict[str, A
                 "success": True,
                 "mode": target_mode,
             }
+    except (ConnectionResetError, OSError, asyncio.TimeoutError):
+        raise
     except Exception as exc:
         logger.debug("CDP mode switch notice: %s", str(exc))
         return {"success": True, "mode": target_mode}

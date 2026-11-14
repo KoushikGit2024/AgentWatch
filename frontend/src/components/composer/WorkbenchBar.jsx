@@ -11,7 +11,6 @@ export default function WorkbenchBar({
   recoveryCount = 0,
   isLoadingTerminal,
   ideTerminalTasks = [],
-  onKillTerminalTask,
   onInspectTask,
   taskTimers = {},
   formatDuration,
@@ -191,14 +190,6 @@ export default function WorkbenchBar({
                             className="p-1 rounded text-[#747C87] hover:text-[#E8EAED] hover:bg-[#23272D] transition cursor-pointer"
                           >
                             <div className="w-3.5 h-3.5">{Icon.terminal}</div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onKillTerminalTask(task.index ?? idx, task.tooltip_id)}
-                            title="Terminate Command in IDE"
-                            className="p-1 rounded text-[#A0A6AF] hover:bg-[#D77E83]/15 hover:text-[#D77E83] transition cursor-pointer"
-                          >
-                            <div className="w-3.5 h-3.5">{Icon.x}</div>
                           </button>
                         </div>
                       </div>

@@ -82,12 +82,13 @@ class PromptSubmissionRequest(BaseModel):
                 data["message"] = data["prompt"]
         return data
 
-    @field_validator("message")
-    @classmethod
-    def validate_message_not_blank(cls, v: Optional[str]) -> str:
-        if not v or not v.strip():
-            raise ValueError("Prompt message cannot be empty or whitespace only")
-        return v.strip()
+    @model_validator(mode="after")
+    def validate_message_or_attachments(self) -> "PromptSubmissionRequest":
+        has_msg = bool(self.message and self.message.strip())
+        has_att = bool(self.attachments and len(self.attachments) > 0)
+        if not has_msg and not has_att:
+            raise ValueError("Prompt must contain either message text or at least one file attachment")
+        return self
 
     @field_validator("idempotency_key")
     @classmethod

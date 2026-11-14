@@ -119,22 +119,6 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
     [activeAttachedTab, activeConversationId, setActiveAttachedTab]
   );
 
-  const handleKillIdeTerminalTask = useCallback(async (taskIndex, tooltipId) => {
-    try {
-      await api.killTerminalTask(taskIndex, tooltipId);
-      toast.success('Command terminated in IDE', 'Terminal');
-      setIdeTerminalTasks(prev => prev.filter((_, idx) => idx !== taskIndex));
-      setTimeout(async () => {
-        try {
-          const refreshed = await api.getTerminalTasks();
-          if (refreshed?.tasks) setIdeTerminalTasks(refreshed.tasks);
-        } catch {}
-      }, 300);
-    } catch (err) {
-      toast.error(err.message || 'Could not terminate command in IDE', 'Terminal');
-    }
-  }, []);
-
   return {
     artifactsList,
     isLoadingArtifacts,
@@ -142,6 +126,5 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
     isLoadingTerminal,
     handleToggleAttachedTab,
     handleRefreshTerminalTasks,
-    handleKillIdeTerminalTask,
   };
 }

@@ -5,3 +5,4 @@ import pytest
 
 # Ensure automated test suite isolates environment and does not dispatch into live IDE chat
 os.environ["ENVIRONMENT"] = "testing"
+os.environ["AUTH_DISABLED"] = "true"

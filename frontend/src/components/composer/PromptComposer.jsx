@@ -58,7 +58,6 @@ export function PromptComposer({
     isLoadingTerminal,
     handleToggleAttachedTab,
     handleRefreshTerminalTasks,
-    handleKillIdeTerminalTask,
   } = useWorkbenchTasks(appState?.active_conversation_id, activeAttachedTab, setActiveAttachedTab);
 
   const { timers: taskTimers, formatDuration } = useTaskExecutionTimers(ideTerminalTasks);
@@ -115,15 +114,22 @@ export function PromptComposer({
           recoveryCount={recoveryCount}
           isLoadingTerminal={isLoadingTerminal}
           ideTerminalTasks={ideTerminalTasks}
-          onKillTerminalTask={handleKillIdeTerminalTask}
           onInspectTask={task => setInspectingTask(task)}
           taskTimers={taskTimers}
           formatDuration={formatDuration}
           onRefreshTerminal={handleRefreshTerminalTasks}
           isLoadingArtifacts={isLoadingArtifacts}
           artifactsList={artifactsList}
-          onOpenTerminalPanel={() => setIsTerminalPanelOpen(true)}
+          onOpenTerminalPanel={() => setIsTerminalPanelOpen(v => !v)}
         />
+
+        {isTerminalPanelOpen && (
+          <AntigravityTerminalPanel
+            isOpen={isTerminalPanelOpen}
+            onClose={() => setIsTerminalPanelOpen(false)}
+            embedded={true}
+          />
+        )}
 
         <div
           onDragOver={handleDragOver}
@@ -243,7 +249,7 @@ export function PromptComposer({
                     type="button"
                     disabled={!canSend}
                     onClick={handleTriggerQueue}
-                    title="Queue follow-up message"
+                    title="Queue follow-up message (sends when agent finishes)"
                     className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#1D2024] hover:bg-[#23272D] disabled:opacity-40 disabled:cursor-not-allowed text-[#E8EAED] border border-[#30343A] hover:border-blue-500/40 font-medium text-xs transition cursor-pointer"
                   >
                     <div className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform">
@@ -303,11 +309,6 @@ export function PromptComposer({
         isOpen={Boolean(inspectingTask)}
         task={inspectingTask}
         onClose={() => setInspectingTask(null)}
-      />
-
-      <AntigravityTerminalPanel
-        isOpen={isTerminalPanelOpen}
-        onClose={() => setIsTerminalPanelOpen(false)}
       />
     </div>
   );

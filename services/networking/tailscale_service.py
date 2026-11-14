@@ -5,7 +5,9 @@ import logging
 import re
 import shutil
 import subprocess
+import time
 from typing import Any, Dict, List, Optional
+import anyio
 
 logger = logging.getLogger("services.tailscale_service")
 
@@ -17,6 +19,9 @@ class TailscalePortForwardService:
         self.tailscale_path = (
             shutil.which("tailscale") or r"C:\Program Files\Tailscale\tailscale.exe"
         )
+        self._cached_status: Optional[Dict[str, Any]] = None
+        self._cached_status_time: float = 0.0
+        self._status_cache_ttl: float = 15.0  # 15s cache to avoid blocking event loop
 
     def is_tailscale_installed(self) -> bool:
         """Check if tailscale binary is present on system PATH or standard location."""
@@ -25,18 +30,26 @@ class TailscalePortForwardService:
             or shutil.which(self.tailscale_path) is not None
         )
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self, force: bool = False) -> Dict[str, Any]:
         """
         Query Tailscale connection, hostname, and verify the Funnel disabled invariant.
+        Uses 15-second cache to prevent synchronous subprocess execution on high-frequency polls.
         """
+        now = time.time()
+        if not force and self._cached_status and (now - self._cached_status_time < self._status_cache_ttl):
+            return self._cached_status
+
         if not self.is_tailscale_installed():
-            return {
+            status_data = {
                 "installed": False,
                 "connected": False,
                 "funnel_disabled_verified": True,
                 "mode": "inactive",
                 "message": "Tailscale CLI not found on system PATH",
             }
+            self._cached_status = status_data
+            self._cached_status_time = now
+            return status_data
 
         connected = False
         tailnet_name = None
@@ -59,23 +72,43 @@ class TailscalePortForwardService:
         except Exception as exc:
             logger.warning("Tailscale status query error: %s", str(exc))
 
-        # Funnel must NEVER be active
+        # Funnel must NEVER be active; query both `serve status --json` and `funnel status`
         funnel_active = False
         try:
-            res = subprocess.run(
-                [self.tailscale_path, "funnel", "status"],
+            # Check structured AllowFunnel key from serve status JSON
+            res_serve = subprocess.run(
+                [self.tailscale_path, "serve", "status", "--json"],
                 capture_output=True,
                 text=True,
                 timeout=3,
             )
-            if res.returncode == 0 and res.stdout.strip():
-                out = res.stdout.lower()
-                if "funnel is on" in out or "public" in out:
+            if res_serve.returncode == 0 and res_serve.stdout.strip():
+                serve_data = json.loads(res_serve.stdout)
+                if serve_data.get("AllowFunnel", False):
                     funnel_active = True
+                # Check individual web endpoints for Funnel: true
+                for _, web_cfg in serve_data.get("Web", {}).items():
+                    if isinstance(web_cfg, dict) and web_cfg.get("Funnel", False):
+                        funnel_active = True
         except Exception:
             pass
 
-        return {
+        if not funnel_active:
+            try:
+                res = subprocess.run(
+                    [self.tailscale_path, "funnel", "status"],
+                    capture_output=True,
+                    text=True,
+                    timeout=3,
+                )
+                if res.returncode == 0 and res.stdout.strip():
+                    out = res.stdout.lower()
+                    if "funnel is on" in out or "public" in out:
+                        funnel_active = True
+            except Exception:
+                pass
+
+        res_dict = {
             "installed": True,
             "connected": connected,
             "tailnet_hostname": tailnet_name,
@@ -84,6 +117,9 @@ class TailscalePortForwardService:
             "funnel_disabled_verified": not funnel_active,
             "mode": "tailscale_serve_private",
         }
+        self._cached_status = res_dict
+        self._cached_status_time = now
+        return res_dict
 
     def list_forwards(self) -> List[Dict[str, Any]]:
         """
@@ -217,14 +253,14 @@ class TailscalePortForwardService:
         Executes: `tailscale serve --https=<external_port> off`
         Safeguard: Prevents removing port 443 (primary AgentWatch server).
         """
-        if not self.is_tailscale_installed():
-            return {"success": False, "error": "Tailscale is not installed."}
-
         if external_port == 443:
             return {
                 "success": False,
                 "error": "Port 443 is reserved for the primary AgentWatch server and cannot be removed.",
             }
+
+        if not self.is_tailscale_installed():
+            return {"success": False, "error": "Tailscale is not installed."}
 
         cmd = [self.tailscale_path, "serve", f"--https={external_port}", "off"]
 

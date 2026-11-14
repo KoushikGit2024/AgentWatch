@@ -1,4 +1,4 @@
-﻿"""
+"""
 Queue management routes for AgentWatch.
 Supports listing queued messages, queuing follow-up prompts,
 and triggering Send Now, Delete, and Edit actions.
@@ -8,6 +8,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from services.chat.queue_service import queue_service
+from services.networking.websocket_manager import websocket_manager
 
 router = APIRouter(prefix="/api/v1/queue", tags=["queue"])
 
@@ -39,6 +40,9 @@ async def add_queued_message(payload: QueueMessageRequest):
     Queue a message to be sent when the agent finishes working.
     """
     item = queue_service.queue_message(payload.message, payload.attachments)
+    # Broadcast queue update to real-time mobile/web clients
+    messages = await queue_service.get_all_queued_messages()
+    await websocket_manager.broadcast({"type": "queue_update", "messages": messages})
     return {"success": True, "message": "Message queued successfully", "item": item}
 
 
@@ -55,6 +59,9 @@ async def perform_queued_action(item_id: str, payload: QueuedActionRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=res.get("error", "Failed to execute queued action"),
         )
+    # Broadcast queue update after action execution
+    messages = await queue_service.get_all_queued_messages()
+    await websocket_manager.broadcast({"type": "queue_update", "messages": messages})
     return res
 
 
@@ -69,4 +76,7 @@ async def delete_queued_message(item_id: str):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=res.get("error", "Failed to delete queued message"),
         )
+    # Broadcast queue update after deletion
+    messages = await queue_service.get_all_queued_messages()
+    await websocket_manager.broadcast({"type": "queue_update", "messages": messages})
     return res

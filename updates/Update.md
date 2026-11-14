@@ -115,7 +115,7 @@ Execute this non-destructive diagnostic runner script:
 
 ```python
 import asyncio, os, sys
-from integrations.antigravity.adapter import antigravity_adapter
+from integrations.antigravity.core.adapter import antigravity_adapter
 
 async def run_diagnostic():
     report = {"cdp": False, "detected_ide": "Universal", "subsystems": {}}

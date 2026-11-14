@@ -1,4 +1,4 @@
-﻿"""Transcript and CDP DOM live observation loop."""
+"""Transcript and CDP DOM live observation loop."""
 
 import asyncio
 import hashlib
@@ -56,6 +56,19 @@ async def run_transcript_watcher():
                     last_size = size
                     transcript_changed = True
 
+            # Check agent working state transition even if transcript hasn't appended new bytes
+            # (e.g. agent becomes idle or staleness heuristic triggers)
+            recent_turns = conversation_service.get_recent_conversation(limit=2)
+            is_currently_working = bool(
+                recent_turns
+                and recent_turns[-1].get("role") == "agent"
+                and recent_turns[-1].get("is_working")
+            )
+            if agent_was_working and not is_currently_working:
+                logger.info("Agent finished turn. Checking queue for pending prompts...")
+                asyncio.create_task(queue_service.dispatch_next_queued())
+            agent_was_working = is_currently_working
+
             if transcript_changed:
                 paginated = conversation_service.get_paginated_conversation(limit=15)
                 if websocket_manager.active_connections:
@@ -69,14 +82,6 @@ async def run_transcript_watcher():
                             "has_more": paginated["has_more"],
                         }
                     )
-
-                # Track working -> idle transition to auto-dispatch queued prompts
-                msgs = paginated.get("messages") or []
-                is_currently_working = bool(msgs and msgs[-1].get("role") == "agent" and msgs[-1].get("is_working"))
-                if agent_was_working and not is_currently_working:
-                    logger.info("Agent finished turn. Checking queue for pending prompts...")
-                    asyncio.create_task(queue_service.dispatch_next_queued())
-                agent_was_working = is_currently_working
 
             dom_probe_tick = (dom_probe_tick + 1) % 2
             if websocket_manager.active_connections or transcript_changed:

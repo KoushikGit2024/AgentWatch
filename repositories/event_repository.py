@@ -1,5 +1,6 @@
 """Event repository for MongoDB persistence and queries."""
 
+import re
 from typing import List, Optional, Dict, Any, Tuple
 from collections import deque
 from pymongo.collection import Collection
@@ -76,9 +77,10 @@ class EventRepository:
         if correlation_id:
             query["correlation_id"] = correlation_id
         if search:
+            escaped_search = re.escape(search)
             query["$or"] = [
-                {"summary": {"$regex": search, "$options": "i"}},
-                {"event_type": {"$regex": search, "$options": "i"}},
+                {"summary": {"$regex": escaped_search, "$options": "i"}},
+                {"event_type": {"$regex": escaped_search, "$options": "i"}},
             ]
 
         try:
@@ -132,9 +134,10 @@ class EventRepository:
         if category:
             query["category"] = category
         if search:
+            escaped_search = re.escape(search)
             query["$or"] = [
-                {"summary": {"$regex": search, "$options": "i"}},
-                {"event_type": {"$regex": search, "$options": "i"}},
+                {"summary": {"$regex": escaped_search, "$options": "i"}},
+                {"event_type": {"$regex": escaped_search, "$options": "i"}},
             ]
         try:
             return self.collection.count_documents(query)

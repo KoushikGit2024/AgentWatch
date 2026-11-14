@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     # Application Security
     app_password: str = Field(default="antigravity", alias="APP_PASSWORD")
     jwt_secret: str = Field(default="AgentWatch_v2_default_secret_key", alias="JWT_SECRET")
+    auth_disabled: bool = Field(default=False, alias="AUTH_DISABLED")
     allowed_origins: str = Field(default="*", alias="ALLOWED_ORIGINS")
+    allowed_hosts: str = Field(default="localhost,127.0.0.1,testserver,testclient,*.ts.net", alias="ALLOWED_HOSTS")
 
     # MongoDB Local Persistence
     mongodb_uri: str = Field(default="mongodb://127.0.0.1:27017/", alias="MONGODB_URI")
@@ -38,6 +40,14 @@ class Settings(BaseSettings):
     # Tailscale Integration
     tailscale_serve_enabled: bool = Field(default=True, alias="TAILSCALE_SERVE_ENABLED")
     tailscale_local_port: int = Field(default=8000, alias="TAILSCALE_LOCAL_PORT")
+
+    # Uploads & File Limits (Generous default: 50MB for large documents, images, text dumps)
+    max_upload_size_bytes: int = Field(default=50 * 1024 * 1024, alias="MAX_UPLOAD_SIZE_BYTES")
+
+    # Feature Flags & System Mutation Controls
+    enable_terminal_mutation: bool = Field(default=True, alias="ENABLE_TERMINAL_MUTATION")
+    enable_file_mutation: bool = Field(default=True, alias="ENABLE_FILE_MUTATION")
+    enable_process_termination: bool = Field(default=True, alias="ENABLE_PROCESS_TERMINATION")
 
     @property
     def parsed_cdp_ports(self) -> List[int]:

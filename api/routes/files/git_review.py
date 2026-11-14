@@ -84,7 +84,11 @@ def _count_diff_lines(diff_content: str) -> Dict[str, int]:
 @router.get("/api/v1/git/review")
 def get_git_review():
     """Return workspace modified files, stats, and granular diffs for Review Changes."""
-    workspace_root = Path(__file__).resolve().parent.parent.parent
+    from services.workspace.workspace_context import workspace_context
+
+    workspace_root = workspace_context.get_active_workspace_path()
+    if not workspace_root or not workspace_root.exists():
+        workspace_root = Path(__file__).resolve().parent.parent.parent.parent
 
     try:
         # Check current working tree status (including untracked files)

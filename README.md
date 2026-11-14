@@ -73,7 +73,7 @@ Before launching AgentWatch, make sure your machine has the following tools inst
 | :--------------------- | :-------------- | :-------------- | :---------------------------------------------------------------------------------------------------------------- |
 | **Python**             | 3.10+           | **Yes**         | Powers the FastAPI backend & WebSocket server. (All libraries install into repo `.venv`).                         |
 | **Google Antigravity** | Any             | **Yes**         | The AI IDE you are monitoring with `--remote-debugging-port=9000`.                                                |
-| **Node.js & npm**      | 18+             | **Optional**    | Pre-compiled bundle is included in `static/dist/`. Only needed if modifying frontend code.                        |
+| **Node.js & npm**      | 20.19+ / 22.12+ | **Optional**    | Pre-compiled bundle is included in `static/dist/`. Only needed if modifying frontend code (Vite 8 requirement).   |
 | **Tailscale**          | Any             | **Recommended** | Provides secure, private peer-to-peer HTTPS connection for mobile browser push notifications.                     |
 | **MongoDB**            | 6.0+            | **Optional**    | For persistent history logs. If not installed, AgentWatch **automatically uses its built-in in-memory fallback**. |
 

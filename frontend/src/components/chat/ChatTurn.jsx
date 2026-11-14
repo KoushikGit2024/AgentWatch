@@ -1,10 +1,8 @@
 import React, { useState, memo } from 'react';
 import { Icon } from '../../constants/icons';
-import { FileIcon } from '../../constants/fileIcons';
-import { formatFileSize } from './AttachmentPreview';
 import StreamItem from './StreamItem';
 import MarkdownView from '../MarkdownView';
-import AttachmentLightbox from '../composer/AttachmentLightbox';
+import { UserChatTurn } from './UserChatTurn';
 
 const ChatTurn = memo(function ChatTurn({
   turn,
@@ -23,8 +21,6 @@ const ChatTurn = memo(function ChatTurn({
     : null;
 
   const [copied, setCopied] = useState(false);
-  const [previewItem, setPreviewItem] = useState(null);
-  const [isUserTextExpanded, setIsUserTextExpanded] = useState(true);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(turn.text || '');
@@ -32,120 +28,8 @@ const ChatTurn = memo(function ChatTurn({
     setTimeout(() => setCopied(false), 1800);
   };
 
-  const userText = turn.text || '';
-  const isLongUserText = userText.length > 280 || (userText.match(/\n/g) || []).length >= 4;
-
   if (isUser) {
-    return (
-      <div className="chat-turn-item flex justify-end w-full min-w-0 max-w-full">
-        <div className="max-w-[90%] sm:max-w-[82%] min-w-0 rounded-xl bg-[#1D2024]/90 border border-[#30343A] shadow-sm px-4 py-3 text-xs sm:text-sm text-[#E8EAED] break-words [overflow-wrap:anywhere] overflow-hidden space-y-2.5">
-          <div className="flex items-center justify-between gap-3 text-[10px] text-[#A0A6AF] font-mono border-b border-[#262A30] pb-1.5">
-            <span className="font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-              User Prompt
-            </span>
-            {timeStr && <span className="tabular-nums text-zinc-400">{timeStr}</span>}
-          </div>
-
-          {turn.attachments && turn.attachments.some(a => a.is_image) && (
-            <div className="flex flex-wrap gap-2 pt-0.5">
-              {turn.attachments
-                .filter(a => a.is_image)
-                .map((att, idx) => (
-                  <button
-                    key={att.id || idx}
-                    type="button"
-                    onClick={() => setPreviewItem(att)}
-                    title="Click to inspect image"
-                    className="block rounded-lg overflow-hidden border border-[#30343A] hover:border-blue-500/50 max-w-[180px] max-h-44 cursor-zoom-in text-left transition"
-                  >
-                    <img
-                      src={att.url}
-                      alt={att.original_name || att.filename}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-            </div>
-          )}
-
-          {turn.attachments && turn.attachments.some(a => !a.is_image) && (
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {turn.attachments
-                .filter(a => !a.is_image)
-                .map((att, idx) => (
-                  <a
-                    key={att.id || idx}
-                    href={att.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#101113] hover:bg-[#17191C] border border-[#30343A] hover:border-cyan-500/30 text-xs text-[#E8EAED] transition max-w-full truncate"
-                  >
-                    <FileIcon
-                      path={att.original_name || att.filename}
-                      className="w-3.5 h-3.5 shrink-0"
-                    />
-                    <span className="truncate font-mono text-[11px]">
-                      {att.original_name || att.filename}
-                    </span>
-                    {att.size && (
-                      <span className="text-[9px] text-[#A0A6AF] shrink-0 font-mono tabular-nums">
-                        ({formatFileSize(att.size)})
-                      </span>
-                    )}
-                  </a>
-                ))}
-            </div>
-          )}
-
-          {userText && (
-            <div className="space-y-1.5">
-              <div
-                className={`whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere] ${
-                  !isUserTextExpanded && isLongUserText ? 'max-h-28 overflow-hidden relative' : ''
-                }`}
-              >
-                <p>{userText}</p>
-              </div>
-              {isLongUserText && (
-                <div className="flex items-center justify-between pt-1 border-t border-[#262A30] text-xs text-[#A0A6AF]">
-                  <button
-                    type="button"
-                    onClick={() => setIsUserTextExpanded(v => !v)}
-                    className="font-medium text-blue-400 hover:text-blue-300 hover:underline cursor-pointer transition flex items-center gap-1"
-                  >
-                    <span>{isUserTextExpanded ? 'Collapse message' : 'Expand full message'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="px-1.5 py-0.5 rounded hover:bg-[#23272D] text-[11px] transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <div className="w-3 h-3 text-blue-400">{copied ? Icon.check : Icon.copy}</div>
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-              )}
-              {!isLongUserText && (
-                <div className="flex items-center justify-end pt-1 border-t border-[#262A30] text-xs text-[#A0A6AF]">
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="px-1.5 py-0.5 rounded hover:bg-[#23272D] text-[11px] transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <div className="w-3 h-3 text-blue-400">{copied ? Icon.check : Icon.copy}</div>
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <AttachmentLightbox item={previewItem} onClose={() => setPreviewItem(null)} />
-      </div>
-    );
+    return <UserChatTurn turn={turn} timeStr={timeStr} />;
   }
 
   let streamItems = turn.items;
@@ -222,6 +106,60 @@ const ChatTurn = memo(function ChatTurn({
         {hasStream && (
           <div className="space-y-1.5 py-0.5 select-text">
             {streamItems.map((item, itemIdx) => {
+              if (item.type === 'error' && item.error) {
+                return (
+                  <div
+                    key={item.id || itemIdx}
+                    className="my-2 p-3 rounded-xl bg-[#1C1416] border border-rose-500/40 text-xs font-sans space-y-2 select-text shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-rose-950/60 pb-1.5">
+                      <div className="flex items-center gap-1.5 font-semibold text-rose-300">
+                        <div className="w-3.5 h-3.5 text-rose-400">{Icon.alertTriangle}</div>
+                        <span>Agent Execution Error</span>
+                      </div>
+                      {item.error.error_id && (
+                        <span className="text-[10px] font-mono text-rose-400/70">
+                          ID: {item.error.error_id}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[#C4C9D2] leading-relaxed">
+                      {item.error.message ||
+                        'There was a network issue connecting to the model server.'}
+                    </p>
+                    {item.error.raw_error && (
+                      <div className="p-2 rounded bg-[#120D0F] border border-rose-950/80 font-mono text-[11px] text-rose-300/80 max-h-24 overflow-y-auto whitespace-pre-wrap break-all">
+                        {item.error.raw_error}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textToCopy = item.error.raw_error || item.error.message;
+                          navigator.clipboard.writeText(textToCopy);
+                        }}
+                        className="px-2.5 py-1 rounded bg-[#2A1B20] hover:bg-[#38232B] text-rose-300 text-[11px] font-mono transition cursor-pointer flex items-center gap-1"
+                      >
+                        <div className="w-3 h-3">{Icon.copy}</div>
+                        <span>Copy Debug Info</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (item.type === 'comment' && item.text) {
+                return (
+                  <div
+                    key={item.id || itemIdx}
+                    className="my-2 px-3 py-2 rounded-lg bg-[#14171A] border-l-2 border-blue-500/60 text-xs text-[#E8EAED]"
+                  >
+                    <MarkdownView content={item.text} onOpenFile={onOpenFile} />
+                  </div>
+                );
+              }
+
               const itemKey = item.step_id || `${turn.id || turnIndex}-${item.id || itemIdx}`;
               const isLiveExecuting =
                 item.kind === 'command' &&
@@ -273,7 +211,8 @@ const ChatTurn = memo(function ChatTurn({
               </div>
             )}
 
-            {turn.error && (
+            {/* Fallback turn error if not already rendered as a timeline item */}
+            {turn.error && !streamItems.some(it => it.type === 'error') && (
               <div className="my-2 p-3 rounded-xl bg-[#1C1416] border border-rose-500/40 text-xs font-sans space-y-2 select-text shadow-sm">
                 <div className="flex items-center justify-between gap-2 border-b border-rose-950/60 pb-1.5">
                   <div className="flex items-center gap-1.5 font-semibold text-rose-300">

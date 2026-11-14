@@ -1,4 +1,4 @@
-﻿"""Antigravity adapter managing CDP discovery, caching, and session state observation."""
+"""Antigravity adapter managing CDP discovery, caching, and session state observation."""
 
 import asyncio
 import hashlib
@@ -408,13 +408,16 @@ class AntigravityAdapter:
 
         return await dispatch_inspect_active_popup(target_ws)
 
-    async def respond_to_popup(
+    async def forward_approval(
         self,
-        option_id: Optional[str] = None,
-        custom_text: Optional[str] = None,
-        action: Optional[str] = None,
+        request_type: str = "command",
+        decision: str = "allow",
+        custom_response: Optional[str] = None,
+        option_label: Optional[str] = None,
+        expected_command: Optional[str] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
-        """Respond to modal decision popup."""
+        """Forward user approval decision to Antigravity IDE workbench."""
         target_ws = self.active_chat_url or self.active_target_url
         if not target_ws:
             self.discover_cdp()
@@ -425,7 +428,52 @@ class AntigravityAdapter:
         from integrations.antigravity.cdp.cdp_actions import dispatch_forward_approval
 
         return await dispatch_forward_approval(
-            target_ws, option_id=option_id, custom_text=custom_text, action=action
+            target_ws,
+            request_type=request_type,
+            decision=decision,
+            custom_response=custom_response,
+            option_label=option_label,
+            expected_command=expected_command,
+            **kwargs,
+        )
+
+    async def answer_question(
+        self,
+        selected_labels: Optional[List[str]] = None,
+        custom_response: Optional[str] = None,
+        fallback_prompt: Optional[str] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Answer an interactive question in Antigravity IDE."""
+        target_ws = self.active_chat_url or self.active_target_url
+        if not target_ws:
+            self.discover_cdp()
+            target_ws = self.active_chat_url or self.active_target_url
+
+        if not target_ws:
+            return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
+        from integrations.antigravity.cdp.cdp_actions import dispatch_answer_question
+
+        return await dispatch_answer_question(
+            target_ws,
+            selected_labels=selected_labels or [],
+            custom_response=custom_response,
+            fallback_prompt=fallback_prompt,
+            **kwargs,
+        )
+
+    async def respond_to_popup(
+        self,
+        option_id: Optional[str] = None,
+        custom_text: Optional[str] = None,
+        action: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Legacy helper for backward compatibility."""
+        return await self.forward_approval(
+            request_type="command",
+            decision=action or "allow",
+            custom_response=custom_text,
+            option_label=option_id,
         )
 
     async def toggle_terminal(self) -> Dict[str, Any]:

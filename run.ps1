@@ -310,7 +310,7 @@ $env:PYTHONPATH = $scriptDir
 
 Start-Process "http://127.0.0.1:8000"
 
-& $venvPython -m uvicorn main:app --host 0.0.0.0 --port 8000
+& $venvPython -m uvicorn main:app --host 127.0.0.1 --port 8000
 
 if ($LASTEXITCODE -ne 0) {
     throw "The AgentWatch server exited with code $LASTEXITCODE."

@@ -290,7 +290,18 @@ class SystemMetricsService:
         """
         Safely terminate target host process(es) by PID.
         Guards against terminating current AgentWatch server PID or core OS processes.
+        Re-verifies process names server-side prior to termination.
         """
+        from config.settings import settings
+
+        if not getattr(settings, "enable_process_termination", True):
+            return {
+                "success": False,
+                "error": "Process termination disabled by server configuration (ENABLE_PROCESS_TERMINATION=false)",
+                "killed_pids": [],
+                "failed_pids": pids,
+            }
+
         current_pid = os.getpid()
         lower_name = (name or "").lower().strip()
         if lower_name in PROTECTED_PROCESS_NAMES:
@@ -305,7 +316,7 @@ class SystemMetricsService:
         failed_pids = []
         errors = []
 
-        if not self._is_windows or not self._kernel32:
+        if not self._is_windows or not self._kernel32 or not self._psapi:
             return {
                 "success": False,
                 "error": "Process termination only supported on Windows host",
@@ -321,6 +332,23 @@ class SystemMetricsService:
                 errors.append(f"PID {pid} is the active AgentWatch server process (protected)")
                 failed_pids.append(pid)
                 continue
+
+            # Query process first to verify real server-side identity
+            h_query = self._kernel32.OpenProcess(
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, pid
+            )
+            if h_query:
+                try:
+                    name_buf = (ctypes.c_char * MAX_PATH)()
+                    if self._psapi.GetProcessImageFileNameA(h_query, name_buf, MAX_PATH):
+                        full_img = name_buf.value.decode("utf-8", errors="ignore").lower()
+                        real_base = full_img.split("\\")[-1]
+                        if real_base in PROTECTED_PROCESS_NAMES:
+                            errors.append(f"PID {pid} resolves to protected process {real_base}")
+                            failed_pids.append(pid)
+                            continue
+                finally:
+                    self._kernel32.CloseHandle(h_query)
 
             h_proc = self._kernel32.OpenProcess(PROCESS_TERMINATE, False, pid)
             if not h_proc:

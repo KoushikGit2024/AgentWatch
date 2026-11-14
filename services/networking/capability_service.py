@@ -1,8 +1,9 @@
-﻿"""System capability evaluation service."""
+"""System capability evaluation service."""
 
 from typing import List
 from models.schemas import CapabilityItem, CapabilityStatus
 from integrations.antigravity.core.adapter import antigravity_adapter
+from config.settings import settings
 
 
 def evaluate_system_capabilities() -> List[CapabilityItem]:
@@ -11,6 +12,10 @@ def evaluate_system_capabilities() -> List[CapabilityItem]:
     """
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)
+
+    file_mutation_enabled = getattr(settings, "enable_file_mutation", True)
+    terminal_mutation_enabled = getattr(settings, "enable_terminal_mutation", True)
+    process_termination_enabled = getattr(settings, "enable_process_termination", True)
 
     return [
         # Conversation Capabilities
@@ -98,6 +103,43 @@ def evaluate_system_capabilities() -> List[CapabilityItem]:
             verified=False,
             description="Resolve native IDE permission popups directly from mobile.",
             reason="Native Antigravity permission dialogs require local confirmation in IDE for security.",
+        ),
+        # System & Workspace Mutation Capabilities
+        CapabilityItem(
+            name="file_mutation",
+            category="workspace",
+            status=CapabilityStatus.AVAILABLE
+            if file_mutation_enabled
+            else CapabilityStatus.DISABLED_BY_POLICY,
+            verified=file_mutation_enabled,
+            description="Create, edit, rename, and delete workspace files remotely.",
+            reason=None
+            if file_mutation_enabled
+            else "File modification disabled by server configuration (ENABLE_FILE_MUTATION=false)",
+        ),
+        CapabilityItem(
+            name="terminal_mutation",
+            category="terminal",
+            status=CapabilityStatus.AVAILABLE
+            if terminal_mutation_enabled
+            else CapabilityStatus.DISABLED_BY_POLICY,
+            verified=terminal_mutation_enabled,
+            description="Execute interactive shell commands and scripts in terminal.",
+            reason=None
+            if terminal_mutation_enabled
+            else "Terminal execution disabled by server configuration (ENABLE_TERMINAL_MUTATION=false)",
+        ),
+        CapabilityItem(
+            name="process_termination",
+            category="monitoring",
+            status=CapabilityStatus.AVAILABLE
+            if process_termination_enabled
+            else CapabilityStatus.DISABLED_BY_POLICY,
+            verified=process_termination_enabled,
+            description="Terminate runaway background processes from task manager.",
+            reason=None
+            if process_termination_enabled
+            else "Process termination disabled by server configuration (ENABLE_PROCESS_TERMINATION=false)",
         ),
     ]
 

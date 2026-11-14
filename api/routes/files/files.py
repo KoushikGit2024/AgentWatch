@@ -17,8 +17,11 @@ router = APIRouter(tags=["Files"])
 MAX_VIEW_SIZE_BYTES = 3 * 1024 * 1024
 
 
-def _resolve_target_path(clean_path: str) -> Path:
-    """Safely resolve a raw or URI file path to a valid Path on disk."""
+def _resolve_target_path(clean_path: str, for_mutation: bool = False) -> Path:
+    """
+    Safely resolve a raw or URI file path to a valid Path on disk.
+    If for_mutation is True, only exact paths within active workspace or repo root are permitted (no fuzzy globbing).
+    """
     if clean_path.startswith("file:///"):
         clean_path = clean_path[8:]
     elif clean_path.startswith("file://"):
@@ -48,6 +51,10 @@ def _resolve_target_path(clean_path: str) -> Path:
             target = (repo_root / target).resolve()
     else:
         target = target.resolve()
+
+    if for_mutation:
+        # Strict resolution: never fuzzy match on mutations (save, create, delete, rename, move)
+        return target
 
     if not target.exists():
         ws_fallback = (active_ws / clean_path.lstrip("/\\")).resolve()
@@ -96,6 +103,10 @@ def get_file_content(path: str = Query(..., description="File path to read")):
 
     clean_path = path.strip()
     target = _resolve_target_path(clean_path)
+
+    from services.workspace.file_editor_service import file_editor_service
+    if not file_editor_service.is_path_safe(target):
+        raise HTTPException(status_code=403, detail="Access denied: Target path outside authorized workspace boundaries")
 
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {Path(clean_path).name}")
@@ -247,6 +258,11 @@ def get_raw_file(path: str = Query(..., description="File path to stream directl
 
     clean_path = path.strip()
     target = _resolve_target_path(clean_path)
+
+    from services.workspace.file_editor_service import file_editor_service
+    if not file_editor_service.is_path_safe(target):
+        raise HTTPException(status_code=403, detail="Access denied: Target path outside authorized workspace boundaries")
+
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 

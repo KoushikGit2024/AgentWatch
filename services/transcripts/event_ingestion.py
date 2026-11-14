@@ -45,9 +45,16 @@ class EventIngestionService:
 
         summary = request.summary or f"{request.event_type} event recorded from {request.source}"
 
-        # 4. Build Event Document
+        # 4. Build Event Document with deterministic fallback ID to prevent unindexed duplicate loops
+        source_evt_id = request.source_event_id
+        if not source_evt_id:
+            import hashlib
+            payload_str = str(sorted(sanitized.items())) if isinstance(sanitized, dict) else str(sanitized)
+            sig = f"{request.session_id}:{request.event_type}:{ts.isoformat()}:{summary}:{payload_str}"
+            source_evt_id = f"auto-{hashlib.sha256(sig.encode('utf-8')).hexdigest()[:24]}"
+
         event_doc = EventDocument(
-            source_event_id=request.source_event_id,
+            source_event_id=source_evt_id,
             agent_id=request.agent_id,
             session_id=request.session_id,
             task_id=request.task_id,

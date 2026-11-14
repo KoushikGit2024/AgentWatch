@@ -34,7 +34,9 @@ def sync_question_from_transcript_data(
         question_data.get("description")
         or "Select an option below or type your own custom instructions to guide the agent."
     ).strip()[:1900]
-    q_hash = hashlib.md5(f"{session_id}:{q_text}".encode()).hexdigest()[:12]
+    # Include step_index or timestamp in hash to prevent collision on repeated questions in the same session
+    step_key = question_data.get("step_index") or question_data.get("step_id") or ""
+    q_hash = hashlib.md5(f"{session_id}:{step_key}:{q_text}".encode()).hexdigest()[:12]
     interaction_id = f"q-{q_hash}"
 
     repo.supersede_pending_interactions(session_id=session_id, exclude_id=interaction_id)

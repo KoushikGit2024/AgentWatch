@@ -115,6 +115,9 @@ export function useAgentSocket({
           setPendingApproval(null);
           setIsApprovalMinimized(false);
         }
+        if (data.type === 'queue_update') {
+          window.dispatchEvent(new CustomEvent('agentwatch:queue-updated', { detail: data.messages }));
+        }
       },
     });
     client.connect();

@@ -3,9 +3,11 @@
 import os
 import re
 import time
+import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from config.settings import settings
 
 router = APIRouter(tags=["Attachments"])
 
@@ -32,8 +34,8 @@ def _sanitize_filename(name: str) -> str:
 @router.post("/api/v1/attachments/upload")
 async def upload_attachments(files: List[UploadFile] = File(...)) -> Dict[str, Any]:
     """
-    Upload one or more images or files for attachment to the prompt.
-    Saves to the local uploads directory and returns structured file metadata.
+    Upload one or more images, documents, or pasted files for prompt attachment.
+    Enforces a generous configurable size cap (e.g., 50MB) and stores on disk with unique UUIDs.
     """
     if not files:
         raise HTTPException(
@@ -41,46 +43,58 @@ async def upload_attachments(files: List[UploadFile] = File(...)) -> Dict[str, A
         )
 
     results = []
-    ts = int(time.time() * 1000)
+    max_bytes = getattr(settings, "max_upload_size_bytes", 50 * 1024 * 1024)
 
     for idx, upload in enumerate(files):
         original_name = upload.filename or f"upload_{idx}"
         safe_name = _sanitize_filename(original_name)
-        unique_name = f"{ts}_{idx}_{safe_name}"
-        dest_path = UPLOAD_DIR / unique_name
+        file_uuid = uuid.uuid4().hex[:16]
+        _, ext = os.path.splitext(safe_name)
+        storage_filename = f"{file_uuid}{ext.lower()}"
+        dest_path = UPLOAD_DIR / storage_filename
 
         try:
-            content = await upload.read()
-            if len(content) > 25 * 1024 * 1024:
-                raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail=f"File {original_name} exceeds 25MB limit",
-                )
+            # Stream read in chunks to avoid unbounded memory spikes
+            total_size = 0
+            chunk_size = 1024 * 1024  # 1MB chunks
 
             with open(dest_path, "wb") as f:
-                f.write(content)
+                while True:
+                    chunk = await upload.read(chunk_size)
+                    if not chunk:
+                        break
+                    total_size += len(chunk)
+                    if total_size > max_bytes:
+                        dest_path.unlink(missing_ok=True)
+                        limit_mb = max_bytes // (1024 * 1024)
+                        raise HTTPException(
+                            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            detail=f"File {original_name} exceeds configured maximum limit of {limit_mb}MB",
+                        )
+                    f.write(chunk)
 
             mime_type = upload.content_type or "application/octet-stream"
-            is_img = mime_type in IMAGE_MIMES or safe_name.lower().endswith(
-                (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg")
+            is_img = mime_type in IMAGE_MIMES or ext.lower() in (
+                ".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp"
             )
 
             results.append(
                 {
-                    "id": f"att_{ts}_{idx}",
-                    "filename": safe_name,
+                    "id": f"att_{file_uuid}",
+                    "filename": storage_filename,
                     "original_name": original_name,
-                    "storage_path": str(dest_path).replace("\\", "/"),
-                    "relative_path": f"uploads/{unique_name}",
-                    "url": f"/uploads/{unique_name}",
+                    "storage_path": f"uploads/{storage_filename}",
+                    "relative_path": f"uploads/{storage_filename}",
+                    "url": f"/uploads/{storage_filename}",
                     "content_type": mime_type,
-                    "size": len(content),
+                    "size": total_size,
                     "is_image": is_img,
                 }
             )
         except HTTPException:
             raise
         except Exception as exc:
+            dest_path.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to save {original_name}: {str(exc)}",

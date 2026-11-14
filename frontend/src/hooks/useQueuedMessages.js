@@ -23,13 +23,25 @@ export function useQueuedMessages(isWorking = false) {
     }
   }, []);
 
-  // Poll frequently (every 2.5s) while the agent is actively working or when messages are queued
+  // Poll frequently (every 2.5s) while the agent is actively working or when messages are queued,
+  // and listen for real-time WebSocket queue_update events
   useEffect(() => {
     fetchQueuedMessages();
     const intervalTime = isWorking || queuedMessages.length > 0 ? 2500 : 7000;
     pollIntervalRef.current = setInterval(fetchQueuedMessages, intervalTime);
+
+    const onWsQueueUpdate = e => {
+      if (Array.isArray(e.detail)) {
+        setQueuedMessages(e.detail);
+      } else {
+        fetchQueuedMessages();
+      }
+    };
+    window.addEventListener('agentwatch:queue-updated', onWsQueueUpdate);
+
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      window.removeEventListener('agentwatch:queue-updated', onWsQueueUpdate);
     };
   }, [isWorking, queuedMessages.length, fetchQueuedMessages]);
 

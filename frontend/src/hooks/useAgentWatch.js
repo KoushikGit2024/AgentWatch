@@ -254,10 +254,13 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
           toast.warning(`Prompt not dispatched: ${failReason}`, 'Prompt Dispatch Notice');
           setChatMessages(prev => {
             const updated = [...prev];
-            const last = updated[updated.length - 1];
-            if (last?.role === 'agent') {
-              last.is_working = false;
-              last.text = `Notice: Prompt could not be dispatched to Antigravity IDE (${failReason}). Verify that Antigravity is running with remote debugging port 9000.`;
+            const lastIdx = updated.length - 1;
+            if (lastIdx >= 0 && updated[lastIdx]?.role === 'agent') {
+              updated[lastIdx] = {
+                ...updated[lastIdx],
+                is_working: false,
+                text: `Notice: Prompt could not be dispatched to Antigravity IDE (${failReason}). Verify that Antigravity is running with remote debugging port 9000.`,
+              };
             }
             return updated;
           });
@@ -269,10 +272,13 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
         toast.error(err.message || 'Failed to dispatch prompt', 'Prompt Submission Failed');
         setChatMessages(prev => {
           const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last?.role === 'agent') {
-            last.is_working = false;
-            last.text = `Notice: Prompt could not be dispatched (${err.message}). Verify network connection and remote debugging port 9000.`;
+          const lastIdx = updated.length - 1;
+          if (lastIdx >= 0 && updated[lastIdx]?.role === 'agent') {
+            updated[lastIdx] = {
+              ...updated[lastIdx],
+              is_working: false,
+              text: `Notice: Prompt could not be dispatched (${err.message}). Verify network connection and remote debugging port 9000.`,
+            };
           }
           return updated;
         });

@@ -1,4 +1,4 @@
-﻿"""CDP Forward Approval Dispatcher."""
+"""CDP Forward Approval Dispatcher."""
 
 import asyncio
 import json
@@ -10,29 +10,25 @@ logger = logging.getLogger("integrations.antigravity.cdp_forward_approval")
 
 async def dispatch_forward_approval(
     target_url: str,
-    request_type: str,
-    decision: str,
+    request_type: str = "command",
+    decision: str = "allow",
     custom_response: Optional[str] = None,
     option_label: Optional[str] = None,
+    expected_command: Optional[str] = None,
+    **kwargs,
 ) -> Dict[str, Any]:
-    """Forward user approval decision to Antigravity IDE workbench by clicking dialog button.
-
-    Strategy (in priority order):
-    1. Exact / ranked match inside dialog/modal/notification/chat-card containers
-    2. Split-button dropdown expansion when 'always_allow' is inside a secondary menu
-    3. Shadow DOM traversal for web-component hosted dialogs
-    4. Scoped visible button scan (excluding global IDE toolbar false positives)
-    5. Keyboard fallback (Enter = allow, Escape = deny)
-    6. Optional custom instructions dispatch if user provided custom_response
-    """
+    """Forward user approval decision to Antigravity IDE workbench by clicking dialog button."""
     try:
         from integrations.antigravity.core.cdp_connection import cdp_connect
+        from integrations.antigravity.cdp.cdp_prompt_actions import dispatch_send_prompt
 
         async with cdp_connect(target_url, open_timeout=1.5, close_timeout=3.0) as ws:
             click_js = f"""
             (async () => {{
                 const dec = {json.dumps(decision.lower().strip())};
                 const explicitLabel = {json.dumps((option_label or "").lower().strip())};
+                const customResponseVal = {json.dumps((custom_response or "").strip())};
+                const expectedCmd = {json.dumps((expected_command or "").strip())};
                 const isAlwaysAllow = dec === 'always_allow' || dec.includes('always');
                 const isAllow = !isAlwaysAllow && (dec === 'allow' || dec.includes('allow') || dec.includes('accept') || dec.includes('run') || dec.includes('approve'));
                 const isDeny = dec === 'deny' || dec.includes('deny') || dec.includes('reject') || dec.includes('cancel') || dec.includes('decline');
@@ -164,6 +160,15 @@ async def dispatch_forward_approval(
                 const radioGroup = allGroups.reverse().find(rg => isVisible(rg)) || document.querySelector('[role="radiogroup"]');
                 if (radioGroup) {{
                     const card = radioGroup.closest('.bg-ide-editor-background, [class*="rounded-2xl"]') || radioGroup.parentElement;
+
+                    // Verify expected command if supplied to avoid approval spoofing/TOCTOU
+                    if (expectedCmd && card) {{
+                        const cardText = (card.innerText || card.textContent || '').trim();
+                        if (!cardText.includes(expectedCmd)) {{
+                            return {{ clicked: false, mismatch: true, reason: 'Command mismatch: dialog content does not match expected prompt' }};
+                        }}
+                    }}
+
                     const radioLabels = Array.from(radioGroup.querySelectorAll('label'));
 
                     let targetRadio = null;
@@ -180,7 +185,7 @@ async def dispatch_forward_approval(
                             }});
                         }} else if (isDeny) {{
                             // Priority match for write_in (Option 4) if custom instructions are provided
-                            if (custom_response && custom_response.trim()) {{
+                            if (customResponseVal && customResponseVal.trim()) {{
                                 targetRadio = radioLabels.find(l => Boolean(l.querySelector('textarea, [data-testid="ask-question-writein"], input[value*="write_in"]')));
                             }}
                             if (!targetRadio) {{
@@ -204,13 +209,13 @@ async def dispatch_forward_approval(
 
                         // If user provided custom denial instructions or alternative commands (Option 4 write-in)
                         let writeInInjected = false;
-                        if (custom_response && custom_response.trim()) {{
+                        if (customResponseVal && customResponseVal.trim()) {{
                             const writeIn = targetRadio.querySelector('textarea, [data-testid="ask-question-writein"]') || 
                                             card.querySelector('textarea[data-testid="ask-question-writein"]') ||
                                             card.querySelector('label:has(input[value*="write_in"]) textarea, textarea');
                             if (writeIn) {{
                                 writeIn.focus();
-                                writeIn.value = custom_response.trim();
+                                writeIn.value = customResponseVal.trim();
                                 writeIn.dispatchEvent(new Event('input', {{ bubbles: true }}));
                                 writeIn.dispatchEvent(new Event('change', {{ bubbles: true }}));
                                 writeInInjected = true;
@@ -297,8 +302,18 @@ async def dispatch_forward_approval(
                     }}
                 }}
 
+                // Priority 1c: Search dialog/modal containers
+                const containers = Array.from(document.querySelectorAll(containerSelectors.join(', '))).filter(isVisible);
                 const containerBtns = [];
                 for (const container of containers) {{
+                    // Verify expected command if supplied to avoid approval spoofing/TOCTOU
+                    if (expectedCmd) {{
+                        const cText = (container.innerText || container.textContent || '').trim();
+                        if (!cText.includes(expectedCmd)) {{
+                            continue;
+                        }}
+                    }}
+
                     // If isAlwaysAllow was chosen, check if there is an unselected 'Remember my choice' / 'Always allow' checkbox inside the dialog
                     if (isAlwaysAllow) {{
                         const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"], [role="checkbox"]')).filter(isVisible);
@@ -318,7 +333,7 @@ async def dispatch_forward_approval(
                     return {{ clicked: true, via: 'dialog_container', target: bestInContainer.label }};
                 }}
 
-                // Priority 1b: If 'always_allow' was requested and not immediately visible, check for a split-button dropdown chevron next to Allow/Run
+                // Priority 1d: If 'always_allow' was requested and not immediately visible, check for a split-button dropdown chevron next to Allow/Run
                 if (isAlwaysAllow) {{
                     const splitDrops = Array.from(document.querySelectorAll(
                         '.monaco-dropdown-button, button[aria-label*="More"], button[aria-haspopup="true"], [class*="dropdown-trigger"]'
@@ -335,38 +350,18 @@ async def dispatch_forward_approval(
                     }}
                 }}
 
-                // Priority 2: Shadow DOM traversal
+                // Priority 2: Shadow DOM traversal within verified containers
                 const shadowBtns = [];
-                collectFromShadow(document, shadowBtns);
+                for (const c of (containers.length ? containers : [document.body])) {{
+                    collectFromShadow(c, shadowBtns);
+                }}
                 const bestInShadow = pickBestButton(shadowBtns);
                 if (bestInShadow) {{
                     bestInShadow.button.click();
                     return {{ clicked: true, via: 'shadow_dom', target: bestInShadow.label }};
                 }}
 
-                // Priority 3: Global visible button scan (scored)
-                const allBtns = Array.from(document.querySelectorAll('button, .monaco-button, [role="button"]')).filter(isVisible);
-                const bestGlobal = pickBestButton(allBtns);
-                if (bestGlobal) {{
-                    bestGlobal.button.click();
-                    return {{ clicked: true, via: 'global_scan', target: bestGlobal.label }};
-                }}
-
-                // Priority 4: If 'always_allow' wasn't a separate button, fall back to clicking single 'allow'/'run' button
-                if (isAlwaysAllow) {{
-                    for (const b of allBtns) {{
-                        const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
-                        if (txt === 'allow' || txt === 'run' || txt === 'accept' || txt === 'run command') {{
-                            b.click();
-                            return {{ clicked: true, via: 'always_allow_fallback_to_allow', target: txt }};
-                        }}
-                    }}
-                }}
-
-                const allLabels = allBtns.slice(0, 30).map(b =>
-                    (b.innerText || b.textContent || b.getAttribute('aria-label') || '').trim().substring(0, 40)
-                ).filter(Boolean);
-                return {{ clicked: false, found_buttons: allLabels }};
+                return {{ clicked: false, reason: 'No matching dialog button found for approval' }};
             }})()
             """
             await ws.send(
@@ -386,37 +381,11 @@ async def dispatch_forward_approval(
             res = reply.get("result", {}).get("result", {}).get("value", {}) or {}
             clicked = bool(res.get("clicked"))
 
-            # Keyboard fallback: Enter = allow/accept, Escape = deny
+            # Never use blind keyboard fallbacks (e.g. Enter) which can execute arbitrary focused commands
             if not clicked:
-                is_allow = (
-                    "allow" in decision.lower()
-                    or "accept" in decision.lower()
-                    or "run" in decision.lower()
-                )
-                key = "Enter" if is_allow else "Escape"
-                vk = 13 if is_allow else 27
-                for ev_type in ("rawKeyDown", "keyUp"):
-                    await ws.send(
-                        json.dumps(
-                            {
-                                "id": 221,
-                                "method": "Input.dispatchKeyEvent",
-                                "params": {
-                                    "type": ev_type,
-                                    "key": key,
-                                    "code": "Enter" if is_allow else "Escape",
-                                    "windowsVirtualKeyCode": vk,
-                                    "nativeVirtualKeyCode": vk,
-                                },
-                            }
-                        )
-                    )
-                    await asyncio.wait_for(ws.recv(), timeout=1.5)
-
                 logger.info(
-                    "CDP approval button not found; dispatched keyboard fallback '%s'. Visible buttons: %s",
-                    key,
-                    res.get("found_buttons", []),
+                    "Target approval dialog button not matched or clicked. CDP response: %s",
+                    res,
                 )
 
         # If the user also provided custom instructions, only fall back to typing in the composer
@@ -428,15 +397,15 @@ async def dispatch_forward_approval(
 
         receipt_confirmed = bool(res.get("receipt_confirmed", clicked))
         return {
-            "success": True,
+            "success": clicked,
             "clicked": clicked,
             "receipt_confirmed": receipt_confirmed,
-            "via": res.get("via", "keyboard_fallback" if not clicked else None),
+            "via": res.get("via"),
             "target": res.get("target"),
-            "found_buttons": res.get("found_buttons", []),
+            "reason": res.get("reason"),
             "custom_response_dispatched": bool(custom_dispatch and custom_dispatch.get("success")),
-            "requires_native_ide": False,
-            "message": "Action forwarded to IDE" if clicked else "Sent keyboard fallback to IDE",
+            "requires_native_ide": not clicked,
+            "message": "Action forwarded to IDE" if clicked else res.get("reason", "Dialog button not found"),
         }
     except Exception as exc:
         logger.error("Failed to forward approval via CDP: %s", str(exc))

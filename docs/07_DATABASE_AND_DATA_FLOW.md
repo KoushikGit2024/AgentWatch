@@ -104,7 +104,7 @@ interactions.create_index(
 
 ## 4. Deterministic Deduplication Logic
 
-When an incoming event is submitted via `POST /api/v1/events/ingest`, the system calculates a deterministic key if `source_event_id` is missing:
+When an incoming event is submitted via `POST /api/v1/events`, the system calculates a deterministic key if `source_event_id` is missing:
 
 $$\text{source\_event\_id} = \text{SHA256}(\text{session\_id} + \text{event\_type} + \text{iso\_timestamp} + \text{raw\_payload\_hash})$$
 

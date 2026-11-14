@@ -1,34 +1,33 @@
-﻿"""Unit tests for tool and command classification in AgentWatch."""
+"""Unit tests for tool and command classification in AgentWatch."""
 
 import pytest
 from services.chat.conversation_service import ConversationService
+from services.transcripts.transcript_parser import TranscriptStepParser
 
 
 def test_sandboxed_command_does_not_require_approval():
     """Commands executed in standard sandbox must never require user approval."""
-    cs = ConversationService()
-    # Mock line from Antigravity transcript representing standard sandboxed run_command
-    args = {"CommandLine": "git status", "Cwd": "D:/workspace", "BypassSandbox": False}
-    # Verify classification logic
-    bypass = bool(args.get("BypassSandbox", False))
-    assert bypass is False
+    tc = {
+        "name": "run_command",
+        "args": {"CommandLine": "git status", "Cwd": "D:/workspace", "BypassSandbox": False},
+    }
+    item = TranscriptStepParser.parse_tool_call(
+        tc, item_index=0, turn_id="turn-1", resolved_approvals={}
+    )
+    assert item["requires_permission"] is False
 
 
 def test_elevated_command_requires_native_ide_confirmation():
     """Commands requesting BypassSandbox=True require native desktop confirmation."""
-    cs = ConversationService()
-    args = {"CommandLine": "pip install something", "Cwd": "D:/workspace", "BypassSandbox": True}
-    bypass = bool(args.get("BypassSandbox", False))
-    assert bypass is True
-
-    # Simulate how conversation service marks this item
-    perm_type = "native_permission" if bypass else None
-    requires_perm = bool(bypass)
-    requires_native_ide = bool(requires_perm and perm_type == "native_permission")
-
-    assert requires_perm is True
-    assert requires_native_ide is True
-    assert perm_type == "native_permission"
+    tc = {
+        "name": "run_command",
+        "args": {"CommandLine": "pip install something", "Cwd": "D:/workspace", "BypassSandbox": True},
+    }
+    item = TranscriptStepParser.parse_tool_call(
+        tc, item_index=0, turn_id="turn-2", resolved_approvals={}
+    )
+    assert item["requires_permission"] is True
+    assert item["permission_type"] == "command"
 
 
 def test_file_edits_do_not_generate_approval_prompts():

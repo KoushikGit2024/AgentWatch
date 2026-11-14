@@ -7,7 +7,6 @@ export default function TerminalTabsHeader({
   onSelectTab,
   onNewTab,
   onCloseTab,
-  onKillTerminal,
   isMaximized,
   onToggleMaximize,
   onClosePanel,
@@ -43,16 +42,14 @@ export default function TerminalTabsHeader({
               ) : tab.exitCode === 0 ? (
                 <span className="w-1.5 h-1.5 rounded-full bg-[#388A34] shrink-0" />
               ) : null}
-              {tabs.length > 1 && (
-                <button
-                  type="button"
-                  onClick={e => onCloseTab(tab.id, e)}
-                  title="Close Terminal Instance"
-                  className="p-0.5 hover:text-white rounded hover:bg-[#333333] transition"
-                >
-                  <div className="w-2.5 h-2.5">{Icon.x}</div>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={e => onCloseTab(tab.id, e)}
+                title="Close Terminal Instance"
+                className="p-0.5 hover:text-white rounded hover:bg-[#333333] transition"
+              >
+                <div className="w-2.5 h-2.5">{Icon.x}</div>
+              </button>
             </div>
           );
         })}
@@ -69,33 +66,24 @@ export default function TerminalTabsHeader({
           <div className="w-3.5 h-3.5">{Icon.plus}</div>
         </button>
 
-        <button
-          type="button"
-          onClick={onKillTerminal}
-          title="Kill Terminal"
-          className="p-1 rounded text-[#9D9D9D] hover:text-[#F48771] hover:bg-[#2A2A2A] transition cursor-pointer"
-        >
-          <div className="w-3.5 h-3.5">{Icon.trash}</div>
-        </button>
-
         <div className="h-3 w-[1px] bg-[#333333] mx-1" />
 
         <button
           type="button"
           onClick={onToggleMaximize}
-          title={isMaximized ? 'Restore Panel Size' : 'Maximize Panel Size'}
+          title={isMaximized ? 'Minimize Panel Size' : 'Maximize Panel Size'}
           className="p-1 rounded text-[#9D9D9D] hover:text-[#E8EAED] hover:bg-[#2A2A2A] transition cursor-pointer"
         >
-          <div className="w-3.5 h-3.5">{Icon.maximize}</div>
+          <div className="w-3.5 h-3.5">{isMaximized ? Icon.minimize2 : Icon.maximize}</div>
         </button>
 
         <button
           type="button"
           onClick={onClosePanel}
-          title="Close Panel"
+          title="Collapse Panel"
           className="p-1 rounded text-[#9D9D9D] hover:text-[#E8EAED] hover:bg-[#2A2A2A] transition cursor-pointer"
         >
-          <div className="w-3.5 h-3.5">{Icon.x}</div>
+          <div className="w-3.5 h-3.5">{Icon.chevronDown}</div>
         </button>
       </div>
     </div>

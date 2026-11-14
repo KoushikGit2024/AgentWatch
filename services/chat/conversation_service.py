@@ -1,4 +1,4 @@
-﻿"""Service to read, cache, and paginate the live Antigravity IDE conversation transcript."""
+"""Service to read, cache, and paginate the live Antigravity IDE conversation transcript."""
 
 import hashlib
 import json
@@ -27,16 +27,17 @@ class ConversationService:
             Path.home() / ".gemini" / "antigravity-ide" / "brain",
         ]
         self.brain_base = self.brain_bases[0]
-        self._stopped_active: bool = False
+        self._stopped_active: Dict[str, bool] = {}  # Scoped by conversation_id
         self._new_chat_pending: bool = False
         self._resolved_approvals: Dict[str, str] = {}
         self._latest_pending_approval: Optional[Dict[str, Any]] = None
         self._cached_key: Optional[tuple] = None
         self._cached_turns: List[Dict[str, Any]] = []
 
-    def mark_active_turn_stopped(self):
+    def mark_active_turn_stopped(self, conversation_id: Optional[str] = None):
         """Signal that the user requested emergency stop so the UI immediately reflects it."""
-        self._stopped_active = True
+        cid = conversation_id or "default"
+        self._stopped_active[cid] = True
         self._cached_key = None
 
     def mark_new_chat_pending(self):
@@ -127,12 +128,14 @@ class ConversationService:
             mtime = stat.st_mtime
             size = stat.st_size
             is_stale_inactivity = (time.time() - mtime) > 7.0
+            conv_id_key = conversation_id or "default"
+            is_stopped = self._stopped_active.get(conv_id_key, False)
             cache_sig = (
                 str(transcript_path),
                 mtime,
                 size,
                 is_stale_inactivity,
-                self._stopped_active,
+                is_stopped,
                 len(self._resolved_approvals),
             )
             if self._cached_key == cache_sig and self._cached_turns:
@@ -156,7 +159,7 @@ class ConversationService:
                         created_at = step.get("created_at")
 
                         if stype == "USER_INPUT" and content:
-                            self._stopped_active = False
+                            self._stopped_active[conv_id_key] = False
                             self._new_chat_pending = False
                             clean = TranscriptStepParser.clean_user_content(content)
                             if clean:
@@ -225,6 +228,13 @@ class ConversationService:
                                     it["status"] = "done"
                             elif content:
                                 current_agent_turn["text"] = content
+                                # Record conversational comment within execution sequence
+                                current_agent_turn["items"].append({
+                                    "id": f"comment-{len(current_agent_turn['items'])}",
+                                    "type": "comment",
+                                    "text": content,
+                                    "timestamp": created_at,
+                                })
 
                         elif (
                             stype in (
@@ -255,9 +265,13 @@ class ConversationService:
                                         last_item["extra"] = "0 results"
                                 elif last_item.get("kind") == "command":
                                     exit_code = step.get("exit_code")
+                                    clean_out = content or ""
+                                    if exit_code is None and "Command exited with code " in clean_out:
+                                        m_code = re.search(r"Command exited with code (\d+)", clean_out)
+                                        if m_code:
+                                            exit_code = int(m_code.group(1))
                                     if exit_code is not None:
                                         last_item["exit_code"] = exit_code
-                                    clean_out = content or ""
                                     if "\t\t\t\tOutput:\n" in clean_out:
                                         clean_out = clean_out.split("\t\t\t\tOutput:\n", 1)[1]
                                     elif "\t\t\t\tStdout:\n" in clean_out:
@@ -283,13 +297,21 @@ class ConversationService:
                             # Extract Error ID if present
                             err_id_match = re.search(r"Error ID:\s*([a-zA-Z0-9\-]+)", err_raw)
                             error_id = err_id_match.group(1) if err_id_match else None
-                            current_agent_turn["error"] = {
+                            err_obj = {
                                 "message": "Agent terminated due to error. A network issue or timeout occurred connecting to the model server.",
                                 "raw_error": err_raw,
                                 "error_id": error_id,
                                 "kind": "network_timeout" if any(w in err_raw.lower() for w in ["timeout", "deadline", "wsasend", "wsarecv", "closed"]) else "runtime_error",
                                 "timestamp": created_at,
                             }
+                            current_agent_turn["error"] = err_obj
+                            # Place error in execution timeline right where it occurred
+                            current_agent_turn["items"].append({
+                                "id": f"err-{len(current_agent_turn['items'])}",
+                                "type": "error",
+                                "error": err_obj,
+                                "timestamp": created_at,
+                            })
                             for it in current_agent_turn.get("items", []):
                                 it["requires_permission"] = False
                                 it["status"] = "done"
@@ -308,7 +330,7 @@ class ConversationService:
                     last_action
                     and last_action.get("kind") == "question"
                     and last_action.get("question_data")
-                    and not self._stopped_active
+                    and not is_stopped
                 )
                 is_waiting_for_approval = bool(
                     last_action
@@ -316,7 +338,7 @@ class ConversationService:
                     and last_action.get("status") == "pending"
                     and not last_action.get("approval_decision")
                     and not last_action.get("output")
-                    and not self._stopped_active
+                    and not is_stopped
                 )
 
                 if is_waiting_for_question:
@@ -345,7 +367,26 @@ class ConversationService:
                     }
                     current_agent_turn["is_working"] = False
 
-                if is_stale_inactivity or self._stopped_active:
+                # Check if there is an in-flight tool action actively running
+                has_active_command = bool(
+                    last_action
+                    and last_action.get("type") == "action"
+                    and last_action.get("kind") == "command"
+                    and last_action.get("exit_code") is None
+                    and not last_action.get("output")
+                    and not is_waiting_for_approval
+                    and not is_waiting_for_question
+                    and not is_stopped
+                )
+
+                if has_active_command:
+                    current_agent_turn["is_working"] = True
+                    current_agent_turn["active_command"] = last_action.get("command") or last_action.get("target")
+
+                # Only mark stale if no command/tool is currently executing
+                if is_stopped:
+                    current_agent_turn["is_working"] = False
+                elif is_stale_inactivity and not has_active_command:
                     current_agent_turn["is_working"] = False
 
                 turns.append(current_agent_turn)

@@ -1,4 +1,4 @@
-﻿"""Modular parser for individual Antigravity transcript steps and turns."""
+"""Modular parser for individual Antigravity transcript steps and turns."""
 
 import json
 import logging
@@ -238,11 +238,11 @@ class TranscriptStepParser:
             cwd_parts = re.split(r"[\\/]", cwd) if cwd else []
             cwd_short = "/".join(cwd_parts[-2:]) if len(cwd_parts) >= 2 else cwd
             bypassed = bool(args.get("BypassSandbox", False))
-            if not bypassed:
+            if bypassed:
                 requires_perm = True
                 perm_type = "command"
                 perm_title = "Command Approval Required"
-                perm_desc = f"Execute command in workspace: `{cmd_raw[:120]}`"
+                perm_desc = f"Execute command outside sandbox: `{cmd_raw[:120]}`"
 
         item_id = f"item-{item_index}"
         step_key = f"{turn_id}-{item_id}"

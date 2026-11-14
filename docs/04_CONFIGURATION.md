@@ -27,16 +27,12 @@ If any required variable is missing or fails type validation (e.g. an invalid in
 | **`HOST`** | `str` | `127.0.0.1` | No | Local IP interface to bind to. **Must remain `127.0.0.1`**. Never bind to `0.0.0.0` unless running in isolated containers. |
 | **`PORT`** | `int` | `8000` | No | Local TCP listening port for the FastAPI ASGI application. |
 | **`APP_PASSWORD`** | `str` | `change_this_password` | **Yes** | Shared authentication password required to log into the mobile web dashboard. Must be set to a strong secret. |
-| **`SESSION_SECRET_KEY`** | `str` | `insecure_session_secret_change_me` | **Yes** | 32-byte cryptographic secret used by `itsdangerous` to sign HTTP session cookies. Changing this invalidates active logins. |
-| **`SESSION_COOKIE_NAME`** | `str` | `cw_session` | No | Name of the authentication cookie sent to mobile browsers. |
-| **`SESSION_MAX_AGE_SECONDS`**| `int` | `86400` | No | Cookie lifespan in seconds (default is 24 hours). After expiration, users must re-authenticate. |
-| **`MONGODB_URI`** | `str` | `mongodb://127.0.0.1:27017` | **Yes** | Connection string for MongoDB Community Server. Must point to local instance without public routes. |
-| **`MONGODB_DB_NAME`** | `str` | `AgentWatch_v2` | No | Database name where collections (`events`, `sessions`, `interactions`) are maintained. |
-| **`CDP_PORTS`** | `str` | `9000,9222` | No | Comma-separated list of TCP ports scanned to discover Antigravity's remote debugging interface. |
-| **`CDP_TARGET_DOMAIN`** | `str` | `127.0.0.1` | No | Authorized hostname/IP domain for CDP targets. Rejects any non-local targets for SSRF prevention. |
-| **`TAILSCALE_CLI_PATH`** | `str` | `tailscale` | No | Path or binary name for the Tailscale command-line tool. |
-| **`ENABLE_CORS`** | `bool` | `False` | No | Enables permissive Cross-Origin Resource Sharing. Should remain `False` in production. |
-| **`MAX_REQUEST_SIZE_BYTES`** | `int` | `10485760` | No | Maximum allowed incoming HTTP request payload size (default is 10MB to accommodate event batches). |
+| **`JWT_SECRET`** | `str` | `insecure_jwt_secret_change_me` | **Yes** | Cryptographic secret used to sign and verify HMAC session tokens. Changing this invalidates active logins. |
+| **`MONGODB_URI`** | `str` | `mongodb://127.0.0.1:27017/` | **Yes** | Connection string for MongoDB Community Server. Must point to local instance without public routes. |
+| **`MONGODB_DATABASE`** | `str` | `AgentWatch_v2` | No | Database name where collections (`events`, `sessions`, `interactions`) are maintained. |
+| **`CDP_PORTS`** | `str` | `9000,9001,9002,9003` | No | Comma-separated list of TCP ports scanned to discover Antigravity's remote debugging interface. |
+| **`ALLOWED_HOSTS`** | `str` | `localhost,127.0.0.1,testserver,*.ts.net` | No | Trusted host headers allowed to prevent DNS rebinding attacks. |
+| **`MAX_UPLOAD_SIZE_BYTES`** | `int` | `52428800` | No | Maximum allowed incoming file upload size (default is 50MB to accommodate large docs, images, and text dumps). |
 
 ---
 
@@ -51,21 +47,19 @@ LOG_LEVEL=INFO
 
 # Application Security (Use high-entropy passwords)
 APP_PASSWORD=V4l1d#Str0ngP@ssw0rd!2026
-SESSION_SECRET_KEY=e4f9b8c2d1a34567890abcdef1234567890abcdef1234567890abcdef1234567
-SESSION_COOKIE_NAME=cw2_auth_session
-SESSION_MAX_AGE_SECONDS=86400
+JWT_SECRET=e4f9b8c2d1a34567890abcdef1234567890abcdef1234567890abcdef1234567
+ALLOWED_HOSTS=localhost,127.0.0.1,*.ts.net
 
 # Server Loopback Binding
 HOST=127.0.0.1
 PORT=8000
 
 # Local MongoDB Storage
-MONGODB_URI=mongodb://127.0.0.1:27017
-MONGODB_DB_NAME=AgentWatch_v2
+MONGODB_URI=mongodb://127.0.0.1:27017/
+MONGODB_DATABASE=AgentWatch_v2
 
 # Antigravity Remote Debugging Discovery
-CDP_PORTS=9000,9222
-CDP_TARGET_DOMAIN=127.0.0.1
+CDP_PORTS=9000,9001,9002,9003
 
 # Tailscale Integration
 TAILSCALE_CLI_PATH=tailscale
@@ -77,12 +71,12 @@ TAILSCALE_CLI_PATH=tailscale
 
 Verify your active configuration using the internal CLI utility:
 ```powershell
-python -c "from config.settings import settings; print('Loaded DB:', settings.mongodb_db_name); print('CDP Ports:', settings.parsed_cdp_ports); print('Host:', settings.host); print('Funnel Protection Verified: Active')"
+python -c "from config.settings import settings; print('Loaded DB:', settings.mongodb_database); print('CDP Ports:', settings.parsed_cdp_ports); print('Host:', settings.host); print('Funnel Protection Verified: Active')"
 ```
 Output:
 ```
 Loaded DB: AgentWatch_v2
-CDP_Ports: [9000, 9222]
+CDP_Ports: [9000, 9001, 9002, 9003]
 Host: 127.0.0.1
 Funnel Protection Verified: Active
 ```

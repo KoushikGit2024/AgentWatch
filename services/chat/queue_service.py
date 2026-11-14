@@ -1,4 +1,4 @@
-﻿"""
+"""
 Queued Message Service.
 Maintains state of queued follow-up prompts across offline buffer and live Antigravity IDE workbench.
 Supports listing, queuing, send-now, deleting, and editing queued messages.
@@ -58,10 +58,11 @@ class QueueMessageService:
         Merge IDE native queued messages from CDP with any locally buffered messages.
         """
         ide_items = []
-        if antigravity_adapter.active_target_url:
+        target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+        if target_ws:
             from integrations.antigravity.cdp.cdp_queue_actions import get_ide_queued_messages
 
-            ide_items = await get_ide_queued_messages(antigravity_adapter.active_target_url)
+            ide_items = await get_ide_queued_messages(target_ws)
 
         # Combine IDE native items + local items
         combined = []
@@ -104,9 +105,11 @@ class QueueMessageService:
         act = action.lower()
         # If it's an IDE native item (starts with ide_q_)
         if item_id.startswith("ide_q_"):
-            if not antigravity_adapter.active_target_url:
+            target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+            if not target_ws:
                 antigravity_adapter.discover_cdp()
-            if not antigravity_adapter.active_target_url:
+                target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+            if not target_ws:
                 return {"success": False, "error": "Antigravity CDP not connected"}
 
             try:
@@ -117,7 +120,7 @@ class QueueMessageService:
             from integrations.antigravity.cdp.cdp_queue_actions import dispatch_queued_action
 
             return await dispatch_queued_action(
-                antigravity_adapter.active_target_url, act, index=index, text=new_text
+                target_ws, act, index=index, text=new_text
             )
 
         # Otherwise, local buffer item
@@ -160,18 +163,19 @@ class QueueMessageService:
         Supports both IDE native queued items and local buffer.
         """
         # 1. Check IDE native queued messages first
-        if antigravity_adapter.active_target_url:
+        target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+        if target_ws:
             from integrations.antigravity.cdp.cdp_queue_actions import (
                 get_ide_queued_messages,
                 dispatch_queued_action,
             )
 
             try:
-                ide_items = await get_ide_queued_messages(antigravity_adapter.active_target_url)
+                ide_items = await get_ide_queued_messages(target_ws)
                 if ide_items:
                     logger.info("Auto-dispatching oldest IDE native queued message (index 0)")
                     res = await dispatch_queued_action(
-                        antigravity_adapter.active_target_url, "send_now", index=0
+                        target_ws, "send_now", index=0
                     )
                     return {"source": "ide_native", "result": res}
             except Exception as e:
@@ -181,7 +185,14 @@ class QueueMessageService:
         if self._buffered_queue:
             next_item = self._buffered_queue[0]
             logger.info("Auto-dispatching oldest local buffered message: %s", next_item.get("id"))
-            return await self.execute_action(next_item["id"], "send_now")
+            res = await self.execute_action(next_item["id"], "send_now")
+            try:
+                from services.networking.websocket_manager import websocket_manager
+                remaining = await self.get_all_queued_messages()
+                await websocket_manager.broadcast({"type": "queue_update", "messages": remaining})
+            except Exception as b_err:
+                logger.debug("Failed broadcasting queue update on auto-dispatch: %s", str(b_err))
+            return res
 
         return None
 

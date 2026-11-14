@@ -1,4 +1,4 @@
-﻿"""
+"""
 CDP Actions for Antigravity IDE Queued Messages.
 Scans for [data-testid="queued-messages-card"], extracts messages,
 and handles Send Now, Delete, and Edit actions.
@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 async def get_ide_queued_messages(target_url: str) -> List[Dict[str, Any]]:
     """
-    Scans the IDE workbench for the [data-testid="queued-messages-card"]
-    and extracts all queued items.
+    Scans the IDE workbench or chat iframe for the [data-testid="queued-messages-card"]
+    and extracts all queued items (even if collapsed with inert="" / grid-template-rows: 0fr).
     """
     try:
         from integrations.antigravity.core.cdp_connection import cdp_connect
@@ -27,8 +27,8 @@ async def get_ide_queued_messages(target_url: str) -> List[Dict[str, Any]]:
                 if (!card) return [];
                 const rows = Array.from(card.querySelectorAll('.min-h-7, [class*="min-h-7"]'));
                 return rows.map((row, idx) => {
-                    const textSpan = row.querySelector('.line-clamp-2, span.text-sm, [data-quotable="true"]');
-                    const text = textSpan ? textSpan.innerText.trim() : '';
+                    const textSpan = row.querySelector('[data-quotable="true"], .line-clamp-2, span.text-sm');
+                    const text = textSpan ? (textSpan.innerText || textSpan.textContent || '').trim() : '';
                     const hasSendNow = !!row.querySelector('button[aria-label*="Send now" i], button[aria-label*="Send Now"]');
                     const hasEdit = !!row.querySelector('button[aria-label*="Edit" i]');
                     const hasDelete = !!row.querySelector('button[aria-label*="Delete" i]');
@@ -75,6 +75,14 @@ async def dispatch_queued_action(
             (async () => {{
                 const card = document.querySelector('[data-testid="queued-messages-card"]');
                 if (!card) return {{ success: false, error: 'Queued messages card not found' }};
+
+                // Ensure expanded if needed for interaction
+                const expandBtn = card.querySelector('[data-testid="queued-messages-expand-button"]');
+                if (expandBtn && expandBtn.getAttribute('aria-expanded') === 'false') {{
+                    expandBtn.click();
+                    await new Promise(r => setTimeout(r, 100));
+                }}
+
                 const rows = Array.from(card.querySelectorAll('.min-h-7, [class*="min-h-7"]'));
                 const targetRow = rows[{index}] || rows[0];
                 if (!targetRow) return {{ success: false, error: 'Target queued row not found' }};

@@ -1,4 +1,4 @@
-﻿"""
+"""
 API routes for direct remote file operations (save, create, delete).
 """
 
@@ -43,7 +43,7 @@ async def save_file(payload: SaveFileRequest):
     if not payload.path.strip():
         raise HTTPException(status_code=400, detail="Path cannot be empty")
 
-    target = _resolve_target_path(payload.path.strip())
+    target = _resolve_target_path(payload.path.strip(), for_mutation=True)
     try:
         res = file_editor_service.save_file_content(target, payload.content)
         return res
@@ -59,7 +59,7 @@ async def save_file(payload: SaveFileRequest):
 @router.post("/create")
 async def create_file_or_dir(payload: CreateItemRequest):
     """Create a new file or directory inside the workspace."""
-    target = _resolve_target_path(payload.path.strip())
+    target = _resolve_target_path(payload.path.strip(), for_mutation=True)
     try:
         res = file_editor_service.create_new_file_or_dir(target, payload.is_dir)
         return res
@@ -74,7 +74,7 @@ async def create_file_or_dir(payload: CreateItemRequest):
 @router.delete("/delete")
 async def delete_file_or_dir(payload: DeleteItemRequest):
     """Delete a file or directory from the workspace."""
-    target = _resolve_target_path(payload.path.strip())
+    target = _resolve_target_path(payload.path.strip(), for_mutation=True)
     try:
         res = file_editor_service.delete_file_or_dir(target)
         return res
@@ -89,7 +89,7 @@ async def delete_file_or_dir(payload: DeleteItemRequest):
 @router.post("/rename")
 async def rename_file_or_dir(payload: RenameItemRequest):
     """Rename a file or directory in place."""
-    target = _resolve_target_path(payload.path.strip())
+    target = _resolve_target_path(payload.path.strip(), for_mutation=True)
     try:
         res = file_editor_service.rename_item(target, payload.new_name.strip())
         return res
@@ -108,8 +108,8 @@ async def rename_file_or_dir(payload: RenameItemRequest):
 @router.post("/move")
 async def move_file_or_dir(payload: MoveItemRequest):
     """Move a file or directory into a target directory."""
-    src = _resolve_target_path(payload.source_path.strip())
-    dst_folder = _resolve_target_path(payload.destination_folder.strip())
+    src = _resolve_target_path(payload.source_path.strip(), for_mutation=True)
+    dst_folder = _resolve_target_path(payload.destination_folder.strip(), for_mutation=True)
     try:
         res = file_editor_service.move_item(src, dst_folder)
         return res

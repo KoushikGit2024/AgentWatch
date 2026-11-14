@@ -1,4 +1,4 @@
-﻿"""Approval Request and Action Response Route."""
+"""Approval Request and Action Response Route."""
 
 import uuid
 from datetime import datetime, timezone
@@ -71,9 +71,22 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
         _pushed_pending_approval = None
 
     event_repo = EventRepository()
+
+    cdp_forward = await antigravity_adapter.forward_approval(
+        request_type=payload.request_type,
+        decision=payload.decision,
+        custom_response=custom_text,
+        option_label=payload.option_label,
+        expected_command=payload.target,
+    )
+
+    forward_success = bool(cdp_forward.get("success", False))
+    if not forward_success and not cdp_forward.get("requires_native_ide"):
+        _resolved_approvals.pop(payload.step_id, None)
+
     doc = EventDocument(
         session_id="active-session",
-        event_type=f"permission_{payload.decision}",
+        event_type=f"permission_{payload.decision}" if forward_success else "permission_forward_failed",
         category="security",
         summary=f"User {payload.decision.upper()}: {payload.request_type.title()} Request for {payload.target}",
         timestamp=datetime.now(timezone.utc),
@@ -83,31 +96,26 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
             "decision": payload.decision,
             "step_id": payload.step_id,
             "has_custom_response": bool(custom_text),
+            "forward_success": forward_success,
             "metadata": payload.metadata or {},
         },
     )
     event_repo.insert_event(doc)
 
-    await websocket_manager.broadcast(
-        {
-            "type": "approval_resolved",
-            "data": {
-                "step_id": payload.step_id,
-                "request_type": payload.request_type,
-                "target": payload.target,
-                "decision": payload.decision,
-                "custom_response": custom_text,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            },
-        }
-    )
-
-    cdp_forward = await antigravity_adapter.forward_approval(
-        request_type=payload.request_type,
-        decision=payload.decision,
-        custom_response=custom_text,
-        option_label=payload.option_label,
-    )
+    if forward_success:
+        await websocket_manager.broadcast(
+            {
+                "type": "approval_resolved",
+                "data": {
+                    "step_id": payload.step_id,
+                    "request_type": payload.request_type,
+                    "target": payload.target,
+                    "decision": payload.decision,
+                    "custom_response": custom_text,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            }
+        )
 
     try:
         paginated = _conversation_service.get_paginated_conversation(limit=15)
@@ -124,9 +132,9 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
         pass
 
     return {
-        "success": True,
-        "status": "recorded",
-        "forwarded_to_ide": cdp_forward.get("success", False),
+        "success": forward_success,
+        "status": "resolved" if forward_success else "failed",
+        "forwarded_to_ide": forward_success,
         "requires_native_ide": cdp_forward.get("requires_native_ide", False),
         "custom_response_dispatched": cdp_forward.get("custom_response_dispatched", False),
         "forward_details": cdp_forward,

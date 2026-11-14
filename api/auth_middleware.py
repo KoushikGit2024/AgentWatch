@@ -12,7 +12,6 @@ PUBLIC_PATHS = [
     "/login.html",
     "/api/v1/login",
     "/static",
-    "/uploads",
     "/favicon.ico",
     "/favicon.svg",
     "/logo.svg",
@@ -46,26 +45,28 @@ async def dispatch_auth_middleware(request: Request, call_next):
             return await _safe_call_next()
 
         if check_auth_required(request):
-            if not path.startswith("/api/"):
-                token = request.cookies.get("agentwatch_token")
-                if not token:
-                    auth_hdr = request.headers.get("Authorization", "")
-                    if auth_hdr.startswith("Bearer "):
-                        token = auth_hdr.split("Bearer ", 1)[1].strip()
-                if not token or not verify_session_token(token):
-                    return RedirectResponse(url="/login.html", status_code=303)
-            else:
-                auth_hdr = request.headers.get("Authorization", "")
-                token = None
-                if auth_hdr.startswith("Bearer "):
-                    token = auth_hdr.split("Bearer ", 1)[1].strip()
-                if not token:
-                    token = request.cookies.get("agentwatch_token")
-                if not token or not verify_session_token(token):
+            accept_hdr = request.headers.get("Accept", "").lower()
+            auth_hdr = request.headers.get("Authorization", "")
+            is_ajax_or_api = (
+                path.startswith("/api/")
+                or path in ("/app-state", "/snapshot")
+                or "application/json" in accept_hdr
+                or auth_hdr.startswith("Bearer ")
+            )
+
+            token = None
+            if auth_hdr.startswith("Bearer "):
+                token = auth_hdr.split("Bearer ", 1)[1].strip()
+            if not token:
+                token = request.cookies.get("agentwatch_token") or request.cookies.get("cw_auth_token")
+
+            if not token or not verify_session_token(token):
+                if is_ajax_or_api:
                     return JSONResponse(
                         status_code=401,
                         content={"detail": "Unauthorized: valid session token required."},
                     )
+                return RedirectResponse(url="/login.html", status_code=303)
 
         return await _safe_call_next()
     except Exception as exc:

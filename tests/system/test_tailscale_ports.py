@@ -1,4 +1,4 @@
-﻿"""Unit tests for Tailscale Port Forwarding Service and API Endpoints."""
+"""Unit tests for Tailscale Port Forwarding Service and API Endpoints."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,6 +23,8 @@ def test_tailscale_status_endpoint(client):
 
 def test_tailscale_ports_endpoint(client):
     """Verify /api/v1/tailscale/ports lists active ports."""
+    if not tailscale_service.is_tailscale_installed():
+        pytest.skip("Tailscale CLI not installed on test host")
     res = client.get("/api/v1/tailscale/ports")
     assert res.status_code == 200
     data = res.json()

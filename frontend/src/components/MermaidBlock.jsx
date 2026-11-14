@@ -9,7 +9,7 @@ function ensureMermaidInitialized() {
   mermaid.initialize({
     startOnLoad: false,
     theme: 'dark',
-    securityLevel: 'loose',
+    securityLevel: 'strict',
     darkMode: true,
     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
     themeVariables: {

@@ -21,9 +21,17 @@ SECRET_PATTERNS = [
         re.compile(r"(?i)(password|secret|passwd)\s*[:=]\s*['\"][^'\"]{8,}['\"]"),
         "Hardcoded Password Assignment",
     ),
+    (
+        re.compile(r"eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}"),
+        "Raw JWT Token",
+    ),
+    (
+        re.compile(r"100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\.[0-9]{1,3}\.[0-9]{1,3}"),
+        "Private Tailscale CGNAT IP Address",
+    ),
 ]
 
-# Whitelist safe placeholder strings
+# Whitelist safe placeholder strings (matched case-sensitively / word-bounded)
 SAFE_PLACEHOLDERS = [
     "placeholder_app_password",
     "placeholder_jwt_secret_key_change_in_production",
@@ -32,6 +40,7 @@ SAFE_PLACEHOLDERS = [
     "ag_default_token",
     "[REDACTED]",
     "antigravity",
+    "AgentWatch_v2_default_secret_key",
 ]
 
 # Directories and files to exclude from scan
@@ -43,6 +52,7 @@ EXCLUDE_DIRS = {
     "node_modules",
     "data",
     "logs",
+    "uploads",
     ".pytest_cache",
 }
 EXCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".ico", ".svg", ".cert", ".key", ".pyc"}

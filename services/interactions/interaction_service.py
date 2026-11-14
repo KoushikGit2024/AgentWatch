@@ -1,4 +1,4 @@
-﻿"""Central Interaction and Capability Management Service."""
+"""Central Interaction and Capability Management Service."""
 
 import logging
 import hashlib
@@ -103,12 +103,40 @@ class InteractionService:
         # Validate options if choice kind
         kind = interaction.get("kind")
         if kind in (InteractionKind.SINGLE_CHOICE.value, InteractionKind.MULTIPLE_CHOICE.value):
-            # Build allowed IDs from top-level options AND nested question sub-options
-            allowed_ids = {opt["id"] for opt in interaction.get("options", [])}
+            # Build allowed IDs and label-to-id mapping from top-level options AND nested question sub-options
+            allowed_ids = set()
+            label_to_id = {}
+            for opt in interaction.get("options", []):
+                opt_id = opt.get("id")
+                opt_label = (opt.get("label") or "").strip().lower()
+                if opt_id:
+                    allowed_ids.add(opt_id)
+                if opt_label:
+                    label_to_id[opt_label] = opt_id
+
             for q in interaction.get("questions", []):
                 for sub_opt in q.get("options", []):
-                    allowed_ids.add(sub_opt["id"])
-            selected = set(payload.selected_option_ids)
+                    sub_id = sub_opt.get("id")
+                    sub_label = (sub_opt.get("label") or "").strip().lower()
+                    if sub_id:
+                        allowed_ids.add(sub_id)
+                    if sub_label:
+                        label_to_id[sub_label] = sub_id
+
+            # Normalize selected items: accept either option id OR exact option label
+            normalized_selected = set()
+            for item in payload.selected_option_ids:
+                item_str = str(item).strip()
+                if item_str in allowed_ids:
+                    normalized_selected.add(item_str)
+                elif item_str.lower() in label_to_id:
+                    normalized_selected.add(label_to_id[item_str.lower()])
+                else:
+                    normalized_selected.add(item_str)
+
+            selected = normalized_selected
+            # Update payload to standardized IDs
+            payload.selected_option_ids = list(normalized_selected)
             # If custom response permitted and custom text provided, allow with or without selected options
             is_custom = bool(payload.custom_response and payload.custom_response.strip())
             # For multi-question interactions, also allow if questions exist (selection optional per-question)
