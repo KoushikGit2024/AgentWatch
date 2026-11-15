@@ -42,7 +42,7 @@ def get_chat_messages(
     ),
 ):
     """
-    Return paginated Antigravity conversation stream extracted from IDE transcripts.
+    Return paginated conversation stream extracted from IDE transcripts.
     Supports request-based upward scroll lazy-loading via `before=<oldest_turn_index>&limit=15`.
     """
     return _conversation_service.get_paginated_conversation(
@@ -65,13 +65,13 @@ async def get_snapshot(
     if not cdp_status["cdp"]["connected"]:
         return {
             "status": "unavailable",
-            "message": "Antigravity CDP is not currently connected.",
-            "instructions": "Start Antigravity with '--remote-debugging-port=9000' to enable live visual viewport capture.",
+            "message": "IDE CDP is not currently connected.",
+            "instructions": "Start IDE with '--remote-debugging-port=9000' to enable live visual viewport capture.",
             "screenshot": None,
             "has_screenshot": False,
             "target": None,
             "hash": None,
-            "html": "<div class='empty-snapshot'><p>Antigravity not connected via CDP (port 9000).</p></div>",
+            "html": "<div class='empty-snapshot'><p>IDE not connected via CDP (port 9000).</p></div>",
         }
 
     screenshot_b64 = await antigravity_adapter.capture_screenshot()
@@ -94,7 +94,7 @@ async def get_snapshot(
         "screenshot": f"data:image/jpeg;base64,{screenshot_b64}" if has_shot else None,
         "has_screenshot": has_shot,
         "hash": cur_hash,
-        "html": "<div class='active-snapshot'><p>Connected to Antigravity Workbench via CDP.</p></div>",
+        "html": "<div class='active-snapshot'><p>Connected to IDE Workbench via CDP.</p></div>",
     }
 
 
@@ -112,7 +112,7 @@ async def get_snapshot_binary(
     if not cdp_status["cdp"]["connected"]:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Antigravity CDP is not currently connected.",
+            detail="IDE CDP is not currently connected.",
         )
 
     screenshot_b64 = await antigravity_adapter.capture_screenshot()
@@ -197,7 +197,7 @@ async def get_app_state():
 @router.post("/api/v1/prompt")
 async def send_message(payload: PromptSubmissionRequest):
     """
-    Send prompt to Antigravity session with schema validation and truthful lifecycle tracking.
+    Send prompt to IDE session with schema validation and truthful lifecycle tracking.
     """
     if payload.idempotency_key:
         state, cached = _idempotency_repo.reserve_or_get(
@@ -268,9 +268,9 @@ async def send_message(payload: PromptSubmissionRequest):
             "reason": None
             if dispatched
             else (
-                dispatch_details.get("error", "Antigravity CDP is not currently connected on remote debugging port")
+                dispatch_details.get("error", "IDE CDP is not currently connected on remote debugging port")
                 if isinstance(dispatch_details, dict)
-                else "Antigravity CDP is not currently connected on remote debugging port"
+                else "IDE CDP is not currently connected on remote debugging port"
             ),
         }
 
@@ -338,7 +338,7 @@ async def send_message(payload: PromptSubmissionRequest):
 @router.post("/api/v1/controls/stop")
 async def stop_generation():
     """
-    Stop generation signal with verified dispatch to Antigravity IDE workbench.
+    Stop generation signal with verified dispatch to IDE workbench.
     """
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)

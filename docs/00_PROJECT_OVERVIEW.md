@@ -12,9 +12,9 @@
 
 ## 1. Executive Summary & Purpose
 
-**AgentWatch** is a production-grade, local-first observation, remote interaction, and telemetry platform engineered specifically for **Google Antigravity**—the agentic AI coding environment developed by DeepMind and Google.
+**AgentWatch** is a production-grade, local-first observation, remote interaction, and telemetry platform engineered for desktop AI coding environments—with dedicated first-class integration for **Google Antigravity** and support for Chromium-based agentic IDEs.
 
-When developers work with advanced autonomous coding agents like Antigravity, tasks frequently run for extended durations—analyzing massive codebases, planning multi-file refactors, executing test suites, and proposing iterative changes. Prior to AgentWatch, observing progress or answering agent questions required remaining tied to the physical workstation.
+When developers work with advanced autonomous coding agents, tasks frequently run for extended durations—analyzing massive codebases, planning multi-file refactors, executing test suites, and proposing iterative changes. Prior to AgentWatch, observing progress or answering agent questions required remaining tied to the physical workstation.
 
 AgentWatch transforms this workflow into a seamless, mobile-first experience. From an Android phone or any authenticated mobile device on your private mesh network, you can:
 - Observe live agent thinking processes, execution timelines, and code edits in real time.
@@ -92,7 +92,7 @@ AgentWatch replaces fragile, ad-hoc reverse-engineered scripts with an enterpris
 |       (Localhost:27017)  |                             | (Localhost:9000/9222)  |
 |                          v                             v                        |
 |  +-------------------------------+   +---------------------------------------+  |
-|  |  MongoDB Community 8.x        |   |   Google Antigravity IDE Session      |  |
+|  |  MongoDB Community 8.x        |   |   Desktop IDE Session (Antigravity)   |  |
 |  |  - DB: AgentWatch_v2          |   |   - Active Coding Agent               |  |
 |  |  - Collections: events,       |   |   - Workbench DOM & Chat Window       |  |
 |  |    sessions, interactions     |   |   - Terminal Execution Engine         |  |

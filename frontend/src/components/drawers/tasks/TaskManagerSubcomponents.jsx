@@ -2,7 +2,7 @@ import React from 'react';
 import { Icon } from '../../../constants/icons';
 
 export function ProcessRow({ proc, idx, terminatingPid, onEndTask }) {
-  const isAntigravity = proc.name.toLowerCase().includes('antigravity');
+  const isIdeProcess = proc.name.toLowerCase().includes('antigravity') || proc.name.toLowerCase().includes('code') || proc.name.toLowerCase().includes('cursor');
   const isChrome = proc.name.toLowerCase().includes('chrome');
   const isTerminating =
     terminatingPid && (proc.pids?.includes(terminatingPid) || proc.pid === terminatingPid);
@@ -10,7 +10,7 @@ export function ProcessRow({ proc, idx, terminatingPid, onEndTask }) {
   return (
     <div
       className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-xs transition hover:bg-zinc-800/40 ${
-        isAntigravity ? 'bg-blue-950/15' : ''
+        isIdeProcess ? 'bg-blue-950/15' : ''
       }`}
     >
       {/* Name and Group Count */}
@@ -20,7 +20,7 @@ export function ProcessRow({ proc, idx, terminatingPid, onEndTask }) {
           <div className="flex items-center gap-1.5 truncate">
             <span
               className={`font-medium truncate ${
-                isAntigravity ? 'text-blue-300' : isChrome ? 'text-zinc-100' : 'text-zinc-200'
+                isIdeProcess ? 'text-blue-300' : isChrome ? 'text-zinc-100' : 'text-zinc-200'
               }`}
             >
               {proc.name}

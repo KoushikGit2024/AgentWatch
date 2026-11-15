@@ -22,7 +22,7 @@ AgentWatch organizes capabilities into six primary functional domains:
 ## 2. Dynamic Agent Interaction Engine
 
 ### Feature 2.1: Single-Choice Question Answering
-- **Description:** When an Antigravity agent proposes mutually exclusive options (e.g. "Choose an implementation strategy: Approach A vs. Approach B"), the system renders a responsive card with radio-style option pills.
+- **Description:** When an agent proposes mutually exclusive options (e.g. "Choose an implementation strategy: Approach A vs. Approach B"), the system renders a responsive card with radio-style option pills.
 - **Visuals:** Shows an animated `SINGLE CHOICE` badge, question title, description, and option pills with individual labels and descriptions.
 - **Recommended Badges:** If the agent highlights a preferred choice (`is_recommended: true`), the card prominently displays a green "Recommended" tag.
 - **Validation:** Enforces that exactly one option is selected prior to submission.
@@ -48,13 +48,13 @@ AgentWatch organizes capabilities into six primary functional domains:
 ## 3. Mobile Viewport Mirroring & Synchronization
 
 ### Feature 3.1: Live DOM Viewport Mirroring
-- **Description:** Captures the desktop Antigravity Workbench conversation window via Chrome DevTools Protocol (`/snapshot`) and renders it directly on the mobile screen.
+- **Description:** Captures the desktop IDE Workbench conversation window via Chrome DevTools Protocol (`/snapshot`) and renders it directly on the mobile screen.
 - **Dark Mode Overrides:** Injects tailored CSS ensuring high contrast, clean typography, readable code snippets, and consistent dark themes regardless of desktop color schemes.
 - **Bandwidth Optimization:** Strips unnecessary desktop UI frames, toolbar buttons, and menus, focusing exclusively on the agent dialogue and code blocks.
 
 ### Feature 3.2: Bi-Directional Scroll Synchronization
 - **Description:** Scrolling on your phone sends debounced scroll percentage coordinates (`POST /remote-scroll`) to the desktop IDE.
-- **Virtualized DOM Handling:** Antigravity virtualizes large message histories. Scrolling on mobile causes the desktop window to scroll, loading older or newer messages into the DOM, which are then reflected back in the mobile snapshot.
+- **Virtualized DOM Handling:** The IDE virtualizes large message histories. Scrolling on mobile causes the desktop window to scroll, loading older or newer messages into the DOM, which are then reflected back in the mobile snapshot.
 - **User Scroll Protection:** When you touch or scroll the mobile screen, auto-refresh scrolling is locked for 3 seconds (`userScrollLockUntil`) so incoming agent updates do not violently jerk your screen while reading.
 
 ### Feature 3.3: Interactive Element Toggling (Remote Click)

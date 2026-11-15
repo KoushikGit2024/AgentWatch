@@ -41,7 +41,7 @@ The system is partitioned into four primary layers, with dependencies strictly p
                                           |
                                           v
 +-----------------------------------------------------------------------------------+
-| 4. External Infrastructure Adapters (Antigravity CDP, Tailscale CLI Subprocess)   |
+| 4. External Infrastructure Adapters (IDE CDP Adapter, Tailscale CLI Subprocess)   |
 |    - Interfaces with Chrome DevTools Protocol and local Tailscale daemon          |
 +-----------------------------------------------------------------------------------+
 ```
@@ -62,7 +62,7 @@ The system is partitioned into four primary layers, with dependencies strictly p
 - **`InteractionRepository`:** Interacts with the `interactions` collection. Maintains pending agent questions, single/multi-choice configurations, and atomic response records.
 
 ### Layer 4: Infrastructure & External Adapters
-- **`AntigravityAdapter`:** Manages discovery of Antigravity's remote debugging interface. Scans ports `9000` and `9222`, interrogates `/json/list`, matches the workbench target, and manages communication via the Chrome DevTools Protocol.
+- **`AntigravityAdapter` (IDE Adapter):** Manages discovery of the IDE's remote debugging interface. Scans ports `9000` through `9003` and `9222`, interrogates `/json/list`, matches the active workbench target, and manages communication via the Chrome DevTools Protocol.
 - **`Database Client`:** Manages MongoDB connection pools with timeouts and automatic index verification on startup.
 
 ---

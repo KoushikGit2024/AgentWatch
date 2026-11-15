@@ -1,4 +1,4 @@
-﻿"""Event query and ingestion API routes."""
+"""Event query and ingestion API routes."""
 
 from fastapi import APIRouter, HTTPException, Query, status
 from typing import Optional, List, Dict, Any
@@ -20,7 +20,7 @@ interaction_repo = InteractionRepository()
 @router.post("", status_code=status.HTTP_201_CREATED)
 def ingest_event(payload: IngestEventRequest):
     """
-    Ingest a new normalized event from Antigravity adapter or hook dispatcher.
+    Ingest a new normalized event from IDE adapter or hook dispatcher.
     Applies recursive secret redaction and prevents duplicate insertion.
     """
     doc_id, is_duplicate = service.process_and_store_event(payload)
@@ -111,20 +111,20 @@ def list_recovery_items(session_id: Optional[str] = Query(None)):
             )
         )
 
-    # 2. Check Antigravity CDP connection state
+    # 2. Check IDE CDP connection state
     ag_status = antigravity_adapter.get_status()
     if not ag_status.get("cdp", {}).get("connected", False):
         items.append(
             RecoveryItem(
                 id="rec-cdp-disconnected",
-                title="Antigravity CDP Disconnected",
+                title="IDE CDP Disconnected",
                 severity="critical",
-                description="Antigravity remote debugging port (9000) is not responding.",
+                description="IDE remote debugging port (9000) is not responding.",
                 what_happened="AgentWatch cannot communicate with the desktop IDE via Chrome DevTools Protocol.",
                 what_is_known="FastAPI and MongoDB are online, but viewport capture and live dispatch are paused.",
-                what_is_unknown="Whether Antigravity is running without '--remote-debugging-port=9000' or closed.",
+                what_is_unknown="Whether IDE is running without '--remote-debugging-port=9000' or closed.",
                 is_retry_safe=True,
-                recommended_action="Restart Antigravity with '--remote-debugging-port=9000' and recheck.",
+                recommended_action="Restart IDE with '--remote-debugging-port=9000' and recheck.",
                 action_type="recheck_connection",
                 context={"configured_ports": "9000"},
             )
@@ -143,7 +143,7 @@ def list_recovery_items(session_id: Optional[str] = Query(None)):
                 description=f"Operation in scope '{scope}' was reserved but outcome is unconfirmed.",
                 what_happened="A request reserved an idempotency key, but a server restart or timeout occurred before completion.",
                 what_is_known="The request payload was fingerprinted and stored in MongoDB.",
-                what_is_unknown="Whether the operation reached Antigravity or was dropped before execution.",
+                what_is_unknown="Whether the operation reached IDE or was dropped before execution.",
                 is_retry_safe=False,
                 recommended_action="Inspect desktop IDE to verify if action executed, then mark reconciled.",
                 action_type="reconcile_manual",

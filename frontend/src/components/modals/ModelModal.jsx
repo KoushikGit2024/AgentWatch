@@ -118,7 +118,7 @@ export default function ModelModal({
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-[#747C87]">Synchronized live with Antigravity IDE</p>
+              <p className="text-[11px] text-[#747C87]">Synchronized live with IDE</p>
             </div>
           </div>
           <button

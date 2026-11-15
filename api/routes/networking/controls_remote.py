@@ -19,7 +19,7 @@ router = APIRouter(tags=["Remote Controls & Configuration"])
 
 @router.get("/api/v1/models/scan")
 async def scan_models():
-    """On-demand scan of all available plan models and effort tiers from Antigravity IDE.
+    """On-demand scan of all available plan models and effort tiers from IDE.
     Only triggered when user opens the Model selection modal, preventing background focus collisions.
     """
     model_info = await antigravity_adapter.get_active_model_and_plan(allow_dropdown_scan=True)
@@ -43,7 +43,7 @@ async def set_mode(payload: SetModeRequest):
 @router.post("/api/v1/set-model")
 @router.post("/api/v1/controls/model")
 async def set_model(payload: SetModelRequest):
-    """Switch active AI model in Antigravity IDE without static guessing."""
+    """Switch active AI model in IDE without static guessing."""
     is_testing = os.environ.get("ENVIRONMENT") == "testing" or settings.environment == "testing"
     if is_testing:
         return {"success": True, "model": payload.model, "test_mode": True}

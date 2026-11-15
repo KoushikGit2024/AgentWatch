@@ -274,13 +274,13 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
               updated[lastIdx] = {
                 ...updated[lastIdx],
                 is_working: false,
-                text: `Notice: Prompt could not be dispatched to Antigravity IDE (${failReason}). Verify that Antigravity is running with remote debugging port 9000.`,
+                text: `Notice: Prompt could not be dispatched to IDE (${failReason}). Verify that IDE is running with remote debugging port 9000.`,
               };
             }
             return updated;
           });
         } else {
-          toast.success('Prompt dispatched to Antigravity IDE workbench', 'Prompt Sent');
+          toast.success('Prompt dispatched to IDE workbench', 'Prompt Sent');
           setTimeout(fetchChatMessages, 450);
         }
       } catch (err) {

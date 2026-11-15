@@ -90,7 +90,7 @@ export default function LightboxModal({ isOpen, onClose, screenshotUrl }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Antigravity IDE Viewport"
+      aria-label="IDE Viewport"
       className="fixed inset-0 z-[10000] bg-black/95 flex flex-col p-2 sm:p-4 select-none animate-in fade-in duration-150"
       onMouseUp={handleMouseUp}
     >
@@ -98,7 +98,7 @@ export default function LightboxModal({ isOpen, onClose, screenshotUrl }) {
       <div className="flex items-center justify-between pb-2 border-b border-[#30343A] shrink-0 px-2 gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs sm:text-sm font-semibold text-[#E8EAED] tracking-tight truncate">
-            Antigravity Viewport Inspector
+            IDE Viewport Inspector
           </span>
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1D2024] text-[#A0A6AF] border border-[#30343A] shrink-0">
             {Math.round(zoom * 100)}%
@@ -186,7 +186,7 @@ export default function LightboxModal({ isOpen, onClose, screenshotUrl }) {
         >
           <img
             src={screenshotUrl}
-            alt="Antigravity IDE Viewport"
+            alt="IDE Viewport"
             draggable={false}
             className={`rounded border border-[#30343A] shadow-2xl ${
               zoom === 1 ? 'max-w-full max-h-[82dvh] object-contain' : 'max-w-none'

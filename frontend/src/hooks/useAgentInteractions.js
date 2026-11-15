@@ -86,11 +86,11 @@ export function useAgentInteractions({ fetchChatMessages, isMountedRef }) {
           );
         } else if (receiptConfirmed) {
           toast.success(
-            `'${decision}' accepted by Antigravity IDE (receipt confirmed).`,
+            `'${decision}' accepted by IDE (receipt confirmed).`,
             'Receipt Confirmed'
           );
         } else if (forwarded) {
-          toast.success(`'${decision}' forwarded to Antigravity IDE.`, 'Decision Sent');
+          toast.success(`'${decision}' forwarded to IDE.`, 'Decision Sent');
         } else {
           toast.info(`Decision '${decision}' recorded.`, 'Approval Acknowledged');
         }
@@ -155,7 +155,7 @@ export function useAgentInteractions({ fetchChatMessages, isMountedRef }) {
         customOk ? customResponse.trim() : ''
       );
       setSubmitSuccess(true);
-      toast.success('Response submitted to Antigravity session.', 'Decision Accepted');
+      toast.success('Response submitted to IDE session.', 'Decision Accepted');
       setTimeout(() => {
         if (isMountedRef.current) {
           setPendingInteraction(null);
@@ -201,7 +201,7 @@ export function useAgentInteractions({ fetchChatMessages, isMountedRef }) {
           const promptPayload = chosenLabels?.join(', ') || customText || '';
           if (promptPayload) await api.sendPrompt(promptPayload);
         }
-        toast.success('Response dispatched to Antigravity IDE', 'Decision Submitted');
+        toast.success('Response dispatched to IDE', 'Decision Submitted');
         if (isMountedRef.current) {
           setPendingInteraction(null);
           setIsInteractionMinimized(false);

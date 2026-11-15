@@ -1,6 +1,25 @@
-# AgentWatch 📱 — Local-First Antigravity Observer & Mobile Control Center
+# AgentWatch — Local-First Antigravity Observer & Mobile Control Center
 
 Monitor, approve, and steer your local **Google Antigravity** AI coding sessions in real time from any phone, tablet, or browser over private peer-to-peer networking—with zero cloud dependencies, ultra-low memory/bandwidth usage, and full bidirectional popup support.
+
+---
+
+## Table of Contents
+
+- [What AgentWatch Does](#what-agentwatch-does)
+- [System Architecture & Data Flow](#system-architecture--data-flow)
+- [System Prerequisites](#system-prerequisites-what-to-install-on-your-machine)
+- [Getting Started & Launch Guide](#getting-started--launch-guide)
+  - [Recommended: One-Click Startup (`run.ps1`)](#recommended-one-click-startup-runps1)
+  - [Manual Step-by-Step Launch](#manual-step-by-step-launch)
+  - [Connecting Your Phone (Secure Peer-to-Peer Access)](#connecting-your-phone-secure-peer-to-peer-access)
+- [Edge Cases & Device-Specific Troubleshooting Matrix](#edge-cases--device-specific-troubleshooting-matrix)
+- [Verification & Testing Commands](#verification--testing-commands)
+- [How to Update & How to Migrate](#how-to-update--how-to-migrate)
+  - [1. How to Update AgentWatch (`updates/Update.md`)](#1-how-to-update-agentwatch-updatesupdatemd)
+  - [2. How to Migrate to Another IDE (`migration/Migration.md`)](#2-how-to-migrate-to-another-ide-migrationmigrationmd)
+
+---
 
 ## What AgentWatch Does
 
@@ -65,7 +84,7 @@ Monitor, approve, and steer your local **Google Antigravity** AI coding sessions
 +-------------------------------------------------------------------------------+
 ```
 
-## 📋 System Prerequisites (What to Install on Your Machine)
+## System Prerequisites (What to Install on Your Machine)
 
 Before launching AgentWatch, make sure your machine has the following tools installed globally:
 
@@ -81,7 +100,7 @@ Before launching AgentWatch, make sure your machine has the following tools inst
 
 ---
 
-## 🚀 Getting Started & Launch Guide
+## Getting Started & Launch Guide
 
 ### 1. One-Click Automated Launch (Windows — Recommended)
 
@@ -279,7 +298,7 @@ If you run `AgentWatch` inside **WSL2** while **Antigravity IDE** runs on the Wi
 
 ```bash
 # Compile-check all Python modules
-python3 -m py_compile main.py api/routes/controls.py services/conversation_service.py services/interaction_service.py services/diff_helper.py integrations/antigravity/cdp_actions.py integrations/antigravity/adapter.py
+python3 -m py_compile main.py api/routes/system/controls.py services/chat/conversation_service.py services/interactions/interaction_service.py services/workspace/diff_helper.py integrations/antigravity/cdp/cdp_actions.py integrations/antigravity/core/adapter.py
 
 # Run pytest suite
 pytest -v
@@ -287,3 +306,51 @@ pytest -v
 # Trigger a live test Command Approval Popup in your connected phone browser
 curl -X POST "http://127.0.0.1:8000/api/v1/approvals/test-popup"
 ```
+
+---
+
+## How to Update & How to Migrate
+
+AgentWatch includes dedicated blueprints for keeping your installation calibrated with ongoing IDE updates or migrating the watcher to any other desktop AI IDE (such as Cursor, Windsurf, VS Code + Copilot/Cline, or custom IDE forks).
+
+### 1. How to Update AgentWatch (`updates/Update.md`)
+
+When you want to verify that all AgentWatch subsystems (CDP sessions, models, effort tiers, running tasks, terminal subshells, and decision cards) are fully synchronized with your current IDE installation, use the updater protocol:
+
+1. **Prompt to Trigger:** Tell your coding agent:
+   > *"Run the update protocol from `updates/Update.md` and audit all endpoints."*
+2. **What the Agent Does:**
+   - Follows the phased workflow in [updates/Update.md](file:///d:/All%20Codes/AllProjects/AgentWatchV2/updates/Update.md).
+   - Executes the automated diagnostic script checking ports `9000`, `9001-9003`, and `9222`.
+   - Verifies the 8 core subsystems: Model/Quota, Effort Tiers, Running Tasks (SQLite + `psutil` PIDs), Interactive Terminal sessions, Decision Cards, Queued Messages, Git Keizu DAG graph, and Database session switching.
+   - If any UI selector fails, prompts you for a snippet via DevTools and calibrates the selector automatically.
+
+### 2. How to Migrate to Another IDE (`migration/Migration.md`)
+
+When adapting AgentWatch to a new IDE (e.g. Cursor, Windsurf, or a newly released IDE fork):
+
+1. **Launch the Target IDE with Remote Debugging:**
+   ```powershell
+   # Example: Windows
+   & "C:\Path\To\YourIDE.exe" --remote-debugging-port=9000
+   ```
+2. **Prompt to Trigger Migration:** Tell your coding agent:
+   > *"Read `migration/Migration.md` and help me adapt AgentWatch for [Target IDE Name]."*
+3. **What the Agent Does:**
+   - Reads the comprehensive guide in [migration/Migration.md](file:///d:/All%20Codes/AllProjects/AgentWatchV2/migration/Migration.md).
+   - Instructs you to open `http://localhost:9000` in Google Chrome to inspect the IDE's live webview DOM.
+   - Provides the DOM audit script to paste into the DevTools Console:
+     ```javascript
+     // Runs full input, button, dialog, and model selector audit
+     (() => {
+       const audit = {
+         inputs: Array.from(document.querySelectorAll('textarea, input, [contenteditable="true"]')).map(e => ({ tag: e.tagName, role: e.getAttribute('role'), testId: e.getAttribute('data-testid'), aria: e.getAttribute('aria-label') })),
+         buttons: Array.from(document.querySelectorAll('button, [role="button"]')).filter(b => b.offsetWidth > 0).map(b => ({ text: b.innerText.trim(), testId: b.getAttribute('data-testid'), aria: b.getAttribute('aria-label') })),
+         dialogs: Array.from(document.querySelectorAll('[role="dialog"], [role="radiogroup"]')).map(d => ({ role: d.getAttribute('role'), text: d.innerText.slice(0, 100) }))
+       };
+       console.log('=== DOM AUDIT ===', JSON.stringify(audit, null, 2));
+       return audit;
+     })();
+     ```
+   - Automatically maps the extracted selectors into `integrations/<ide>/cdp/` and adapts the storage watchers in `services/transcripts/` or `services/monitoring/` to match the target IDE's local database and session structure.
+

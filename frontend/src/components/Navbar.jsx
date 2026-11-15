@@ -52,7 +52,7 @@ export default function Navbar({
     try {
       const res = await api.reconnectCdp();
       if (res?.connected || res?.status === 'active') {
-        toast.success('Reconnected to Antigravity IDE workbench', 'CDP Live');
+        toast.success('Reconnected to IDE workbench', 'CDP Live');
       } else {
         toast.info(
           'Probing CDP ports... Ensure IDE is started with --remote-debugging-port=9000',
@@ -105,7 +105,7 @@ export default function Navbar({
             )}
             {isWorkspaceMismatch && (
               <span
-                title={`This conversation was created under ${displayName}, while your active Antigravity IDE window is currently ${workbenchWorkspaceName || 'another workspace'}.`}
+                title={`This conversation was created under ${displayName}, while your active IDE window is currently ${workbenchWorkspaceName || 'another workspace'}.`}
                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-medium shrink-0 animate-in fade-in duration-200"
               >
                 <span className="w-3 h-3 text-amber-400 shrink-0">{Icon.alertTriangle}</span>
@@ -124,8 +124,8 @@ export default function Navbar({
                     cdpStatus?.latency_ms ? ` (${cdpStatus.latency_ms}ms)` : ''
                   }`
                 : isReconnecting
-                  ? 'Reconnecting to Antigravity IDE on port 9000...'
-                  : 'CDP Standby · Click to reconnect to Antigravity IDE'
+                  ? 'Reconnecting to IDE on port 9000...'
+                  : 'CDP Standby · Click to reconnect to IDE'
             }
             className={`flex items-center gap-1.5 mt-0.5 text-[10px] text-[#A0A6AF] font-mono select-none ${
               !isConnected ? 'cursor-pointer hover:text-[#E8EAED]' : ''

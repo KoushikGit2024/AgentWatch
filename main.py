@@ -152,7 +152,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AgentWatch",
-    description="Service-Oriented Local-First Antigravity Observer and Mobile Monitor",
+    description="Service-Oriented Local-First IDE Observer and Mobile Monitor",
     version="2.0.0",
     lifespan=lifespan,
 )

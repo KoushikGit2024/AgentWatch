@@ -3,7 +3,7 @@ import { Icon } from '../../constants/icons';
 
 /**
  * QueuedMessagesCard
- * Matches the Antigravity IDE workbench Queued Messages design:
+ * Matches the IDE workbench Queued Messages design:
  * - Collapsible card with count badge and subtitle "Sends after agent finishes working"
  * - List of queued messages with Send Now, Edit, and Delete action buttons
  * - Clicking Edit loads the prompt back into the composer textarea for modification

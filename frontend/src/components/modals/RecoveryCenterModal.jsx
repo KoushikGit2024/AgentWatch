@@ -125,7 +125,7 @@ export function RecoveryCenterModal({
                   </div>
                   <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800">
                     <div className="text-[10px] text-zinc-500 uppercase font-semibold">
-                      Antigravity CDP (Port {diagnostics.cdp_port || 9000})
+                      IDE CDP (Port {diagnostics.cdp_port || 9000})
                     </div>
                     <div
                       className={`text-sm font-semibold mt-1 flex items-center gap-1.5 ${diagnostics.cdp_connected ? 'text-emerald-400' : 'text-amber-400'}`}

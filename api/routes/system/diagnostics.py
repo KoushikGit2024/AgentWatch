@@ -1,4 +1,4 @@
-﻿"""Operational Diagnostics Route."""
+"""Operational Diagnostics Route."""
 
 from fastapi import APIRouter, HTTPException, Request
 from integrations.antigravity.core.adapter import antigravity_adapter
@@ -10,7 +10,7 @@ router = APIRouter(tags=["Diagnostics"])
 def get_operational_diagnostics():
     """
     Comprehensive operational diagnostics reporting independently verified
-    health of FastAPI, MongoDB readiness, Antigravity CDP, and unresolved operations.
+    health of FastAPI, MongoDB readiness, IDE CDP, and unresolved operations.
     Sanitizes private local paths and internal secrets.
     """
     from config.database import check_mongo_connection, get_database
@@ -21,7 +21,7 @@ def get_operational_diagnostics():
     mongo_status = check_mongo_connection()
     db_ready = mongo_status.get("status") == "connected"
 
-    # 2. Antigravity CDP Target Status
+    # 2. IDE CDP Target Status
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status.get("cdp", {}).get("connected", False)
 

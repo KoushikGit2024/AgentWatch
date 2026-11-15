@@ -1,4 +1,4 @@
-﻿"""Health and readiness routes."""
+"""Health and readiness routes."""
 
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
@@ -26,7 +26,7 @@ def get_health():
 def get_readiness():
     """
     Readiness check distinguishing between backend availability, MongoDB connectivity,
-    and Antigravity IDE connection state.
+    and IDE connection state.
     """
     mongo_status = check_mongo_connection()
     ag_status = antigravity_adapter.get_status()
@@ -44,6 +44,7 @@ def get_readiness():
             {
                 "ready": is_ready,
                 "database": mongo_status,
+                "ide": ag_status,
                 "antigravity": ag_status,
                 "tailscale": tailscale_status,
                 "capabilities": capabilities,

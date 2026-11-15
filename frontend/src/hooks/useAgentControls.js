@@ -50,7 +50,7 @@ export function useAgentControls({
     });
     try {
       await api.stopAgent();
-      toast.info('Emergency stop signal sent to Antigravity session.', 'Agent Stopped');
+      toast.info('Emergency stop signal sent to IDE session.', 'Agent Stopped');
       setTimeout(fetchChatMessages, 400);
     } catch (err) {
       toast.error(err.message || 'Failed to stop agent', 'Stop Request Failed');

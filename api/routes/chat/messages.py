@@ -1,4 +1,4 @@
-﻿"""API routes for monitoring Antigravity inter-agent and system messages."""
+"""API routes for monitoring IDE inter-agent and system messages."""
 
 from fastapi import APIRouter, Query
 from services.chat.message_sync_service import message_sync_service

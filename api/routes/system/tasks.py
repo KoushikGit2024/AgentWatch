@@ -1,4 +1,4 @@
-"""API routes for monitoring Antigravity background tasks."""
+"""API routes for monitoring IDE background tasks."""
 
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query

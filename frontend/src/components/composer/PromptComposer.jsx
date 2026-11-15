@@ -5,7 +5,7 @@ import { toast } from '../../services/toastService';
 import AttachmentPreview from '../chat/AttachmentPreview';
 import WorkbenchBar from './WorkbenchBar';
 import AttachmentLightbox from './AttachmentLightbox';
-import AntigravityTerminalPanel from '../terminal/AntigravityTerminalPanel';
+import IDETerminalPanel from '../terminal/IDETerminalPanel';
 import { useComposerAttachments } from './useComposerAttachments';
 import { useWorkbenchTasks } from './useWorkbenchTasks';
 import { useTaskExecutionTimers } from '../../hooks/useTaskExecutionTimers';
@@ -129,7 +129,7 @@ export function PromptComposer({
         />
 
         {isTerminalPanelOpen && (
-          <AntigravityTerminalPanel
+          <IDETerminalPanel
             isOpen={isTerminalPanelOpen}
             onClose={() => setIsTerminalPanelOpen(false)}
             embedded={true}

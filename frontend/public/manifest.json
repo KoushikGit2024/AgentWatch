@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#101113",
   "theme_color": "#101113",
-  "description": "Real-time Mobile & Desktop Monitor for Antigravity Agents",
+  "description": "Real-time Mobile & Desktop Monitor for IDE Agents",
   "icons": [
     {
       "src": "/favicon.svg",

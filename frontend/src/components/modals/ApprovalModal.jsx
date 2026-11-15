@@ -30,7 +30,7 @@ export default function ApprovalModal({ approval, isSubmitting, onDecide, onDism
   const description =
     approval.description ||
     approval.permission_desc ||
-    'Antigravity is waiting for your confirmation before executing this action.';
+    'The agent is waiting for your confirmation before executing this action.';
   const isCommand = requestType === 'command' || Boolean(approval.command);
   const stepId = approval.step_id || approval.id;
 

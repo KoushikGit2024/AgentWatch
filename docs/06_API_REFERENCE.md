@@ -51,7 +51,7 @@ Returns any active command or tool approval awaiting user confirmation.
     "request_type": "command",
     "target": "alembic upgrade head",
     "title": "Command Approval Required",
-    "description": "Antigravity is waiting for your permission to execute this terminal command.",
+    "description": "The agent is waiting for your permission to execute this terminal command.",
     "command": "alembic upgrade head",
     "cwd": "/workspace/app",
     "options": [
@@ -65,7 +65,7 @@ Returns any active command or tool approval awaiting user confirmation.
 ```
 
 ### 2.2 Respond to Approval
-Forwards the user's decision (**Allow**, **Always Allow**, **Deny**, or a dynamic IDE popup option) and optional custom instructions (`custom_response`) to Antigravity via CDP.
+Forwards the user's decision (**Allow**, **Always Allow**, **Deny**, or a dynamic IDE popup option) and optional custom instructions (`custom_response`) to the IDE via CDP.
 
 - **Route:** `POST /api/v1/approvals/respond`
 - **Request Body (`ApprovalDecisionRequest`):**

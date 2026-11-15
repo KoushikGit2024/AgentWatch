@@ -90,7 +90,7 @@ const ChatTurn = memo(function ChatTurn({
           <span
             className={`w-2 h-2 rounded-full ${turn.is_working ? 'bg-cyan-400 pulse-live ring-2 ring-cyan-400/30' : 'bg-emerald-400 ring-2 ring-emerald-400/20'}`}
           />
-          <span className="font-semibold text-[#E8EAED] tracking-tight">Antigravity Agent</span>
+          <span className="font-semibold text-[#E8EAED] tracking-tight">IDE Agent</span>
           {turn.is_working && (
             <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-800/40">
               streaming

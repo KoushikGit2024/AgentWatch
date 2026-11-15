@@ -130,7 +130,7 @@ export function HistoryDrawer({
             <button
               type="button"
               onClick={handleCreateNew}
-              title="New Conversation in Antigravity"
+              title="New Conversation in IDE"
               className="px-2.5 py-1 rounded-md bg-[#7C9FC5]/20 hover:bg-[#7C9FC5]/30 border border-[#7C9FC5]/40 text-xs font-medium text-[#7C9FC5] transition flex items-center gap-1 cursor-pointer"
             >
               <div className="w-3.5 h-3.5">{Icon.plus}</div>

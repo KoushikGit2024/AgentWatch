@@ -41,9 +41,9 @@ Supported interaction classes:
 }
 ```
 
-### How Options & "Type Something Else" Are Dispatched to Antigravity
-1. **Direct DOM Option Click:** When the user selects a predefined option, `dispatch_answer_question()` in `integrations/antigravity/cdp_actions.py` first searches the active Antigravity DOM (QuickInput rows, question cards, radio/button options) and clicks the matching option directly.
-2. **Composer Fallback & Custom Instructions:** If the user types custom text in **"Type something else / Custom instructions"** (or if the question card is not a clickable DOM widget), AgentWatch focuses the Antigravity input via CDP, inserts the text using native `Input.insertText`, and submits it.
+### How Options & "Type Something Else" Are Dispatched to IDE
+1. **Direct DOM Option Click:** When the user selects a predefined option, `dispatch_answer_question()` first searches the active IDE DOM (QuickInput rows, question cards, radio/button options) and clicks the matching option directly.
+2. **Composer Fallback & Custom Instructions:** If the user types custom text in **"Type something else / Custom instructions"** (or if the question card is not a clickable DOM widget), AgentWatch focuses the IDE input via CDP, inserts the text using native `Input.insertText`, and submits it.
 
 ---
 
@@ -55,7 +55,7 @@ Supported interaction classes:
   "request_type": "command",
   "target": "alembic upgrade head",
   "title": "Command Approval Required",
-  "description": "Antigravity is waiting for your permission to execute this terminal command.",
+  "description": "The agent is waiting for your permission to execute this terminal command.",
   "command": "alembic upgrade head",
   "cwd": "/workspace/backend",
   "options": [
@@ -69,4 +69,4 @@ Supported interaction classes:
 
 ### Precision CDP Approval Forwarding
 - **Disambiguated Button Scoring:** `dispatch_forward_approval()` scores **Always Allow** (`always allow`, `always run`, `allow all`, including expanding split-button dropdown chevrons) separately from single **Allow** (`allow`, `run`, `accept`) and **Deny** (`deny`, `reject`, `cancel`).
-- **Deny / Allow with Custom Instructions:** If the user enters custom instructions in `ApprovalModal` or `ApprovalCard` (e.g., *"Don't run alembic upgrade yet, generate a migration script first"*), AgentWatch clicks **Deny** (or **Allow**) in the IDE and immediately dispatches the custom instructions into the Antigravity prompt composer.
+- **Deny / Allow with Custom Instructions:** If the user enters custom instructions in `ApprovalModal` or `ApprovalCard` (e.g., *"Don't run alembic upgrade yet, generate a migration script first"*), AgentWatch clicks **Deny** (or **Allow**) in the IDE and immediately dispatches the custom instructions into the IDE prompt composer.

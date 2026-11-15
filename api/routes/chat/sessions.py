@@ -25,7 +25,7 @@ def list_conversations(
     refresh: bool = Query(False, description="Force refresh cache from disk"),
 ):
     """
-    Retrieve paginated and searchable past Antigravity conversations directly from Gemini Brain stores.
+    Retrieve paginated and searchable past conversations directly from brain stores.
     Supports lazy infinite-scroll with offset and limit.
     """
     return conversation_history_service.list_conversations(
@@ -36,7 +36,7 @@ def list_conversations(
 @router.post("/switch-chat")
 async def switch_conversation(payload: SelectChatRequest):
     """
-    Switch active conversation in AgentWatch and navigate the Antigravity IDE webview via CDP.
+    Switch active conversation in AgentWatch and navigate the IDE webview via CDP.
     """
     from integrations.antigravity.core.adapter import antigravity_adapter
     from integrations.antigravity.cdp.cdp_session_actions import dispatch_switch_conversation
@@ -79,7 +79,7 @@ async def switch_conversation(payload: SelectChatRequest):
 @router.post("/new-chat")
 async def new_conversation():
     """
-    Trigger New Conversation session in Antigravity IDE via CDP,
+    Trigger New Conversation session in IDE via CDP,
     and wipe active chat stream immediately.
     """
     from integrations.antigravity.core.adapter import antigravity_adapter
@@ -93,7 +93,7 @@ async def new_conversation():
         target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
 
     if not target_ws:
-        raise HTTPException(status_code=503, detail="Antigravity IDE not connected via CDP")
+        raise HTTPException(status_code=503, detail="IDE not connected via CDP")
 
     # Reset active state on adapter & service
     conversation_service.mark_new_chat_pending()

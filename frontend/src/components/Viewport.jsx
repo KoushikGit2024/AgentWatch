@@ -28,7 +28,7 @@ export function Viewport({ snapshotData, onStartNewChat, chatContainerRef }) {
           </div>
           <h2 className="text-sm font-semibold text-zinc-200">No Active Chat Open</h2>
           <p className="text-xs text-zinc-500 max-w-xs">
-            Start a new conversation or ask Antigravity to begin working.
+            Start a new conversation or ask the agent to begin working.
           </p>
           <button
             type="button"

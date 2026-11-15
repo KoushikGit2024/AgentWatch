@@ -34,7 +34,7 @@ export function ScreenViewport({
       <div className="px-3 sm:px-4 py-2 border-b border-[#30343A] bg-[#17191C] flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 text-xs text-[#A0A6AF] min-w-0">
           <span className="font-semibold text-[#E8EAED] truncate">
-            Antigravity Workspace Viewport
+            IDE Workspace Viewport
           </span>
           <span>·</span>
           <span className="text-[#79B89A] font-mono shrink-0 flex items-center gap-1.5">
@@ -77,7 +77,7 @@ export function ScreenViewport({
           <div className="relative flex items-center justify-center">
             <img
               src={snapshotData.screenshot}
-              alt="Antigravity IDE Viewport"
+              alt="IDE Viewport"
               onClick={() => setLightboxOpen(true)}
               className={`cursor-zoom-in rounded-lg border border-[#30343A] shadow-2xl transition-all ${
                 fitMode === 'fit'
@@ -99,7 +99,7 @@ export function ScreenViewport({
             </div>
             <div className="space-y-1">
               <p className="text-sm font-semibold text-white tracking-tight">
-                Capturing Antigravity Viewport...
+                Capturing IDE Viewport...
               </p>
               <p className="text-xs text-[#94A3B8]">
                 Connecting to IDE Chrome DevTools Protocol at port 9000
@@ -111,7 +111,7 @@ export function ScreenViewport({
             <div className="w-10 h-10 rounded-md bg-[#17191C] border border-[#30343A] flex items-center justify-center mx-auto text-[#A0A6AF] mb-2">
               <div className="w-5 h-5">{Icon.screen}</div>
             </div>
-            <p className="text-sm font-medium text-[#E8EAED]">Antigravity CDP Viewport</p>
+            <p className="text-sm font-medium text-[#E8EAED]">IDE CDP Viewport</p>
             <p className="text-xs">No active window screenshot captured yet.</p>
           </div>
         )}
