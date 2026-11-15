@@ -210,13 +210,13 @@ async def delete_attachment(filename: str, conversation_id: Optional[str] = None
             status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete system placeholder"
         )
 
-    deleted = attachment_service.delete_attachment(filename, conversation_id=conversation_id)
-    if not deleted:
+    freed_bytes = attachment_service.delete_attachment(filename, conversation_id=conversation_id)
+    if freed_bytes is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attachment file not found"
         )
 
-    return {"success": True, "deleted": safe_name}
+    return {"success": True, "deleted": safe_name, "freed_bytes": freed_bytes}
 
 
 @router.post("/api/v1/attachments/delete-batch")
@@ -233,14 +233,17 @@ async def delete_attachments_batch(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     deleted = []
     failed = []
+    total_freed_bytes = 0
 
     for name in filenames:
         safe_name = os.path.basename(name)
         if safe_name == ".gitkeep":
             continue
         try:
-            if attachment_service.delete_attachment(name, conversation_id=conversation_id):
+            freed = attachment_service.delete_attachment(name, conversation_id=conversation_id)
+            if freed is not None:
                 deleted.append(safe_name)
+                total_freed_bytes += freed
             else:
                 failed.append({"filename": safe_name, "error": "File not found"})
         except Exception as e:
@@ -252,4 +255,6 @@ async def delete_attachments_batch(payload: Dict[str, Any]) -> Dict[str, Any]:
         "failed_count": len(failed),
         "deleted": deleted,
         "failed": failed,
+        "freed_bytes": total_freed_bytes,
+        "freed_mb": round(total_freed_bytes / (1024 * 1024), 2),
     }

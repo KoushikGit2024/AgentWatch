@@ -2,8 +2,6 @@ import { useState, useCallback } from 'react';
 import { api } from '../services/api';
 
 export function useAgentAuxData(isMountedRef) {
-  const [timelineEvents, setTimelineEvents] = useState([]);
-  const [isTimelineLoading, setIsTimelineLoading] = useState(false);
   const [systemLogs, setSystemLogs] = useState([]);
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [recoveryItems, setRecoveryItems] = useState([]);
@@ -11,19 +9,6 @@ export function useAgentAuxData(isMountedRef) {
   const [diagnostics, setDiagnostics] = useState(null);
   const [historyChats, setHistoryChats] = useState([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-
-  const fetchTimelineEvents = useCallback(async () => {
-    setIsTimelineLoading(true);
-    try {
-      const data = await api.getTimeline(80);
-      if (isMountedRef.current) {
-        setTimelineEvents(data.events || []);
-      }
-    } catch {
-    } finally {
-      if (isMountedRef.current) setIsTimelineLoading(false);
-    }
-  }, [isMountedRef]);
 
   const fetchSystemLogs = useCallback(async () => {
     setIsLogsLoading(true);
@@ -71,8 +56,6 @@ export function useAgentAuxData(isMountedRef) {
   }, [isMountedRef]);
 
   return {
-    timelineEvents,
-    isTimelineLoading,
     systemLogs,
     isLogsLoading,
     recoveryItems,
@@ -80,7 +63,6 @@ export function useAgentAuxData(isMountedRef) {
     diagnostics,
     historyChats,
     isHistoryLoading,
-    fetchTimelineEvents,
     fetchSystemLogs,
     fetchRecoveryItems,
     fetchHistoryChats,

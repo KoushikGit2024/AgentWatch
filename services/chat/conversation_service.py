@@ -145,7 +145,7 @@ class ConversationService:
             stat = transcript_path.stat()
             mtime = stat.st_mtime
             size = stat.st_size
-            is_stale_inactivity = (time.time() - mtime) > 7.0
+            is_stale_inactivity = (time.time() - mtime) > 45.0
             conv_id_key = conversation_id or "default"
             is_stopped = self._stopped_active.get(conv_id_key, False)
             cache_sig = (
@@ -316,16 +316,28 @@ class ConversationService:
                                     "timestamp": created_at,
                                     "is_working": False,
                                 }
-                            current_agent_turn["is_working"] = False
-                            err_raw = str(step.get("error") or step.get("message") or content or "Agent terminated due to error").strip()
+                            err_raw = str(step.get("error") or step.get("message") or content or "Agent step error").strip()
+                            err_raw_lower = err_raw.lower()
+                            
+                            # Only terminal failures (cancellations, quota exhaustion, fatal abortion) abort the working state
+                            # Transient API retry attempts or step errors allow agent execution to continue
+                            is_retry_attempt = bool(re.search(r"\(attempt\s+\d+\)", err_raw_lower)) or "interrupted" in err_raw_lower
+                            is_terminal_failure = (
+                                not is_retry_attempt
+                                and any(w in err_raw_lower for w in ["quota", "resource_exhausted", "too many requests", "cancelled", "canceled", "aborted"])
+                            )
+
+                            if is_terminal_failure:
+                                current_agent_turn["is_working"] = False
+                            
                             # Extract Error ID if present
                             err_id_match = re.search(r"Error ID:\s*([a-zA-Z0-9\-]+)", err_raw)
                             error_id = err_id_match.group(1) if err_id_match else None
                             err_obj = {
-                                "message": "Agent terminated due to error. A network issue or timeout occurred connecting to the model server.",
+                                "message": "Agent execution encountered an error." if not is_terminal_failure else "Agent terminated due to error.",
                                 "raw_error": err_raw,
                                 "error_id": error_id,
-                                "kind": "network_timeout" if any(w in err_raw.lower() for w in ["timeout", "deadline", "wsasend", "wsarecv", "closed"]) else "runtime_error",
+                                "kind": "network_timeout" if any(w in err_raw_lower for w in ["timeout", "deadline", "wsasend", "wsarecv", "closed"]) else "runtime_error",
                                 "timestamp": created_at,
                             }
                             current_agent_turn["error"] = err_obj

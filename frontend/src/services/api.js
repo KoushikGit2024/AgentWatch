@@ -152,11 +152,6 @@ export const api = {
     return res.json();
   },
 
-  async getTimeline(limit = 80) {
-    const res = await request(`/api/v1/events?limit=${limit}`);
-    return res.json();
-  },
-
   async getLogs(limit = 250) {
     const res = await request(`/api/v1/logs?limit=${limit}`);
     return res.json();

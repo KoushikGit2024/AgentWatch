@@ -6,9 +6,6 @@ import { toast } from '../services/toastService';
 import { api } from '../services/api';
 
 // Code-split heavy secondary drawers and modal views with dynamic import()
-const ActivityTimelineDrawer = lazy(() =>
-  import('./drawers/ActivityTimelineDrawer').then(m => ({ default: m.ActivityTimelineDrawer }))
-);
 const SystemLogsDrawer = lazy(() =>
   import('./drawers/SystemLogsDrawer').then(m => ({ default: m.SystemLogsDrawer }))
 );
@@ -30,16 +27,6 @@ const FileViewerModal = lazy(() => import('./modals/fileViewer/FileViewerModal')
 const PortForwardingModal = lazy(() => import('./modals/PortForwardingModal'));
 
 export function AppDrawersAndModals({
-  timelineOpen,
-  setTimelineOpen,
-  filteredTimelineEvents,
-  isTimelineLoading,
-  timelineCategory,
-  setTimelineCategory,
-  timelineSearch,
-  setTimelineSearch,
-  fetchTimelineEvents,
-
   logsOpen,
   setLogsOpen,
   systemLogs,
@@ -106,20 +93,6 @@ export function AppDrawersAndModals({
   return (
     <>
       <Suspense fallback={null}>
-        {timelineOpen && (
-          <ActivityTimelineDrawer
-            isOpen={timelineOpen}
-            onClose={() => setTimelineOpen(false)}
-            events={filteredTimelineEvents}
-            isLoading={isTimelineLoading}
-            activeCategory={timelineCategory}
-            onSelectCategory={setTimelineCategory}
-            searchQuery={timelineSearch}
-            onChangeSearch={setTimelineSearch}
-            onRefresh={fetchTimelineEvents}
-          />
-        )}
-
         {logsOpen && (
           <SystemLogsDrawer
             isOpen={logsOpen}

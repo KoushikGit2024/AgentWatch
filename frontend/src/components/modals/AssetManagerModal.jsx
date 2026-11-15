@@ -71,8 +71,16 @@ export default function AssetManagerModal({
 
   const executeDeleteSingle = async filename => {
     try {
-      await api.deleteAttachment(filename, activeConversationId);
-      toast.success(`Deleted ${filename}`, 'Asset Removed');
+      const res = await api.deleteAttachment(filename, activeConversationId);
+      const targetAtt = attachments.find(a => a.filename === filename);
+      const freedBytes =
+        typeof res?.freed_bytes === 'number'
+          ? res.freed_bytes
+          : typeof targetAtt?.size === 'number'
+            ? targetAtt.size
+            : null;
+      const sizeNote = freedBytes !== null ? ` (${formatFileSize(freedBytes)} freed)` : '';
+      toast.success(`Deleted ${filename}${sizeNote}`, 'Asset Removed');
       setAttachments(prev => prev.filter(a => a.filename !== filename));
       setSelectedIds(prev => {
         const next = new Set(prev);
@@ -93,10 +101,16 @@ export default function AssetManagerModal({
     try {
       const res = await api.deleteBatchAttachments(Array.from(selectedIds), activeConversationId);
       if (res && res.success) {
-        toast.success(
-          `Deleted ${res.deleted_count} file(s) (${res.freed_mb} MB freed)`,
-          'Batch Delete'
-        );
+        const freedFormatted =
+          typeof res.freed_bytes === 'number'
+            ? formatFileSize(res.freed_bytes)
+            : typeof res.freed_mb === 'number'
+              ? `${res.freed_mb} MB`
+              : null;
+        const msg = freedFormatted
+          ? `Deleted ${res.deleted_count} file(s) (${freedFormatted} freed)`
+          : `Deleted ${res.deleted_count} file(s)`;
+        toast.success(msg, 'Batch Delete');
         setAttachments(prev => prev.filter(a => !selectedIds.has(a.filename)));
         setSelectedIds(new Set());
         setConfirmDelete(null);

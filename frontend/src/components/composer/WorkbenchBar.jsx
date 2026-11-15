@@ -24,18 +24,6 @@ export default function WorkbenchBar({
       <div className="flex min-w-0 gap-x-1.5 overflow-hidden items-center">
         <button
           type="button"
-          data-tooltip-id="tooltip-changesOverview"
-          onClick={onOpenReviewChanges}
-          title="Changes Overview"
-          className="aw-focus-ring group rounded p-1.5 hover:bg-[#1D2024] text-[#A0A6AF] hover:text-[#E8EAED] transition cursor-pointer"
-        >
-          <div className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform">
-            {Icon.fileEdit}
-          </div>
-        </button>
-
-        <button
-          type="button"
           data-tooltip-id="tooltip-terminal"
           onClick={() => onToggleAttachedTab('terminal')}
           title="AI Running Commands & Tasks"

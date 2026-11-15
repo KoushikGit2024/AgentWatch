@@ -198,8 +198,8 @@ class AttachmentService:
             "offset": offset,
         }
 
-    def delete_attachment(self, filename: str, conversation_id: Optional[str] = None) -> bool:
-        """Delete an attachment whether global or chat-scoped."""
+    def delete_attachment(self, filename: str, conversation_id: Optional[str] = None) -> Optional[int]:
+        """Delete an attachment whether global or chat-scoped. Returns freed byte count on success, None on failure."""
         clean_name = filename.replace("chat_", "").strip().replace("\\", "/")
         parts = clean_name.split("/")
         safe_parts = [sanitize_filename(p) for p in parts if p and p != ".."]
@@ -209,38 +209,43 @@ class AttachmentService:
         # 1. Check relative subpath in uploads/ (e.g. uploads/<cid>/<file> or uploads/<file>)
         cand_rel = self.upload_dir / safe_rel
         if cand_rel.exists() and cand_rel.is_file():
+            size = cand_rel.stat().st_size
             cand_rel.unlink()
-            return True
+            return size
 
         # 2. Check root uploads folder
         cand_global = self.upload_dir / safe_name
         if cand_global.exists() and cand_global.is_file():
+            size = cand_global.stat().st_size
             cand_global.unlink()
-            return True
+            return size
 
         # 3. Check conversation uploads folder
         if conversation_id:
             chat_upload_sub = self.upload_dir / sanitize_filename(conversation_id) / safe_name
             if chat_upload_sub.exists() and chat_upload_sub.is_file():
+                size = chat_upload_sub.stat().st_size
                 chat_upload_sub.unlink()
-                return True
+                return size
 
             chat_dir = self.get_chat_upload_dir(conversation_id)
             if chat_dir:
                 cand_chat = chat_dir / safe_name
                 if cand_chat.exists() and cand_chat.is_file():
+                    size = cand_chat.stat().st_size
                     cand_chat.unlink()
-                    return True
+                    return size
 
         # 4. Fallback: Search all active brain bases for the file across user_uploaded directories
         for base in self.brain_bases:
             if base.exists():
                 for cand in base.glob(f"*/.user_uploaded/{safe_name}"):
                     if cand.is_file():
+                        size = cand.stat().st_size
                         cand.unlink()
-                        return True
+                        return size
 
-        return False
+        return None
 
 
 attachment_service = AttachmentService()

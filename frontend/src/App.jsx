@@ -18,9 +18,6 @@ export default function App() {
   const [fitMode, setFitMode] = useState('fit');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
-  const [timelineOpen, setTimelineOpen] = useState(false);
-  const [timelineCategory, setTimelineCategory] = useState(null);
-  const [timelineSearch, setTimelineSearch] = useState('');
   const [logsOpen, setLogsOpen] = useState(false);
   const [taskManagerOpen, setTaskManagerOpen] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -76,8 +73,6 @@ export default function App() {
     isSubmitting,
     submitSuccess,
     isSendingPrompt,
-    timelineEvents,
-    isTimelineLoading,
     systemLogs,
     isLogsLoading,
     recoveryItems,
@@ -106,7 +101,6 @@ export default function App() {
     handleSwitchConversation,
     handleStartNewConversation,
     fetchAppState,
-    fetchTimelineEvents,
     fetchSystemLogs,
     fetchRecoveryItems,
     fetchHistoryChats,
@@ -193,10 +187,35 @@ export default function App() {
     }
   }, [chatMessages]);
 
-  const isAgentWorking =
+  const rawIsAgentWorking =
     chatMessages.length > 0 &&
     chatMessages[chatMessages.length - 1]?.role === 'agent' &&
     Boolean(chatMessages[chatMessages.length - 1]?.is_working);
+
+  const [isAgentWorking, setIsAgentWorking] = useState(false);
+  const workingDebounceTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (rawIsAgentWorking) {
+      if (workingDebounceTimerRef.current) {
+        clearTimeout(workingDebounceTimerRef.current);
+        workingDebounceTimerRef.current = null;
+      }
+      setIsAgentWorking(true);
+    } else {
+      // Apply a grace period of 2.5s before transitioning from working to idle
+      // to absorb step-transition gaps or transient retries
+      workingDebounceTimerRef.current = setTimeout(() => {
+        setIsAgentWorking(false);
+        workingDebounceTimerRef.current = null;
+      }, 2500);
+    }
+    return () => {
+      if (workingDebounceTimerRef.current) {
+        clearTimeout(workingDebounceTimerRef.current);
+      }
+    };
+  }, [rawIsAgentWorking]);
 
   const {
     queuedMessages,
@@ -228,18 +247,6 @@ export default function App() {
     setPromptText('');
   };
 
-  const filteredTimelineEvents = timelineEvents.filter(ev => {
-    if (timelineCategory && (ev.category || ev.event_type) !== timelineCategory) return false;
-    if (timelineSearch.trim()) {
-      const q = timelineSearch.toLowerCase();
-      return (
-        (ev.summary || '').toLowerCase().includes(q) ||
-        (ev.event_type || '').toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-
   return (
     <div className="aw-app-shell font-sans">
       <ToastContainer />
@@ -253,10 +260,6 @@ export default function App() {
         onRefreshAppState={fetchAppState}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onOpenTimeline={() => {
-          setTimelineOpen(true);
-          fetchTimelineEvents();
-        }}
         onOpenLogs={() => {
           setLogsOpen(true);
           fetchSystemLogs();
@@ -357,15 +360,6 @@ export default function App() {
       </main>
 
       <AppDrawersAndModals
-        timelineOpen={timelineOpen}
-        setTimelineOpen={setTimelineOpen}
-        filteredTimelineEvents={filteredTimelineEvents}
-        isTimelineLoading={isTimelineLoading}
-        timelineCategory={timelineCategory}
-        setTimelineCategory={setTimelineCategory}
-        timelineSearch={timelineSearch}
-        setTimelineSearch={setTimelineSearch}
-        fetchTimelineEvents={fetchTimelineEvents}
         logsOpen={logsOpen}
         setLogsOpen={setLogsOpen}
         systemLogs={systemLogs}

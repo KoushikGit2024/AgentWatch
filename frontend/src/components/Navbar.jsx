@@ -13,7 +13,6 @@ export default function Navbar({
   onRefreshAppState,
   viewMode,
   onViewModeChange,
-  onOpenTimeline,
   onOpenLogs,
   onOpenTaskManager,
   onOpenRecovery,
@@ -227,18 +226,6 @@ export default function Navbar({
 
           <button
             type="button"
-            onClick={onOpenTimeline}
-            title="System Audit Timeline"
-            className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
-          >
-            <div className="w-4 h-4 p-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 group-hover:bg-violet-500/20 group-hover:border-violet-500/40 shrink-0 transition-all">
-              {Icon.timeline}
-            </div>
-            <span className="hidden xl:inline">Timeline</span>
-          </button>
-
-          <button
-            type="button"
             onClick={onOpenLogs}
             title="System Diagnostics & Logs"
             className="aw-focus-ring group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] border border-transparent hover:border-[#30343A] transition cursor-pointer"
@@ -328,16 +315,6 @@ export default function Navbar({
                   {Icon.activity}
                 </div>
                 <span>Tasks</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAction(onOpenTimeline)}
-                className="aw-focus-ring flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#25282E] transition text-left cursor-pointer"
-              >
-                <div className="w-4 h-4 p-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0">
-                  {Icon.timeline}
-                </div>
-                <span>Timeline</span>
               </button>
               <button
                 type="button"
