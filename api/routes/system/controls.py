@@ -473,3 +473,17 @@ def get_chat_history():
     return {"count": len(chats), "chats": chats}
 
 
+@router.get("/api/v1/controls/terminal/tasks")
+def get_workbench_terminal_tasks():
+    """Compatibility alias returning live active background tasks."""
+    from services.monitoring.task_monitor_service import task_monitor_service
+    tasks = task_monitor_service.get_active_tasks()
+    return {"success": True, "tasks": tasks, "total": len(tasks)}
+
+@router.post("/api/v1/controls/terminal/kill")
+def kill_workbench_terminal_task(payload: Dict[str, Any]):
+    """Terminate background task process via PID."""
+    from services.monitoring.task_monitor_service import task_monitor_service
+    pid = payload.get("pid")
+    return task_monitor_service.kill_task_process(int(pid)) if pid else {"success": False, "error": "PID is required"}
+

@@ -1,4 +1,4 @@
-﻿"""FastAPI routes for Dynamic Tailscale Port Forwarding & Routing."""
+"""FastAPI routes for Dynamic Tailscale Port Forwarding & Routing."""
 
 import logging
 from typing import Any, Dict
@@ -12,7 +12,7 @@ logger = logging.getLogger("api.routes.controls_tailscale")
 router = APIRouter(prefix="/api/v1/tailscale", tags=["Tailscale Port Forwarding"])
 
 
-@router.get("/status")
+@router.get("/status", operation_id="get_tailscale_ports_status")
 def get_tailscale_status() -> Dict[str, Any]:
     """Return overall Tailscale connection status, tailnet host, and funnel safety verification."""
     return tailscale_service.get_status()

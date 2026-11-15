@@ -17,6 +17,7 @@ export default function WorkbenchBar({
   taskTimers = {},
   formatDuration,
   onRefreshTerminal,
+  onKillTask,
   isLoadingArtifacts,
   artifactsList = [],
   onOpenTerminalPanel,
@@ -166,22 +167,38 @@ export default function WorkbenchBar({
                       >
                         <div
                           onClick={() => onInspectTask && onInspectTask(task)}
-                          title="Click to view task log output"
-                          className="flex min-w-0 flex-1 items-center gap-x-2 cursor-pointer"
+                          title={task.raw_command ? `Command: ${task.raw_command}\nClick to view log output` : 'Click to view task log output'}
+                          className="flex min-w-0 flex-1 items-start gap-x-2.5 cursor-pointer py-0.5"
                         >
-                          {task.is_running !== false ? (
-                            <span className="w-3 h-3 shrink-0 rounded-full border-2 border-[#7C9FC5] border-t-transparent animate-spin inline-block" />
-                          ) : (
-                            <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-[#79B89A] inline-block" />
-                          )}
-                          <span className="truncate font-mono text-xs text-[#E8EAED] group-hover:text-sky-300 transition-colors">
-                            {task.command || 'terminal command'}
-                          </span>
-                          {durationStr && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#141619] text-[#7C9FC5] border border-[#30343A] shrink-0 tabular-nums">
-                              {durationStr}
-                            </span>
-                          )}
+                          <div className="pt-0.5 shrink-0">
+                            {task.is_running !== false ? (
+                              <span className="w-3 h-3 rounded-full border-2 border-[#7C9FC5] border-t-transparent animate-spin inline-block" />
+                            ) : (
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#79B89A] inline-block" />
+                            )}
+                          </div>
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <div className="flex items-center gap-x-2">
+                              <span className="truncate text-xs font-medium text-[#E8EAED] group-hover:text-sky-300 transition-colors">
+                                {task.command || 'terminal command'}
+                              </span>
+                              {task.pid && (
+                                <span className="px-1 py-0.2 rounded text-[9px] font-mono bg-[#141619] text-[#A0A6AF] border border-[#30343A] shrink-0 tabular-nums">
+                                  PID {task.pid}
+                                </span>
+                              )}
+                              {durationStr && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#141619] text-[#7C9FC5] border border-[#30343A] shrink-0 tabular-nums">
+                                  {durationStr}
+                                </span>
+                              )}
+                            </div>
+                            {task.raw_command && task.raw_command !== task.command && (
+                              <span className="truncate font-mono text-[11px] text-[#747C87] group-hover:text-[#A0A6AF] transition-colors mt-0.5 select-all">
+                                $ {task.raw_command}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
@@ -192,6 +209,19 @@ export default function WorkbenchBar({
                           >
                             <div className="w-3.5 h-3.5">{Icon.terminal}</div>
                           </button>
+                          {task.pid && task.is_running !== false && onKillTask && (
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                onKillTask(task);
+                              }}
+                              title={`Terminate process PID ${task.pid}`}
+                              className="p-1 rounded text-rose-500 hover:text-white hover:bg-rose-950/70 border border-transparent hover:border-rose-800/60 transition cursor-pointer"
+                            >
+                              <div className="w-3.5 h-3.5">{Icon.x}</div>
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

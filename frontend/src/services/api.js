@@ -288,16 +288,25 @@ export const api = {
     return res.json();
   },
 
-  async getTerminalTasks() {
-    const res = await request('/api/v1/controls/terminal/tasks');
+  async getTerminalTasks(conversationId = null) {
+    const qs = conversationId
+      ? `?active_only=true&conversation_id=${encodeURIComponent(conversationId)}`
+      : '?active_only=true';
+    const res = await request(`/api/v1/tasks${qs}`);
     return res.json();
   },
 
-  async killTerminalTask(index = 0, tooltipId = null) {
+  async killTerminalTask(pid = null, index = 0, tooltipId = null) {
+    if (pid) {
+      const res = await request(`/api/v1/tasks/${pid}/kill`, {
+        method: 'POST',
+      });
+      return res.json();
+    }
     const res = await request('/api/v1/controls/terminal/kill', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ index, tooltip_id: tooltipId }),
+      body: JSON.stringify({ pid, index, tooltip_id: tooltipId }),
     });
     return res.json();
   },

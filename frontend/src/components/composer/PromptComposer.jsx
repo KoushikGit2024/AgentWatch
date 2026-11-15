@@ -60,6 +60,7 @@ export function PromptComposer({
     isLoadingTerminal,
     handleToggleAttachedTab,
     handleRefreshTerminalTasks,
+    handleKillTask,
   } = useWorkbenchTasks(appState?.active_conversation_id, activeAttachedTab, setActiveAttachedTab);
 
   const { timers: taskTimers, formatDuration } = useTaskExecutionTimers(ideTerminalTasks);
@@ -121,6 +122,7 @@ export function PromptComposer({
           taskTimers={taskTimers}
           formatDuration={formatDuration}
           onRefreshTerminal={handleRefreshTerminalTasks}
+          onKillTask={handleKillTask}
           isLoadingArtifacts={isLoadingArtifacts}
           artifactsList={artifactsList}
           onOpenTerminalPanel={() => setIsTerminalPanelOpen(v => !v)}

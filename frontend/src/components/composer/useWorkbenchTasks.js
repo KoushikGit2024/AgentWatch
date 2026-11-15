@@ -23,7 +23,7 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
         if (!isMounted) return;
         if (!document.hidden) {
           try {
-            const res = await api.getTerminalTasks();
+            const res = await api.getTerminalTasks(activeConversationId);
             if (isMounted && res?.tasks) {
               setIdeTerminalTasks(res.tasks);
             }
@@ -35,7 +35,7 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
 
     const initialFetch = async () => {
       try {
-        const res = await api.getTerminalTasks();
+        const res = await api.getTerminalTasks(activeConversationId);
         if (isMounted && res?.tasks) {
           setIdeTerminalTasks(res.tasks);
         }
@@ -70,7 +70,7 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
       if (!isMounted) return;
       if (!document.hidden) {
         try {
-          const res = await api.getTerminalTasks();
+          const res = await api.getTerminalTasks(activeConversationId);
           if (isMounted && res?.tasks) {
             setIdeTerminalTasks(res.tasks);
           }
@@ -122,14 +122,14 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
   const handleRefreshTerminalTasks = useCallback(async () => {
     setIsLoadingTerminal(true);
     try {
-      const res = await api.getTerminalTasks();
+      const res = await api.getTerminalTasks(activeConversationId);
       if (res?.tasks) setIdeTerminalTasks(res.tasks);
     } catch (err) {
       console.error('Terminal refresh error:', err);
     } finally {
       setIsLoadingTerminal(false);
     }
-  }, []);
+  }, [activeConversationId]);
 
   const handleToggleAttachedTab = useCallback(
     async tabName => {
@@ -151,14 +151,9 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
       } else if (tabName === 'terminal') {
         setIsLoadingTerminal(true);
         try {
-          const tasksRes = await api.getTerminalTasks();
-          if (tasksRes?.tasks && tasksRes.tasks.length > 0) {
+          const tasksRes = await api.getTerminalTasks(activeConversationId);
+          if (tasksRes?.tasks) {
             setIdeTerminalTasks(tasksRes.tasks);
-          } else {
-            const toggleRes = await api.toggleTerminal();
-            if (toggleRes?.tasks && Array.isArray(toggleRes.tasks)) {
-              setIdeTerminalTasks(toggleRes.tasks);
-            }
           }
         } catch (err) {
           console.error('Terminal sync error:', err);
@@ -177,5 +172,20 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
     isLoadingTerminal,
     handleToggleAttachedTab,
     handleRefreshTerminalTasks,
+    handleKillTask: async task => {
+      if (!task?.pid) {
+        toast.error('Task PID not found', 'Kill Process');
+        return;
+      }
+      try {
+        await api.killTerminalTask(task.pid);
+        toast.info(`Terminated process ${task.pid}`, 'Task Stopped');
+        // Refresh active tasks list immediately
+        const res = await api.getTerminalTasks(activeConversationId);
+        if (res?.tasks) setIdeTerminalTasks(res.tasks);
+      } catch (err) {
+        toast.error(err.message || 'Failed to terminate process', 'Kill Error');
+      }
+    },
   };
 }
