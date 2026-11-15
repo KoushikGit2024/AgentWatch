@@ -25,6 +25,7 @@ export function PromptComposer({
   appState,
   onOpenModelModal,
   onOpenReviewChanges,
+  onOpenGitGraph,
   onOpenFile,
   recoveryCount = 0,
   onStop,
@@ -111,6 +112,7 @@ export function PromptComposer({
           onToggleAttachedTab={handleToggleAttachedTab}
           onCloseTab={() => setActiveAttachedTab(null)}
           onOpenReviewChanges={onOpenReviewChanges}
+          onOpenGitGraph={onOpenGitGraph}
           onOpenFile={onOpenFile}
           recoveryCount={recoveryCount}
           isLoadingTerminal={isLoadingTerminal}

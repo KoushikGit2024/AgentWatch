@@ -19,7 +19,7 @@ from config.settings import settings
 from config.database import init_db_indexes, close_mongo_client, check_mongo_connection
 from api.routes.auth import health, auth
 from api.routes.chat import sessions, messages, queue_routes, attachments
-from api.routes.files import files, file_actions, git_review
+from api.routes.files import files, file_actions, git_review, git_graph
 from api.routes.interactions import interactions, approvals
 from api.routes.system import tasks, diagnostics, events, controls, terminal_routes
 from api.routes.networking import push, controls_remote, controls_tailscale
@@ -197,6 +197,7 @@ app.include_router(controls.router)
 app.include_router(auth.router)
 app.include_router(interactions.router)
 app.include_router(git_review.router)
+app.include_router(git_graph.router)
 app.include_router(diagnostics.router)
 app.include_router(attachments.router)
 app.include_router(files.router)

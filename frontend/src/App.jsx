@@ -23,6 +23,7 @@ export default function App() {
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reviewChangesOpen, setReviewChangesOpen] = useState(false);
+  const [gitGraphOpen, setGitGraphOpen] = useState(false);
   const [activeFileViewer, setActiveFileViewer] = useState(null);
   const [portForwardingOpen, setPortForwardingOpen] = useState(false);
 
@@ -342,6 +343,7 @@ export default function App() {
             appState={appState}
             onOpenModelModal={() => setActiveModal('model')}
             onOpenReviewChanges={() => setReviewChangesOpen(true)}
+            onOpenGitGraph={() => setGitGraphOpen(true)}
             onOpenFile={handleOpenFile}
             recoveryCount={recoveryItems.length}
             onStop={handleStopAgent}
@@ -383,6 +385,8 @@ export default function App() {
         onStartNewConversation={handleStartNewConversation}
         reviewChangesOpen={reviewChangesOpen}
         setReviewChangesOpen={setReviewChangesOpen}
+        gitGraphOpen={gitGraphOpen}
+        setGitGraphOpen={setGitGraphOpen}
         activeModal={activeModal}
         setActiveModal={setActiveModal}
         appState={appState}

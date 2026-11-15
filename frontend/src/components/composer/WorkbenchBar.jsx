@@ -1,4 +1,5 @@
 import React from 'react';
+import { GitFork } from 'lucide-react';
 import { Icon } from '../../constants/icons';
 import { FileIcon } from '../../constants/fileIcons';
 
@@ -7,6 +8,7 @@ export default function WorkbenchBar({
   onToggleAttachedTab,
   onCloseTab,
   onOpenReviewChanges,
+  onOpenGitGraph,
   onOpenFile,
   recoveryCount = 0,
   isLoadingTerminal,
@@ -76,7 +78,18 @@ export default function WorkbenchBar({
         </button>
       </div>
 
-      <div className="flex flex-none items-center gap-1">
+      <div className="flex flex-none items-center gap-1.5">
+        {onOpenGitGraph && (
+          <button
+            type="button"
+            onClick={onOpenGitGraph}
+            title="Open Git DAG Graph"
+            className="aw-focus-ring group flex cursor-pointer items-center border border-[#30343A] hover:border-blue-500/40 justify-center gap-1.5 rounded bg-[#1D2024] hover:bg-[#23272D] px-2.5 py-1 text-xs font-medium text-[#E8EAED] transition"
+          >
+            <GitFork className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
+            <span>Git Graph</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={onOpenReviewChanges}

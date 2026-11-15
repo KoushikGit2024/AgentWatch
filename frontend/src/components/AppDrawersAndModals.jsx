@@ -21,6 +21,7 @@ const HistoryDrawer = lazy(() =>
 const ReviewChangesModal = lazy(() =>
   import('./modals/ReviewChangesModal').then(m => ({ default: m.ReviewChangesModal }))
 );
+const GitGraphModal = lazy(() => import('./modals/GitGraphModal'));
 const ModelModal = lazy(() => import('./modals/ModelModal'));
 const ModeModal = lazy(() => import('./modals/ModeModal'));
 const FileViewerModal = lazy(() => import('./modals/fileViewer/FileViewerModal'));
@@ -54,6 +55,9 @@ export function AppDrawersAndModals({
 
   reviewChangesOpen,
   setReviewChangesOpen,
+
+  gitGraphOpen,
+  setGitGraphOpen,
 
   activeModal,
   setActiveModal,
@@ -149,6 +153,13 @@ export function AppDrawersAndModals({
           <ReviewChangesModal
             isOpen={reviewChangesOpen}
             onClose={() => setReviewChangesOpen(false)}
+          />
+        )}
+
+        {gitGraphOpen && (
+          <GitGraphModal
+            isOpen={gitGraphOpen}
+            onClose={() => setGitGraphOpen(false)}
           />
         )}
 
