@@ -99,7 +99,7 @@ class EventRepository:
             logger.warning(
                 "MongoDB unavailable during get_events (%s). Returning in-memory events.", str(exc)
             )
-            filtered = self._fallback_events
+            filtered = list(self._fallback_events)
             if session_id:
                 filtered = [e for e in filtered if e.get("session_id") == session_id]
             if event_type:

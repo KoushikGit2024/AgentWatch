@@ -3,6 +3,7 @@
 import subprocess
 import shutil
 import re
+import time
 from typing import Dict, Any, Optional
 from config.settings import settings
 import logging
@@ -17,6 +18,9 @@ class RemoteAccessService:
         self.tailscale_path = (
             shutil.which("tailscale") or r"C:\Program Files\Tailscale\tailscale.exe"
         )
+        self._cached_status: Optional[Dict[str, Any]] = None
+        self._cached_status_time: float = 0.0
+        self._cache_ttl: float = 20.0
 
     def is_tailscale_installed(self) -> bool:
         """Check if tailscale binary exists."""
@@ -24,13 +28,18 @@ class RemoteAccessService:
             shutil.which("tailscale") is not None or shutil.which(self.tailscale_path) is not None
         )
 
-    def get_tailscale_status(self) -> Dict[str, Any]:
+    def get_tailscale_status(self, force: bool = False) -> Dict[str, Any]:
         """
         Query Tailscale connection, Serve status, and Funnel status.
         All private IP addresses and personal hostnames/tailnet IDs are safely masked.
+        Uses 20-second cache to prevent synchronous subprocess execution on high-frequency polls.
         """
+        now = time.time()
+        if not force and self._cached_status and (now - self._cached_status_time < self._cache_ttl):
+            return self._cached_status
+
         if not self.is_tailscale_installed():
-            return {
+            status_data = {
                 "installed": False,
                 "connected": False,
                 "serve_active": False,
@@ -38,6 +47,9 @@ class RemoteAccessService:
                 "status": "not_installed",
                 "message": "Tailscale executable not found in PATH or standard install directory",
             }
+            self._cached_status = status_data
+            self._cached_status_time = now
+            return status_data
 
         connected = False
         serve_active = False
@@ -86,7 +98,7 @@ class RemoteAccessService:
         except Exception as e:
             pass
 
-        return {
+        status_data = {
             "installed": True,
             "connected": connected,
             "tailnet_devices_detected": tailnet_available,
@@ -101,6 +113,42 @@ class RemoteAccessService:
                 "Never run 'tailscale funnel'!"
             ),
         }
+        self._cached_status = status_data
+        self._cached_status_time = now
+        return status_data
+
+    def auto_configure_serve(self, port: int = 8000) -> Dict[str, Any]:
+        """
+        Idempotently configure 'tailscale serve --bg <port>' to expose the dashboard
+        privately over tailnet HTTPS.
+        """
+        if not self.is_tailscale_installed():
+            return {
+                "success": False,
+                "error": "Tailscale executable not found in PATH or standard directory.",
+            }
+
+        try:
+            res = subprocess.run(
+                [self.tailscale_path, "serve", "--bg", str(port)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self._cached_status = None
+            if res.returncode == 0:
+                return {
+                    "success": True,
+                    "message": f"Tailscale serve background proxy configured for port {port}.",
+                    "output": res.stdout.strip(),
+                }
+            return {
+                "success": False,
+                "error": res.stderr.strip() or "Failed to configure tailscale serve.",
+            }
+        except Exception as e:
+            logger.error("Failed to auto configure tailscale serve: %s", str(e))
+            return {"success": False, "error": str(e)}
 
 
 remote_access_service = RemoteAccessService()

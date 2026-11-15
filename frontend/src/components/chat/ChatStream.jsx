@@ -29,9 +29,9 @@ const ChatStream = forwardRef(function ChatStream(
 
   useLayoutEffect(() => {
     const el = ref?.current;
+    if (!el || el.clientHeight === 0) return;
     const currentFirstId = chatMessages[0]?.id || null;
     if (
-      el &&
       prevFirstTurnIdRef.current &&
       currentFirstId &&
       currentFirstId !== prevFirstTurnIdRef.current &&

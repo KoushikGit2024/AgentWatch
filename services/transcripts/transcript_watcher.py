@@ -31,9 +31,23 @@ async def run_transcript_watcher():
     approval_candidate_key = None
     approval_candidate_time = 0.0
     agent_was_working = False
+    last_pushed_queue_hash = None
+    state_broadcast_tick = 0
 
     while True:
         try:
+            state_broadcast_tick += 1
+            # Every ~3 seconds (approx 9 ticks of 0.35s), push queue changes if modified
+            if state_broadcast_tick % 9 == 0:
+                cur_queue = queue_service.get_queued_messages()
+                cur_hash = hashlib.md5(str([m.get("id") for m in cur_queue]).encode("utf-8")).hexdigest()[:8]
+                if cur_hash != last_pushed_queue_hash:
+                    last_pushed_queue_hash = cur_hash
+                    await websocket_manager.broadcast({
+                        "type": "queue_update",
+                        "messages": cur_queue,
+                    })
+
             ag_status = antigravity_adapter.get_status()
             current_cid = ag_status.get("active_conversation_id")
             chat_switched = False
@@ -186,7 +200,8 @@ async def run_transcript_watcher():
                                 or pending_approval.get("target")
                                 or "Action"
                             )
-                            web_push_service.send_notification(
+                            await asyncio.to_thread(
+                                web_push_service.send_notification,
                                 title=f"⚠️ {cmd_title}",
                                 body=f"Agent requesting approval: {cmd_target[:120]}",
                                 tag=f"approval-{cur_approval_key}",
@@ -225,7 +240,8 @@ async def run_transcript_watcher():
                         prompt_msg = (
                             active_interaction.get("prompt") or "Agent has a question for you"
                         )
-                        web_push_service.send_notification(
+                        await asyncio.to_thread(
+                            web_push_service.send_notification,
                             title="❓ Agent Input Required",
                             body=prompt_msg[:120],
                             tag=f"interaction-{cur_int_id}",

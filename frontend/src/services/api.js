@@ -64,7 +64,7 @@ export const api = {
     return res.json();
   },
 
-  async uploadAttachments(files) {
+  async uploadAttachments(files, conversationId = null) {
     const formData = new FormData();
     Array.from(files).forEach(f => {
       formData.append('files', f);
@@ -74,7 +74,8 @@ export const api = {
       'ngrok-skip-browser-warning': 'true',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    const res = await fetch('/api/v1/attachments/upload', {
+    const qs = conversationId ? `?conversation_id=${encodeURIComponent(conversationId)}` : '';
+    const res = await fetch(`/api/v1/attachments/upload${qs}`, {
       method: 'POST',
       headers,
       body: formData,
@@ -326,18 +327,19 @@ export const api = {
     return res.json();
   },
 
-  async deleteAttachment(filename) {
-    const res = await request(`/api/v1/attachments/${encodeURIComponent(filename)}`, {
+  async deleteAttachment(filename, conversationId = null) {
+    const qs = conversationId ? `?conversation_id=${encodeURIComponent(conversationId)}` : '';
+    const res = await request(`/api/v1/attachments/${encodeURIComponent(filename)}${qs}`, {
       method: 'DELETE',
     });
     return res.json();
   },
 
-  async deleteBatchAttachments(filenames = []) {
+  async deleteBatchAttachments(filenames = [], conversationId = null) {
     const res = await request('/api/v1/attachments/delete-batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filenames }),
+      body: JSON.stringify({ filenames, conversation_id: conversationId }),
     });
     return res.json();
   },

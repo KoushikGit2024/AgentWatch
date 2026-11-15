@@ -188,7 +188,6 @@ export function MediaPreviewViewport({ isImage, isVideo, isAudio, fileData, file
                 href={rawUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                download
                 title="Open full raw image in new tab"
                 className="ml-1 text-[11px] font-mono text-[#7C9FC5] hover:underline"
               >
@@ -282,4 +281,40 @@ export function MarkdownPreviewViewport({ content }) {
       <MarkdownView content={content} />
     </div>
   );
+}
+
+export function handleTabRenameSync(oldPath, newPath, { setTabs, setTabDataMap, setEditorContents, setDirtyFiles, setActiveTabPath, activeTabPath }) {
+  const oldKey = oldPath.replace(/\\/g, '/');
+  const newKey = newPath.replace(/\\/g, '/');
+  const newFilename = newKey.split('/').pop();
+
+  setTabs(prev =>
+    prev.map(t =>
+      t.path === oldKey || t.path.startsWith(oldKey + '/')
+        ? {
+            ...t,
+            path: t.path === oldKey ? newKey : t.path.replace(oldKey + '/', newKey + '/'),
+            id: t.path === oldKey ? newKey : t.path.replace(oldKey + '/', newKey + '/'),
+            filename: t.path === oldKey ? newFilename : t.filename,
+          }
+        : t
+    )
+  );
+
+  const migrateStateKey = (prev) => {
+    const next = { ...prev };
+    if (next[oldKey] !== undefined) {
+      next[newKey] = next[oldKey];
+      delete next[oldKey];
+    }
+    return next;
+  };
+
+  setTabDataMap(migrateStateKey);
+  setEditorContents(migrateStateKey);
+  setDirtyFiles(migrateStateKey);
+
+  if (activeTabPath === oldKey) {
+    setActiveTabPath(newKey);
+  }
 }

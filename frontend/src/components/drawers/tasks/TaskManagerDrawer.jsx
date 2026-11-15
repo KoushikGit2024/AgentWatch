@@ -65,18 +65,44 @@ export function TaskManagerDrawer({ isOpen, onClose }) {
     }
   }, [isOpen, fetchProcesses]);
 
-  // Auto-refresh interval (every 3 seconds)
+  // Auto-refresh interval (5s default, pausing when tab is hidden or drawer closed)
   useEffect(() => {
     if (!isOpen || !autoRefresh) {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
       return;
     }
-    timerRef.current = setInterval(() => {
-      fetchProcesses(false);
-    }, 3000);
+    let isMounted = true;
+
+    const scheduleRefresh = () => {
+      if (!isMounted) return;
+      if (document.hidden) {
+        timerRef.current = setTimeout(scheduleRefresh, 15000);
+        return;
+      }
+      timerRef.current = setTimeout(async () => {
+        if (!isMounted) return;
+        if (!document.hidden) {
+          await fetchProcesses(false);
+        }
+        scheduleRefresh();
+      }, 5000);
+    };
+
+    scheduleRefresh();
+
+    const onVisibility = () => {
+      if (!document.hidden && isMounted) {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        fetchProcesses(false);
+        scheduleRefresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      isMounted = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [isOpen, autoRefresh, fetchProcesses]);
 

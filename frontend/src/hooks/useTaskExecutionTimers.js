@@ -31,14 +31,19 @@ export function useTaskExecutionTimers(tasks = []) {
       if (!currentTasks.length) return;
 
       setTimers(prev => {
+        let changed = false;
         const updated = { ...prev };
         currentTasks.forEach((task, idx) => {
           const id = task.tooltip_id || task.id || `task-${idx}`;
           if (task.is_running !== false && startTimesRef.current[id]) {
-            updated[id] = Math.floor((current - startTimesRef.current[id]) / 1000);
+            const nextSec = Math.floor((current - startTimesRef.current[id]) / 1000);
+            if (updated[id] !== nextSec) {
+              updated[id] = nextSec;
+              changed = true;
+            }
           }
         });
-        return updated;
+        return changed ? updated : prev;
       });
     }, 1000);
 

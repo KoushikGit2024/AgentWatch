@@ -33,6 +33,9 @@ class ConversationService:
         self._latest_pending_approval: Optional[Dict[str, Any]] = None
         self._cached_key: Optional[tuple] = None
         self._cached_turns: List[Dict[str, Any]] = []
+        self._cached_transcript_path: Optional[Path] = None
+        self._cached_transcript_time: float = 0.0
+        self._cached_transcript_cid: Optional[str] = None
 
     def mark_active_turn_stopped(self, conversation_id: Optional[str] = None):
         """Signal that the user requested emergency stop so the UI immediately reflects it."""
@@ -72,38 +75,53 @@ class ConversationService:
     def get_latest_transcript_path(self, conversation_id: Optional[str] = None) -> Optional[Path]:
         """Find the active conversation's transcript file based on recent modification time.
         Prefers transcript_full.jsonl to ensure full, untruncated messages are parsed.
-        Checks all known brain directories (~/.gemini/antigravity and ~/.gemini/antigravity-ide).
+        Caches resolved path for 1.5 seconds to avoid expensive filesystem globbing on tight ticks.
         """
+        now = time.time()
+        if (
+            self._cached_transcript_path
+            and (now - self._cached_transcript_time < 1.5)
+            and self._cached_transcript_cid == conversation_id
+        ):
+            return self._cached_transcript_path
+
         if self._new_chat_pending and not conversation_id:
             return None
         if conversation_id in ("__new__", "new", "__new_chat_pending__"):
             return None
         try:
             bases = getattr(self, "brain_bases", [self.brain_base])
+            candidate_found: Optional[Path] = None
             if conversation_id:
                 for base in bases:
                     cand = base / conversation_id / ".system_generated" / "logs" / "transcript_full.jsonl"
                     if cand.exists() and cand.stat().st_size > 0:
-                        return cand
+                        candidate_found = cand
+                        break
                     cand_compat = base / conversation_id / ".system_generated" / "logs" / "transcript.jsonl"
                     if cand_compat.exists() and cand_compat.stat().st_size > 0:
-                        return cand_compat
+                        candidate_found = cand_compat
+                        break
 
-            transcripts = []
-            for base in bases:
-                if base.exists():
-                    transcripts.extend(list(base.glob("*/.system_generated/logs/transcript*.jsonl")))
+            if not candidate_found:
+                transcripts = []
+                for base in bases:
+                    if base.exists():
+                        transcripts.extend(list(base.glob("*/.system_generated/logs/transcript*.jsonl")))
 
-            if not transcripts:
-                return None
+                if transcripts:
+                    transcripts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                    candidate = transcripts[0]
+                    if candidate.name == "transcript.jsonl":
+                        full_sibling = candidate.parent / "transcript_full.jsonl"
+                        if full_sibling.exists() and full_sibling.stat().st_size > 0:
+                            candidate = full_sibling
+                    candidate_found = candidate
 
-            transcripts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-            candidate = transcripts[0]
-            if candidate.name == "transcript.jsonl":
-                full_sibling = candidate.parent / "transcript_full.jsonl"
-                if full_sibling.exists() and full_sibling.stat().st_size > 0:
-                    return full_sibling
-            return candidate
+            self._cached_transcript_path = candidate_found
+            self._cached_transcript_time = now
+            self._cached_transcript_cid = conversation_id
+            return candidate_found
         except Exception:
             return None
 
@@ -189,7 +207,6 @@ class ConversationService:
                                     "text": "",
                                     "thinking": "",
                                     "items": [],
-                                    "steps": [],
                                     "timestamp": created_at,
                                     "is_working": True,
                                 }
@@ -218,7 +235,6 @@ class ConversationService:
                                         resolved_approvals=self._resolved_approvals,
                                     )
                                     current_agent_turn["items"].append(item)
-                                    current_agent_turn["steps"].append(item)
 
                             if content and not tools:
                                 current_agent_turn["text"] = content
@@ -276,7 +292,16 @@ class ConversationService:
                                         clean_out = clean_out.split("\t\t\t\tOutput:\n", 1)[1]
                                     elif "\t\t\t\tStdout:\n" in clean_out:
                                         clean_out = clean_out.split("\t\t\t\tStdout:\n", 1)[1]
-                                    last_item["output"] = clean_out.strip()
+                                    
+                                    stripped_out = clean_out.strip()
+                                    # Truncate inline tool stdout in live conversation turns to ~4 KB
+                                    MAX_STREAM_OUTPUT = 4096
+                                    if len(stripped_out) > MAX_STREAM_OUTPUT:
+                                        last_item["total_bytes"] = len(stripped_out)
+                                        last_item["output_truncated"] = True
+                                        last_item["output"] = stripped_out[:MAX_STREAM_OUTPUT] + "\n... [Output truncated. View full output in Task Details]"
+                                    else:
+                                        last_item["output"] = stripped_out
 
                         elif stype == "ERROR_MESSAGE" or step.get("status") == "ERROR":
                             if not current_agent_turn:
@@ -288,7 +313,6 @@ class ConversationService:
                                     "text": "",
                                     "thinking": "",
                                     "items": [],
-                                    "steps": [],
                                     "timestamp": created_at,
                                     "is_working": False,
                                 }

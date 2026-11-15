@@ -82,7 +82,7 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
 
     forward_success = bool(cdp_forward.get("success", False))
     if not forward_success and not cdp_forward.get("requires_native_ide"):
-        _resolved_approvals.pop(payload.step_id, None)
+        _conversation_service._resolved_approvals.pop(payload.step_id, None)
 
     doc = EventDocument(
         session_id="active-session",

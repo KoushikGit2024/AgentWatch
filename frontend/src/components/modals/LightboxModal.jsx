@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { Icon } from '../../constants/icons';
 
 export default function LightboxModal({ isOpen, onClose, screenshotUrl }) {
@@ -7,13 +7,34 @@ export default function LightboxModal({ isOpen, onClose, screenshotUrl }) {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [scrollStart, setScrollStart] = useState({ left: 0, top: 0 });
   const containerRef = useRef(null);
+  const scrollPosRef = useRef({ left: 0, top: 0 });
 
-  // Reset zoom on open
+  // Reset zoom and scroll only when the modal opens initially (not on incoming frames)
   useEffect(() => {
     if (isOpen) {
       setZoom(1);
+      scrollPosRef.current = { left: 0, top: 0 };
     }
-  }, [isOpen, screenshotUrl]);
+  }, [isOpen]);
+
+  // Keep track of user's pan/scroll offset so new frames don't snap back to top-left
+  const handleScroll = e => {
+    if (e?.currentTarget) {
+      scrollPosRef.current = {
+        left: e.currentTarget.scrollLeft,
+        top: e.currentTarget.scrollTop,
+      };
+    }
+  };
+
+  // Restore scroll/pan coordinates after each incoming screenshot frame updates
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (el && zoom > 1) {
+      el.scrollLeft = scrollPosRef.current.left;
+      el.scrollTop = scrollPosRef.current.top;
+    }
+  }, [screenshotUrl, zoom]);
 
   // Handle escape key
   useEffect(() => {
@@ -70,7 +91,7 @@ export default function LightboxModal({ isOpen, onClose, screenshotUrl }) {
       role="dialog"
       aria-modal="true"
       aria-label="Antigravity IDE Viewport"
-      className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-2 sm:p-4 select-none animate-in fade-in duration-150"
+      className="fixed inset-0 z-[10000] bg-black/95 flex flex-col p-2 sm:p-4 select-none animate-in fade-in duration-150"
       onMouseUp={handleMouseUp}
     >
       {/* Header controls bar */}
@@ -144,6 +165,7 @@ export default function LightboxModal({ isOpen, onClose, screenshotUrl }) {
       {/* Interactive Scroll & Pan Viewport */}
       <div
         ref={containerRef}
+        onScroll={handleScroll}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

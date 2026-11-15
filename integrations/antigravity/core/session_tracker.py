@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import logging
 import urllib.parse
@@ -31,16 +31,21 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
     if "workspaceUri" in qs and qs["workspaceUri"]:
         raw_uri = qs["workspaceUri"][0]
         decoded = urllib.parse.unquote(urllib.parse.unquote(raw_uri))
-        clean_path = decoded.replace("file://", "").lstrip("/").replace("/", "\\")
+        clean = decoded.replace("file://", "")
+        if ":" in clean:
+            clean_path = clean.lstrip("/").replace("/", "\\")
+        else:
+            clean_path = "/" + clean.lstrip("/")
         if clean_path:
             workspace_path = clean_path
-            parts = [p for p in clean_path.split("\\") if p]
+            parts = [p for p in clean.replace("\\", "/").split("/") if p]
             if parts:
                 workspace_name = parts[-1]
 
     # Query data-cascade-id, breadcrumb segment, and document.title directly from the webview DOM
     chat_title = None
     dom_cascade_id = None
+    eval_val: Dict[str, Any] = {}
     try:
         dom_probe_js = """
         (() => {

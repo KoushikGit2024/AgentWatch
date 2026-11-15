@@ -1,4 +1,4 @@
-﻿"""Remote viewport control, model selection, and security configuration routes."""
+"""Remote viewport control, model selection, and security configuration routes."""
 
 import os
 from typing import Any, Dict
@@ -35,8 +35,8 @@ async def scan_models():
 @router.post("/api/v1/controls/mode")
 async def set_mode(payload: SetModeRequest):
     """Set active agent mode (Fast vs Planning) with strict enum validation."""
-    await antigravity_adapter.set_active_mode(payload.mode.value)
-    return {"success": True, "mode": payload.mode.value}
+    success = await antigravity_adapter.set_active_mode(payload.mode.value)
+    return {"success": bool(success), "mode": payload.mode.value}
 
 
 @router.post("/set-model")
@@ -48,7 +48,8 @@ async def set_model(payload: SetModelRequest):
     if is_testing:
         return {"success": True, "model": payload.model, "test_mode": True}
     res = await antigravity_adapter.set_active_model(payload.model)
-    return {"success": res.get("success", True), "model": payload.model, "details": res}
+    success = res if isinstance(res, bool) else (res.get("success", False) if isinstance(res, dict) else bool(res))
+    return {"success": bool(success), "model": payload.model, "details": res}
 
 
 @router.post("/remote-scroll")

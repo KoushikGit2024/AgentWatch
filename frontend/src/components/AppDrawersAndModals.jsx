@@ -1,19 +1,33 @@
-import React from 'react';
-import { ActivityTimelineDrawer } from './drawers/ActivityTimelineDrawer';
-import { SystemLogsDrawer } from './drawers/SystemLogsDrawer';
-import { TaskManagerDrawer } from './drawers/tasks/TaskManagerDrawer';
-import { RecoveryCenterModal } from './modals/RecoveryCenterModal';
-import { HistoryDrawer } from './drawers/HistoryDrawer';
-import { ReviewChangesModal } from './modals/ReviewChangesModal';
-import ModelModal from './modals/ModelModal';
-import ModeModal from './modals/ModeModal';
+import React, { lazy, Suspense } from 'react';
 import LightboxModal from './modals/LightboxModal';
 import InteractionModal from './modals/InteractionModal';
 import ApprovalModal from './modals/ApprovalModal';
-import FileViewerModal from './modals/fileViewer/FileViewerModal';
-import PortForwardingModal from './modals/PortForwardingModal';
 import { toast } from '../services/toastService';
 import { api } from '../services/api';
+
+// Code-split heavy secondary drawers and modal views with dynamic import()
+const ActivityTimelineDrawer = lazy(() =>
+  import('./drawers/ActivityTimelineDrawer').then(m => ({ default: m.ActivityTimelineDrawer }))
+);
+const SystemLogsDrawer = lazy(() =>
+  import('./drawers/SystemLogsDrawer').then(m => ({ default: m.SystemLogsDrawer }))
+);
+const TaskManagerDrawer = lazy(() =>
+  import('./drawers/tasks/TaskManagerDrawer').then(m => ({ default: m.TaskManagerDrawer }))
+);
+const RecoveryCenterModal = lazy(() =>
+  import('./modals/RecoveryCenterModal').then(m => ({ default: m.RecoveryCenterModal }))
+);
+const HistoryDrawer = lazy(() =>
+  import('./drawers/HistoryDrawer').then(m => ({ default: m.HistoryDrawer }))
+);
+const ReviewChangesModal = lazy(() =>
+  import('./modals/ReviewChangesModal').then(m => ({ default: m.ReviewChangesModal }))
+);
+const ModelModal = lazy(() => import('./modals/ModelModal'));
+const ModeModal = lazy(() => import('./modals/ModeModal'));
+const FileViewerModal = lazy(() => import('./modals/fileViewer/FileViewerModal'));
+const PortForwardingModal = lazy(() => import('./modals/PortForwardingModal'));
 
 export function AppDrawersAndModals({
   timelineOpen,
@@ -91,84 +105,121 @@ export function AppDrawersAndModals({
 }) {
   return (
     <>
-      <ActivityTimelineDrawer
-        isOpen={timelineOpen}
-        onClose={() => setTimelineOpen(false)}
-        events={filteredTimelineEvents}
-        isLoading={isTimelineLoading}
-        activeCategory={timelineCategory}
-        onSelectCategory={setTimelineCategory}
-        searchQuery={timelineSearch}
-        onChangeSearch={setTimelineSearch}
-        onRefresh={fetchTimelineEvents}
-      />
+      <Suspense fallback={null}>
+        {timelineOpen && (
+          <ActivityTimelineDrawer
+            isOpen={timelineOpen}
+            onClose={() => setTimelineOpen(false)}
+            events={filteredTimelineEvents}
+            isLoading={isTimelineLoading}
+            activeCategory={timelineCategory}
+            onSelectCategory={setTimelineCategory}
+            searchQuery={timelineSearch}
+            onChangeSearch={setTimelineSearch}
+            onRefresh={fetchTimelineEvents}
+          />
+        )}
 
-      <SystemLogsDrawer
-        isOpen={logsOpen}
-        onClose={() => setLogsOpen(false)}
-        logs={systemLogs}
-        isLoading={isLogsLoading}
-        onRefresh={fetchSystemLogs}
-        onOpenFile={handleOpenFile}
-      />
-      <TaskManagerDrawer isOpen={taskManagerOpen} onClose={() => setTaskManagerOpen(false)} />
+        {logsOpen && (
+          <SystemLogsDrawer
+            isOpen={logsOpen}
+            onClose={() => setLogsOpen(false)}
+            logs={systemLogs}
+            isLoading={isLogsLoading}
+            onRefresh={fetchSystemLogs}
+            onOpenFile={handleOpenFile}
+          />
+        )}
 
-      <RecoveryCenterModal
-        isOpen={recoveryOpen}
-        onClose={() => setRecoveryOpen(false)}
-        recoveryItems={recoveryItems}
-        diagnostics={diagnostics}
-        isLoading={isRecoveryLoading}
-        onRefresh={fetchRecoveryItems}
-        onReconcileAction={api.reconcileAction}
-        onOpenInteraction={() => {
-          setRecoveryOpen(false);
-          setViewMode('chat');
-          handleReopenInteraction();
-        }}
-      />
+        {taskManagerOpen && (
+          <TaskManagerDrawer isOpen={taskManagerOpen} onClose={() => setTaskManagerOpen(false)} />
+        )}
 
-      <HistoryDrawer
-        isOpen={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        activeConversationId={appState.active_conversation_id}
-        onSelectConversation={(cid, title) => {
-          if (onSwitchConversation) {
-            onSwitchConversation(cid, title);
-          }
-        }}
-        onNewConversation={() => {
-          if (onStartNewConversation) {
-            onStartNewConversation();
-          } else if (onSwitchConversation) {
-            onSwitchConversation('', 'New Conversation');
-          }
-        }}
-      />
+        {recoveryOpen && (
+          <RecoveryCenterModal
+            isOpen={recoveryOpen}
+            onClose={() => setRecoveryOpen(false)}
+            recoveryItems={recoveryItems}
+            diagnostics={diagnostics}
+            isLoading={isRecoveryLoading}
+            onRefresh={fetchRecoveryItems}
+            onReconcileAction={api.reconcileAction}
+            onOpenInteraction={() => {
+              setRecoveryOpen(false);
+              setViewMode('chat');
+              handleReopenInteraction();
+            }}
+          />
+        )}
 
-      <ReviewChangesModal isOpen={reviewChangesOpen} onClose={() => setReviewChangesOpen(false)} />
+        {historyOpen && (
+          <HistoryDrawer
+            isOpen={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            activeConversationId={appState.active_conversation_id}
+            onSelectConversation={(cid, title) => {
+              if (onSwitchConversation) {
+                onSwitchConversation(cid, title);
+              }
+            }}
+            onNewConversation={() => {
+              if (onStartNewConversation) {
+                onStartNewConversation();
+              } else if (onSwitchConversation) {
+                onSwitchConversation('', 'New Conversation');
+              }
+            }}
+          />
+        )}
 
-      <ModelModal
-        isOpen={activeModal === 'model'}
-        onClose={() => setActiveModal(null)}
-        currentModel={appState.model}
-        availableModels={appState.available_models}
-        onSelectModel={m => {
-          handleSetModel(m);
-          setActiveModal(null);
-        }}
-      />
+        {reviewChangesOpen && (
+          <ReviewChangesModal
+            isOpen={reviewChangesOpen}
+            onClose={() => setReviewChangesOpen(false)}
+          />
+        )}
 
-      <ModeModal
-        isOpen={activeModal === 'mode'}
-        onClose={() => setActiveModal(null)}
-        currentMode={appState.mode}
-        availableModes={appState.available_modes}
-        onSelectMode={m => {
-          handleSetMode(m);
-          setActiveModal(null);
-        }}
-      />
+        {activeModal === 'model' && (
+          <ModelModal
+            isOpen={activeModal === 'model'}
+            onClose={() => setActiveModal(null)}
+            currentModel={appState.model}
+            availableModels={appState.available_models}
+            onSelectModel={m => {
+              handleSetModel(m);
+              setActiveModal(null);
+            }}
+          />
+        )}
+
+        {activeModal === 'mode' && (
+          <ModeModal
+            isOpen={activeModal === 'mode'}
+            onClose={() => setActiveModal(null)}
+            currentMode={appState.mode}
+            availableModes={appState.available_modes}
+            onSelectMode={m => {
+              handleSetMode(m);
+              setActiveModal(null);
+            }}
+          />
+        )}
+
+        {Boolean(activeFileViewer) && (
+          <FileViewerModal
+            targetFile={activeFileViewer}
+            onClose={() => setActiveFileViewer(null)}
+            conversationId={appState?.active_conversation_id}
+          />
+        )}
+
+        {portForwardingOpen && (
+          <PortForwardingModal
+            isOpen={portForwardingOpen}
+            onClose={() => setPortForwardingOpen(false)}
+          />
+        )}
+      </Suspense>
 
       <LightboxModal
         isOpen={lightboxOpen}
@@ -194,17 +245,6 @@ export function AppDrawersAndModals({
         isSubmitting={isApprovaling}
         onDecide={handleApproval}
         onDismiss={handleDismissApproval}
-      />
-
-      <FileViewerModal
-        targetFile={activeFileViewer}
-        onClose={() => setActiveFileViewer(null)}
-        conversationId={appState?.active_conversation_id}
-      />
-
-      <PortForwardingModal
-        isOpen={portForwardingOpen}
-        onClose={() => setPortForwardingOpen(false)}
       />
     </>
   );

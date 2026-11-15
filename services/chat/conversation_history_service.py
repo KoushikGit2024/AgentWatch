@@ -63,8 +63,13 @@ class ConversationHistoryService:
             if isinstance(uris, list) and uris:
                 first_uri = uris[0]
                 unquoted = urllib.parse.unquote(urllib.parse.unquote(first_uri))
-                clean = unquoted.replace("file://", "").lstrip("/")
-                clean_path = clean.replace("/", "\\") if ":" in clean else clean
+                clean = unquoted.replace("file://", "")
+                if ":" in clean:
+                    # Windows path with drive letter (e.g. /d:/path or d:/path)
+                    clean_path = clean.lstrip("/").replace("/", "\\")
+                else:
+                    # POSIX absolute path (e.g. /home/user/project)
+                    clean_path = "/" + clean.lstrip("/")
                 parts = [p for p in unquoted.replace("\\", "/").split("/") if p]
                 ws_name = parts[-1] if parts else "Workspace"
                 return ws_name, clean_path

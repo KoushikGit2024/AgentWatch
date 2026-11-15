@@ -1,9 +1,10 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, lazy, Suspense } from 'react';
 import { marked } from 'marked';
 import { getFileInfo, getFileSvgHtml } from '../constants/fileIcons';
 import { isValidFilePath, parseFileLink } from '../utils/fileLinkParser';
 import { sanitizeHtml } from '../utils/sanitizer';
-import MermaidBlock from './MermaidBlock';
+
+const MermaidBlock = lazy(() => import('./MermaidBlock'));
 
 // Escape HTML utility for code blocks
 function escapeHtml(str) {
@@ -248,7 +249,16 @@ export default function MarkdownView({ content, onOpenFile }) {
     >
       {segments.map((seg, idx) =>
         seg.type === 'mermaid' ? (
-          <MermaidBlock key={`mermaid-${idx}`} chartCode={seg.code} />
+          <Suspense
+            key={`mermaid-${idx}`}
+            fallback={
+              <div className="my-3 p-4 rounded-lg bg-zinc-900/60 border border-zinc-800 text-center text-xs text-zinc-500 animate-pulse">
+                Loading Diagram...
+              </div>
+            }
+          >
+            <MermaidBlock chartCode={seg.code} />
+          </Suspense>
         ) : (
           <div key={`html-${idx}`} dangerouslySetInnerHTML={{ __html: seg.html }} />
         )

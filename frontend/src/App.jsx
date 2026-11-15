@@ -137,15 +137,54 @@ export default function App() {
     setIsScrolledUp(!isNearBottom);
   }, []);
 
-  const scrollToBottom = useCallback(() => {
+  const scrollAnimationRef = useRef(null);
+
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
     shouldAutoScrollRef.current = true;
     setIsScrolledUp(false);
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTo({
-        top: chatScrollRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
+    const el = chatScrollRef.current;
+    if (!el) return;
+
+    if (scrollAnimationRef.current) {
+      cancelAnimationFrame(scrollAnimationRef.current);
+      scrollAnimationRef.current = null;
     }
+
+    const startTop = el.scrollTop;
+    const targetTop = el.scrollHeight - el.clientHeight;
+    const distance = targetTop - startTop;
+
+    if (distance <= 0) return;
+
+    // Instant jump for tiny distances or when explicitly requested
+    if (behavior === 'auto') {
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+
+    // Controlled smooth cubic ease-out animation (capped at 220ms so it never stalls or requires multiple clicks)
+    const duration = Math.min(220, Math.max(120, distance * 0.08));
+    const startTime = performance.now();
+
+    const animateScroll = currentTime => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Cubic ease out: fast initial motion, smooth finish
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+
+      // Dynamically read el.scrollHeight in case incoming turns expand it mid-animation
+      const currentTarget = el.scrollHeight - el.clientHeight;
+      el.scrollTop = startTop + (currentTarget - startTop) * easeOut;
+
+      if (progress < 1) {
+        scrollAnimationRef.current = requestAnimationFrame(animateScroll);
+      } else {
+        el.scrollTop = el.scrollHeight;
+        scrollAnimationRef.current = null;
+      }
+    };
+
+    scrollAnimationRef.current = requestAnimationFrame(animateScroll);
   }, []);
 
   useEffect(() => {
@@ -230,80 +269,83 @@ export default function App() {
         recoveryCount={recoveryItems.length}
         onOpenHistory={() => {
           setHistoryOpen(true);
-          fetchHistoryChats();
         }}
         onOpenFiles={() => setActiveFileViewer({ cleanPath: '', openTree: true })}
         onOpenPortForwarding={() => setPortForwardingOpen(true)}
       />
 
       <main className="aw-main-viewport">
-        {viewMode === 'chat' ? (
-          <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden">
-            <ChatStream
-              ref={chatScrollRef}
-              chatMessages={chatMessages}
-              isChatLoading={isChatLoading}
-              hasMoreHistory={hasMoreHistory}
-              isLoadingOlder={isLoadingOlder}
-              onLoadOlder={loadOlderMessages}
-              openItemIds={openItemIds}
-              approvals={approvals}
-              isScrolledUp={isScrolledUp}
-              onToggleItem={toggleItem}
+        <div
+          className={`flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden ${
+            viewMode === 'chat' ? 'flex' : 'hidden'
+          }`}
+        >
+          <ChatStream
+            ref={chatScrollRef}
+            chatMessages={chatMessages}
+            isChatLoading={isChatLoading}
+            hasMoreHistory={hasMoreHistory}
+            isLoadingOlder={isLoadingOlder}
+            onLoadOlder={loadOlderMessages}
+            openItemIds={openItemIds}
+            approvals={approvals}
+            isScrolledUp={isScrolledUp}
+            onToggleItem={toggleItem}
+            onApprove={handleApproval}
+            onRespondQuestion={handleRespondDirectQuestion}
+            onOpenFile={handleOpenFile}
+            onScroll={handleChatScroll}
+            onScrollToBottom={scrollToBottom}
+            messagesEndRef={messagesEndRef}
+            onStop={handleStopAgent}
+          />
+
+          {((pendingInteraction && isInteractionMinimized) ||
+            (pendingApproval && isApprovalMinimized)) && (
+            <PendingInteractionBanner
+              pendingInteraction={isInteractionMinimized ? pendingInteraction : null}
+              pendingApproval={isApprovalMinimized ? pendingApproval : null}
+              selectedOptions={selectedOptions}
+              customResponse={customResponse}
+              isSubmitting={isSubmitting}
+              submitSuccess={submitSuccess}
+              onToggleOption={handleToggleOption}
+              onChangeCustomResponse={setCustomResponse}
+              onSubmit={handleInteractionSubmit}
+              onReopenInteraction={handleReopenInteraction}
+              onCancelInteraction={handleCancelInteraction}
+              onReopenApproval={handleReopenApproval}
               onApprove={handleApproval}
-              onRespondQuestion={handleRespondDirectQuestion}
-              onOpenFile={handleOpenFile}
-              onScroll={handleChatScroll}
-              onScrollToBottom={scrollToBottom}
-              messagesEndRef={messagesEndRef}
-              onStop={handleStopAgent}
             />
+          )}
 
-            {((pendingInteraction && isInteractionMinimized) ||
-              (pendingApproval && isApprovalMinimized)) && (
-              <PendingInteractionBanner
-                pendingInteraction={isInteractionMinimized ? pendingInteraction : null}
-                pendingApproval={isApprovalMinimized ? pendingApproval : null}
-                selectedOptions={selectedOptions}
-                customResponse={customResponse}
-                isSubmitting={isSubmitting}
-                submitSuccess={submitSuccess}
-                onToggleOption={handleToggleOption}
-                onChangeCustomResponse={setCustomResponse}
-                onSubmit={handleInteractionSubmit}
-                onReopenInteraction={handleReopenInteraction}
-                onCancelInteraction={handleCancelInteraction}
-                onReopenApproval={handleReopenApproval}
-                onApprove={handleApproval}
-              />
-            )}
-
-            {queuedMessages.length > 0 && (
-              <QueuedMessagesCard
-                messages={queuedMessages}
-                onSendNow={handleQueueSendNow}
-                onDelete={handleQueueDelete}
-                onEdit={handleQueueEdit}
-                isActionPending={isQueueActionPending}
-              />
-            )}
-
-            <PromptComposer
-              promptText={promptText}
-              onChangePrompt={setPromptText}
-              onSend={handleSend}
-              onQueue={handleQueue}
-              isSending={isSendingPrompt}
-              isWorking={isAgentWorking}
-              appState={appState}
-              onOpenModelModal={() => setActiveModal('model')}
-              onOpenReviewChanges={() => setReviewChangesOpen(true)}
-              onOpenFile={handleOpenFile}
-              recoveryCount={recoveryItems.length}
-              onStop={handleStopAgent}
+          {queuedMessages.length > 0 && (
+            <QueuedMessagesCard
+              messages={queuedMessages}
+              onSendNow={handleQueueSendNow}
+              onDelete={handleQueueDelete}
+              onEdit={handleQueueEdit}
+              isActionPending={isQueueActionPending}
             />
-          </div>
-        ) : (
+          )}
+
+          <PromptComposer
+            promptText={promptText}
+            onChangePrompt={setPromptText}
+            onSend={handleSend}
+            onQueue={handleQueue}
+            isSending={isSendingPrompt}
+            isWorking={isAgentWorking}
+            appState={appState}
+            onOpenModelModal={() => setActiveModal('model')}
+            onOpenReviewChanges={() => setReviewChangesOpen(true)}
+            onOpenFile={handleOpenFile}
+            recoveryCount={recoveryItems.length}
+            onStop={handleStopAgent}
+          />
+        </div>
+
+        {viewMode === 'screen' && (
           <ScreenViewport
             snapshotData={snapshotData}
             isSnapshotLoading={isSnapshotLoading}

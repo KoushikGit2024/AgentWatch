@@ -1,4 +1,4 @@
-﻿"""CDP Prompt and Stop Generation Dispatchers."""
+"""CDP Prompt and Stop Generation Dispatchers."""
 
 import asyncio
 import json
@@ -244,6 +244,7 @@ async def _execute_send_prompt_cdp(target_url: str, message: str) -> Dict[str, A
             }
     except Exception as exc:
         logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
+        return {"success": False, "error": str(exc)}
 
 async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
     """

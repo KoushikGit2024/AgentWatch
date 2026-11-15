@@ -42,5 +42,19 @@ export function mergeTurnsPreservingHistory(existingTurns, incomingRecentTurns) 
     return true;
   });
 
-  return [...preservedOlder, ...incomingRecentTurns, ...finalOptimistic];
+  const result = [...preservedOlder, ...incomingRecentTurns, ...finalOptimistic];
+
+  // Structural sharing: if resulting array matches existingTurns in length and elements, return unchanged reference
+  if (result.length === existingTurns.length) {
+    let isIdentical = true;
+    for (let i = 0; i < result.length; i++) {
+      if (result[i] !== existingTurns[i]) {
+        isIdentical = false;
+        break;
+      }
+    }
+    if (isIdentical) return existingTurns;
+  }
+
+  return result;
 }

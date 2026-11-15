@@ -29,6 +29,20 @@ export function InlineCreationRow({
     }
   };
 
+  const handleConfirm = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    const clean = val.trim();
+    if (clean) onConfirm(clean);
+    else onCancel();
+  };
+
+  const handleCancel = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    onCancel();
+  };
+
   return (
     <div
       style={{ paddingLeft: `${Math.max(level * 12 + 8, 8)}px` }}
@@ -47,10 +61,29 @@ export function InlineCreationRow({
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={onCancel}
         placeholder={isDir ? 'folder_name' : 'filename.ext'}
         className="w-full bg-transparent text-[#E8EAED] text-[11px] font-mono outline-none placeholder-[#5D6570]"
       />
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleConfirm}
+          title="Create"
+          className="p-1 rounded bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 hover:text-white transition cursor-pointer"
+        >
+          <div className="w-3 h-3">{Icon.check}</div>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleCancel}
+          title="Cancel"
+          className="p-1 rounded hover:bg-[#2A2E35] text-[#747C87] hover:text-[#E8EAED] transition cursor-pointer"
+        >
+          <div className="w-3 h-3">{Icon.x}</div>
+        </button>
+      </div>
     </div>
   );
 }
@@ -90,22 +123,63 @@ export function InlineRenameInput({
     }
   };
 
+  const handleConfirm = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    const clean = val.trim();
+    if (clean && clean !== initialName) {
+      onConfirm(clean);
+    } else {
+      onCancel();
+    }
+  };
+
+  const handleCancel = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    onCancel();
+  };
+
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={val}
-      onChange={(e) => setVal(e.target.value)}
-      onKeyDown={handleKeyDown}
-      onBlur={onCancel}
+    <div
       onClick={(e) => e.stopPropagation()}
-      className="bg-[#101215] border border-blue-500/70 rounded px-1 py-0 text-[11px] font-mono text-[#E8EAED] outline-none max-w-[140px]"
-    />
+      className="flex items-center gap-1 bg-[#101215] border border-blue-500/70 rounded px-1 py-0.5"
+    >
+      <input
+        ref={inputRef}
+        type="text"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="bg-transparent text-[11px] font-mono text-[#E8EAED] outline-none max-w-[120px]"
+      />
+      <div className="flex items-center gap-0.5 shrink-0">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleConfirm}
+          title="Rename"
+          className="p-0.5 rounded text-blue-300 hover:text-white cursor-pointer"
+        >
+          <div className="w-3 h-3">{Icon.check}</div>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleCancel}
+          title="Cancel"
+          className="p-0.5 rounded text-[#747C87] hover:text-[#E8EAED] cursor-pointer"
+        >
+          <div className="w-3 h-3">{Icon.x}</div>
+        </button>
+      </div>
+    </div>
   );
 }
 
 export function TreeNodeActions({
   isDir,
+  isMobileActive = false,
   onNewFile,
   onNewFolder,
   onRename,
@@ -114,7 +188,9 @@ export function TreeNodeActions({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="hidden group-hover:flex items-center gap-0.5 shrink-0 px-1 py-0.5 rounded bg-[#101215]/90 border border-[#262A30] shadow-sm"
+      className={`${
+        isMobileActive ? 'flex' : 'hidden'
+      } group-hover:sm:flex items-center gap-0.5 shrink-0 px-1 py-0.5 rounded bg-[#101215]/90 border border-[#262A30] shadow-sm`}
     >
       {isDir && onNewFile && (
         <button

@@ -301,23 +301,47 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
     if (!isScreenActive) return;
     let isActive = true;
     let timeoutId = null;
+    let unchangedStreak = 0;
 
     const pollLoop = async (force = false) => {
       if (!isActive) return;
+      if (document.hidden) {
+        timeoutId = setTimeout(() => pollLoop(false), 8000);
+        return;
+      }
       try {
+        const prevHash = lastSnapshotHashRef.current;
         await fetchSnapshot(force);
+        if (lastSnapshotHashRef.current === prevHash && !force) {
+          unchangedStreak = Math.min(unchangedStreak + 1, 4);
+        } else {
+          unchangedStreak = 0;
+        }
       } finally {
         if (isActive) {
-          timeoutId = setTimeout(() => pollLoop(false), 1400);
+          // Dynamic backoff when screen is static: 1400ms -> 2500ms -> 4000ms -> 6000ms
+          const delays = [1400, 2500, 4000, 6000];
+          const delay = delays[unchangedStreak] || 1400;
+          timeoutId = setTimeout(() => pollLoop(false), delay);
         }
       }
     };
 
     pollLoop(true);
 
+    const onVisibility = () => {
+      if (!document.hidden && isActive) {
+        if (timeoutId) clearTimeout(timeoutId);
+        unchangedStreak = 0;
+        pollLoop(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       isActive = false;
       if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [isScreenActive, fetchSnapshot]);
 

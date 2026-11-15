@@ -6,7 +6,14 @@ import { toast } from '../../../../services/toastService';
 import { InlineCreationRow } from './FileViewerTreeActions';
 import { TreeNode } from './FileViewerTreeNode';
 
-export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFile, conversationId }) {
+export function FileViewerTreePanel({
+  isOpen,
+  onClose,
+  activeFilePath,
+  onOpenFile,
+  onFileRenamed,
+  conversationId,
+}) {
   const [treeData, setTreeData] = useState(null);
   const [rootName, setRootName] = useState('Project Explorer');
   const [isLoading, setIsLoading] = useState(false);
@@ -15,6 +22,7 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
   const [expandedPaths, setExpandedPaths] = useState(new Set(['', 'frontend', 'src']));
   const [creatingState, setCreatingState] = useState(null);
   const [renamingPath, setRenamingPath] = useState(null);
+  const [selectedMobilePath, setSelectedMobilePath] = useState(null);
 
   const loadTree = useCallback(async () => {
     setIsLoading(true);
@@ -59,7 +67,12 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
       await fileActionsApi.createItem(fullTarget, isDir);
       toast.success(`Created ${itemName}`, isDir ? 'Folder Created' : 'File Created');
       await loadTree();
-      if (!isDir && onOpenFile) onOpenFile(fullTarget);
+      setSelectedMobilePath(fullTarget);
+      if (isDir) {
+        setExpandedPaths(prev => new Set(prev).add(fullTarget));
+      } else if (onOpenFile) {
+        onOpenFile(fullTarget);
+      }
     } catch (err) {
       toast.error(err.message || 'Creation failed', 'File Error');
     }
@@ -68,9 +81,16 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
   const handlePerformRename = async (path, newName) => {
     setRenamingPath(null);
     try {
-      await fileActionsApi.renameItem(path, newName);
+      const cleanOld = path.replace(/\\/g, '/');
+      const segments = cleanOld.split('/');
+      segments[segments.length - 1] = newName;
+      const cleanNew = segments.join('/');
+
+      await fileActionsApi.renameItem(cleanOld, newName);
       toast.success(`Renamed to ${newName}`, 'Item Renamed');
       await loadTree();
+      setSelectedMobilePath(cleanNew);
+      if (onFileRenamed) onFileRenamed(cleanOld, cleanNew);
     } catch (err) {
       toast.error(err.message || 'Rename failed', 'File Error');
     }
@@ -178,20 +198,11 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
         </div>
       </div>
 
-      {/* Root creation input */}
-      {creatingState && creatingState.targetFolder === treeData?.full_path && (
-        <div className="p-1 border-b border-[#22262B] bg-[#16181C]">
-          <InlineCreationRow
-            level={0}
-            isDir={creatingState.isDir}
-            onConfirm={(name) => handlePerformCreate(treeData.full_path, name, creatingState.isDir)}
-            onCancel={() => setCreatingState(null)}
-          />
-        </div>
-      )}
-
       {/* Tree Body */}
-      <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
+      <div
+        onClick={() => setSelectedMobilePath(null)}
+        className="flex-1 overflow-y-auto p-1 space-y-0.5"
+      >
         {isLoading && !treeData ? (
           <div className="flex flex-col items-center justify-center py-16 text-[#A0A6AF] space-y-2">
             <span className="w-4 h-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
@@ -221,6 +232,8 @@ export function FileViewerTreePanel({ isOpen, onClose, activeFilePath, onOpenFil
             setCreatingState={setCreatingState}
             renamingPath={renamingPath}
             setRenamingPath={setRenamingPath}
+            selectedMobilePath={selectedMobilePath}
+            setSelectedMobilePath={setSelectedMobilePath}
             onPerformCreate={handlePerformCreate}
             onPerformRename={handlePerformRename}
             onPerformDelete={handlePerformDelete}

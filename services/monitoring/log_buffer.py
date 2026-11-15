@@ -37,22 +37,14 @@ class RingBufferLogHandler(logging.Handler):
 
 
 def attach_to_all_loggers():
-    """Ensure ring buffer handler is attached across standard loggers."""
-    loggers_to_attach = [
-        "",  # root
-        "uvicorn",
-        "uvicorn.access",
-        "uvicorn.error",
-        "main",
-        "integrations.antigravity.adapter",
-        "api",
-        "repositories",
-        "services",
-    ]
-    for name in loggers_to_attach:
-        l = logging.getLogger(name)
-        if log_buffer_handler not in l.handlers:
-            l.addHandler(log_buffer_handler)
+    """
+    Ensure ring buffer handler is attached cleanly to the root logger only.
+    Because logging propagates upward by default, attaching to child loggers as well
+    causes duplicate log records to be emitted to the buffer.
+    """
+    root_logger = logging.getLogger()
+    if log_buffer_handler not in root_logger.handlers:
+        root_logger.addHandler(log_buffer_handler)
 
 
 # Global singleton instance attached to loggers

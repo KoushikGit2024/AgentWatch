@@ -123,24 +123,41 @@ export function useAgentSocket({
     client.connect();
     wsClientRef.current = client;
 
-    const appStateTimer = setInterval(() => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-      if (typeof document !== 'undefined' && document.hidden) return;
-      fetchAppState();
-    }, 8000);
+    let appStateTimeoutId = null;
+    let interactionsTimeoutId = null;
 
-    const interactionsTimer = setInterval(
-      () => {
-        if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-        if (typeof document !== 'undefined' && document.hidden) return;
-        fetchInteractions();
-        fetchPendingApprovals();
-        if (!wsConnectedRef.current) {
-          fetchChatMessages();
+    const scheduleAppStatePoll = () => {
+      const delay = wsConnectedRef.current ? 25000 : 8000;
+      appStateTimeoutId = setTimeout(() => {
+        if (isMountedRef.current) {
+          if ((typeof navigator === 'undefined' || navigator.onLine) && (typeof document === 'undefined' || !document.hidden)) {
+            fetchAppState();
+          }
+          scheduleAppStatePoll();
         }
-      },
-      wsConnectedRef.current ? 3500 : 1500
-    );
+      }, delay);
+    };
+
+    const scheduleInteractionsPoll = () => {
+      // While WebSocket is connected, poll only as a slow safety net (20s).
+      // When WebSocket is down, poll frequently (1.5s) to recover immediately.
+      const delay = wsConnectedRef.current ? 20000 : 1500;
+      interactionsTimeoutId = setTimeout(() => {
+        if (isMountedRef.current) {
+          if ((typeof navigator === 'undefined' || navigator.onLine) && (typeof document === 'undefined' || !document.hidden)) {
+            fetchInteractions();
+            fetchPendingApprovals();
+            if (!wsConnectedRef.current) {
+              fetchChatMessages();
+            }
+          }
+          scheduleInteractionsPoll();
+        }
+      }, delay);
+    };
+
+    scheduleAppStatePoll();
+    scheduleInteractionsPoll();
 
     const handleVisibilityChange = () => {
       if (!document.hidden && isMountedRef.current) {
@@ -154,8 +171,8 @@ export function useAgentSocket({
 
     return () => {
       isMountedRef.current = false;
-      clearInterval(appStateTimer);
-      clearInterval(interactionsTimer);
+      if (appStateTimeoutId) clearTimeout(appStateTimeoutId);
+      if (interactionsTimeoutId) clearTimeout(interactionsTimeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       client.disconnect();
     };

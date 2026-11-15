@@ -23,12 +23,39 @@ export function useQueuedMessages(isWorking = false) {
     }
   }, []);
 
-  // Poll frequently (every 2.5s) while the agent is actively working or when messages are queued,
-  // and listen for real-time WebSocket queue_update events
+  // Poll while visible: slow down or pause when tab is hidden or queue is empty
   useEffect(() => {
+    let timeoutId = null;
+    let isMounted = true;
+
+    const scheduleNextPoll = () => {
+      if (!isMounted) return;
+      if (document.hidden) {
+        // Tab is hidden in mobile background: pause polling, check back in 30s
+        timeoutId = setTimeout(scheduleNextPoll, 30000);
+        return;
+      }
+      const delay = isWorking || queuedMessages.length > 0 ? 3000 : 12000;
+      timeoutId = setTimeout(async () => {
+        if (!isMounted) return;
+        if (!document.hidden) {
+          await fetchQueuedMessages();
+        }
+        scheduleNextPoll();
+      }, delay);
+    };
+
     fetchQueuedMessages();
-    const intervalTime = isWorking || queuedMessages.length > 0 ? 2500 : 7000;
-    pollIntervalRef.current = setInterval(fetchQueuedMessages, intervalTime);
+    scheduleNextPoll();
+
+    const onVisibilityChange = () => {
+      if (!document.hidden && isMounted) {
+        if (timeoutId) clearTimeout(timeoutId);
+        fetchQueuedMessages();
+        scheduleNextPoll();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     const onWsQueueUpdate = e => {
       if (Array.isArray(e.detail)) {
@@ -40,7 +67,9 @@ export function useQueuedMessages(isWorking = false) {
     window.addEventListener('agentwatch:queue-updated', onWsQueueUpdate);
 
     return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('agentwatch:queue-updated', onWsQueueUpdate);
     };
   }, [isWorking, queuedMessages.length, fetchQueuedMessages]);

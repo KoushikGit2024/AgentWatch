@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useLayoutEffect } from 'react';
 import { Icon } from '../constants/icons';
 
 export function ScreenViewport({
@@ -8,6 +8,27 @@ export function ScreenViewport({
   setFitMode,
   setLightboxOpen,
 }) {
+  const containerRef = useRef(null);
+  const scrollPosRef = useRef({ left: 0, top: 0 });
+
+  // Record user scroll offset before changes
+  const handleScroll = e => {
+    if (e?.currentTarget) {
+      scrollPosRef.current = {
+        left: e.currentTarget.scrollLeft,
+        top: e.currentTarget.scrollTop,
+      };
+    }
+  };
+
+  // Restore scroll position after new snapshot frame renders
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (el && fitMode === 'full') {
+      el.scrollLeft = scrollPosRef.current.left;
+      el.scrollTop = scrollPosRef.current.top;
+    }
+  }, [snapshotData?.screenshot, fitMode]);
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#101113] select-none">
       <div className="px-3 sm:px-4 py-2 border-b border-[#30343A] bg-[#17191C] flex items-center justify-between gap-2 shrink-0">
@@ -47,7 +68,11 @@ export function ScreenViewport({
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-3 sm:p-4 flex items-center justify-center min-h-0 relative">
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-auto p-3 sm:p-4 flex items-center justify-center min-h-0 relative"
+      >
         {snapshotData?.screenshot ? (
           <div className="relative flex items-center justify-center">
             <img

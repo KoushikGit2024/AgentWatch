@@ -203,21 +203,22 @@ class AntigravityAdapter:
             logger.debug("Chat refresh async error: %s", e)
 
     async def refresh_active_context(self, force: bool = False) -> Dict[str, Any]:
-        """Inspect targets and return real-time workspace and chat state."""
+        """Inspect targets asynchronously and return real-time workspace and chat state."""
         discovery = self.discover_cdp(force=force)
-        # Check active chat directly
+        # Check active chat directly using non-blocking async client
         for port in settings.parsed_cdp_ports:
             try:
-                resp = httpx.get(f"http://127.0.0.1:{port}/json/list", timeout=0.8)
-                if resp.status_code == 200:
-                    targets = resp.json()
-                    chat_targets = [
-                        t for t in targets
-                        if "/c/" in (t.get("url") or "") and t.get("webSocketDebuggerUrl")
-                    ]
-                    if chat_targets:
-                        await self._async_refresh_chat(chat_targets[0])
-                        break
+                async with httpx.AsyncClient(timeout=0.8) as client:
+                    resp = await client.get(f"http://127.0.0.1:{port}/json/list")
+                    if resp.status_code == 200:
+                        targets = resp.json()
+                        chat_targets = [
+                            t for t in targets
+                            if "/c/" in (t.get("url") or "") and t.get("webSocketDebuggerUrl")
+                        ]
+                        if chat_targets:
+                            await self._async_refresh_chat(chat_targets[0])
+                            break
             except Exception:
                 continue
 

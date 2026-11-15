@@ -27,7 +27,7 @@ export default function QuestionCard({ item, isWorking = false, onRespond }) {
   });
 
   const isResolved = Boolean(
-    resolvedDecision || item?.status === 'done' || item?.requires_permission === false
+    resolvedDecision || item?.status === 'done' || (item?.status && item?.status !== 'pending')
   );
 
   const toggleOption = id => {

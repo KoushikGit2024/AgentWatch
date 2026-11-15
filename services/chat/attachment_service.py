@@ -59,6 +59,20 @@ class AttachmentService:
         cand.mkdir(parents=True, exist_ok=True)
         return cand
 
+    def _matches_search(self, term: str, *candidates: str) -> bool:
+        """Flexible multi-case search matching sub-terms and extensions."""
+        if not term:
+            return True
+        clean_term = term.strip().lower()
+        search_tokens = clean_term.split()
+        for cand in candidates:
+            if not cand:
+                continue
+            cand_lower = cand.lower()
+            if all(token in cand_lower for token in search_tokens):
+                return True
+        return False
+
     def list_attachments(
         self,
         conversation_id: Optional[str] = None,
@@ -76,60 +90,71 @@ class AttachmentService:
         """
         items: List[Dict[str, Any]] = []
         total_bytes = 0
-        search_lower = search.strip().lower()
 
-        # 1. Global out-of-chat uploads from uploads/
+        # 1. Global out-of-chat uploads from uploads/ (root and subdirectories)
         if scope in ("all", "global") and self.upload_dir.exists():
-            for entry in os.scandir(self.upload_dir):
-                if entry.name == ".gitkeep" or not entry.is_file():
-                    continue
-                try:
-                    stat = entry.stat()
-                    total_bytes += stat.st_size
-                    parts = entry.name.split("_", 2)
-                    original_name = parts[2] if len(parts) >= 3 else entry.name
-                    ext = Path(original_name).suffix.lower()
-                    cat = get_file_category(ext)
+            for root, dirs, files in os.walk(self.upload_dir):
+                rel_root = Path(root).relative_to(self.upload_dir).as_posix()
+                is_subfolder = rel_root != "."
+                subfolder_cid = rel_root if is_subfolder else None
 
-                    if category != "all" and cat != category:
+                # If scope is 'chat', skip global root
+                for fname in files:
+                    if fname == ".gitkeep":
                         continue
-                    if search_lower and search_lower not in original_name.lower() and search_lower not in entry.name.lower():
-                        continue
+                    try:
+                        fpath = Path(root) / fname
+                        stat = fpath.stat()
+                        total_bytes += stat.st_size
+                        parts = fname.split("_", 2)
+                        original_name = parts[2] if len(parts) >= 3 else fname
+                        ext = Path(original_name).suffix.lower()
+                        cat = get_file_category(ext)
 
-                    items.append({
-                        "id": entry.name,
-                        "filename": entry.name,
-                        "original_name": original_name,
-                        "category": cat,
-                        "size": stat.st_size,
-                        "is_image": cat == "image",
-                        "url": f"/uploads/{entry.name}",
-                        "mtime": stat.st_mtime,
-                        "scope": "global",
-                        "conversation_id": None,
-                        "can_delete": True,
-                    })
-                except Exception:
-                    continue
+                        if category != "all" and cat != category:
+                            continue
+                        if not self._matches_search(search, original_name, fname, ext):
+                            continue
+
+                        url_path = f"/uploads/{rel_root}/{fname}" if is_subfolder else f"/uploads/{fname}"
+
+                        items.append({
+                            "id": f"{rel_root}_{fname}" if is_subfolder else fname,
+                            "filename": f"{rel_root}/{fname}" if is_subfolder else fname,
+                            "original_name": original_name,
+                            "category": cat,
+                            "size": stat.st_size,
+                            "is_image": cat == "image",
+                            "url": url_path,
+                            "mtime": stat.st_mtime,
+                            "scope": "chat" if is_subfolder else "global",
+                            "conversation_id": subfolder_cid,
+                            "can_delete": True,
+                        })
+                    except Exception:
+                        continue
 
         # 2. Chat-scoped uploads from .user_uploaded/
         if scope in ("all", "chat"):
-            chat_dir = None
+            chat_dirs = []
             if conversation_id:
-                chat_dir = self.get_chat_upload_dir(conversation_id)
+                cdir = self.get_chat_upload_dir(conversation_id)
+                if cdir and cdir.exists():
+                    chat_dirs.append((cdir, conversation_id))
             else:
                 try:
                     from integrations.antigravity.core.adapter import antigravity_adapter
                     st = antigravity_adapter.get_status()
                     cid = st.get("active_conversation_id")
                     if cid:
-                        conversation_id = cid
-                        chat_dir = self.get_chat_upload_dir(cid)
+                        cdir = self.get_chat_upload_dir(cid)
+                        if cdir and cdir.exists():
+                            chat_dirs.append((cdir, cid))
                 except Exception:
                     pass
 
-            if chat_dir and chat_dir.exists():
-                for entry in os.scandir(chat_dir):
+            for cdir, cid in chat_dirs:
+                for entry in os.scandir(cdir):
                     if not entry.is_file():
                         continue
                     try:
@@ -140,7 +165,7 @@ class AttachmentService:
 
                         if category != "all" and cat != category:
                             continue
-                        if search_lower and search_lower not in entry.name.lower():
+                        if not self._matches_search(search, entry.name, ext):
                             continue
 
                         # Route to raw file stream endpoint
@@ -154,10 +179,11 @@ class AttachmentService:
                             "url": f"/api/v1/files/raw?path={entry.path.replace('\\', '/')}",
                             "mtime": stat.st_mtime,
                             "scope": "chat",
-                            "conversation_id": conversation_id,
+                            "conversation_id": cid,
                             "can_delete": True,
                         })
                     except Exception:
+                        continue
                         continue
 
         items.sort(key=lambda x: x.get("mtime", 0), reverse=True)
@@ -174,22 +200,45 @@ class AttachmentService:
 
     def delete_attachment(self, filename: str, conversation_id: Optional[str] = None) -> bool:
         """Delete an attachment whether global or chat-scoped."""
-        safe_name = sanitize_filename(filename.replace("chat_", ""))
+        clean_name = filename.replace("chat_", "").strip().replace("\\", "/")
+        parts = clean_name.split("/")
+        safe_parts = [sanitize_filename(p) for p in parts if p and p != ".."]
+        safe_rel = "/".join(safe_parts)
+        safe_name = safe_parts[-1] if safe_parts else "attachment"
 
-        # 1. Check global uploads folder
+        # 1. Check relative subpath in uploads/ (e.g. uploads/<cid>/<file> or uploads/<file>)
+        cand_rel = self.upload_dir / safe_rel
+        if cand_rel.exists() and cand_rel.is_file():
+            cand_rel.unlink()
+            return True
+
+        # 2. Check root uploads folder
         cand_global = self.upload_dir / safe_name
-        if cand_global.exists():
+        if cand_global.exists() and cand_global.is_file():
             cand_global.unlink()
             return True
 
-        # 2. Check chat-scoped folder
+        # 3. Check conversation uploads folder
         if conversation_id:
+            chat_upload_sub = self.upload_dir / sanitize_filename(conversation_id) / safe_name
+            if chat_upload_sub.exists() and chat_upload_sub.is_file():
+                chat_upload_sub.unlink()
+                return True
+
             chat_dir = self.get_chat_upload_dir(conversation_id)
             if chat_dir:
                 cand_chat = chat_dir / safe_name
-                if cand_chat.exists():
+                if cand_chat.exists() and cand_chat.is_file():
                     cand_chat.unlink()
                     return True
+
+        # 4. Fallback: Search all active brain bases for the file across user_uploaded directories
+        for base in self.brain_bases:
+            if base.exists():
+                for cand in base.glob(f"*/.user_uploaded/{safe_name}"):
+                    if cand.is_file():
+                        cand.unlink()
+                        return True
 
         return False
 

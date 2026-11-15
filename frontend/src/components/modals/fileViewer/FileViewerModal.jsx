@@ -10,6 +10,7 @@ import {
   getMonacoLanguage,
   MediaPreviewViewport,
   MarkdownPreviewViewport,
+  handleTabRenameSync,
 } from './FileViewerHelpers';
 import { BinaryFileViewport } from './BinaryFileViewport';
 import { FileViewerTabBar } from './FileViewerTabBar';
@@ -366,6 +367,16 @@ export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawe
                   : [...prev, { id: pathKey, path: pathKey, filename: pathKey.split('/').pop() }]
               );
               setActiveTabPath(pathKey);
+            }}
+            onFileRenamed={(oldPath, newPath) => {
+              handleTabRenameSync(oldPath, newPath, {
+                setTabs,
+                setTabDataMap,
+                setEditorContents,
+                setDirtyFiles,
+                setActiveTabPath,
+                activeTabPath,
+              });
             }}
             onClose={() => setIsTreeOpen(false)}
           />

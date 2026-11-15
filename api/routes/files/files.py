@@ -279,7 +279,21 @@ def get_raw_file(path: str = Query(..., description="File path to stream directl
             else:
                 mime_type = "application/octet-stream"
 
-    return FileResponse(path=str(target), media_type=mime_type, filename=target.name)
+    # Display media files (images, audio, video) inline in new browser tabs
+    is_media = (
+        mime_type.startswith("image/")
+        or mime_type.startswith("video/")
+        or mime_type.startswith("audio/")
+        or mime_type in ("application/pdf", "text/plain")
+    )
+    disposition = "inline" if is_media else "attachment"
+
+    return FileResponse(
+        path=str(target),
+        media_type=mime_type,
+        filename=target.name if disposition == "attachment" else None,
+        content_disposition_type=disposition,
+    )
 
 
 EXCLUDED_TREE_DIRS = {

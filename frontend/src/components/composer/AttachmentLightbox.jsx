@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Icon } from '../../constants/icons';
 import { formatFileSize } from '../chat/AttachmentPreview';
 
 export default function AttachmentLightbox({ item, onClose }) {
   if (!item) return null;
 
+  const [isExpanded, setIsExpanded] = useState(false);
   const imageUrl = item.url || item.previewUrl;
   const title = item.original_name || item.filename || 'Attached Image';
 
@@ -13,14 +14,18 @@ export default function AttachmentLightbox({ item, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-5 select-none"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 p-2 sm:p-4 select-none"
       onClick={onClose}
     >
       <div
-        className="relative max-w-4xl max-h-[90dvh] w-full overflow-hidden rounded-lg border border-[#30343A] bg-[#17191C] p-3 shadow-2xl flex flex-col"
+        className={`relative w-full overflow-hidden rounded-lg border border-[#30343A] bg-[#17191C] p-3 shadow-2xl flex flex-col transition-all duration-150 ${
+          isExpanded
+            ? 'max-w-[98vw] h-[96dvh]'
+            : 'max-w-4xl max-h-[90dvh]'
+        }`}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between pb-2.5 border-b border-[#262A30] px-1 text-xs">
+        <div className="flex items-center justify-between pb-2.5 border-b border-[#262A30] px-1 text-xs shrink-0">
           <div className="flex items-center gap-2 truncate">
             <span className="font-mono text-[#E8EAED] font-medium truncate">{title}</span>
             {item.size && (
@@ -30,17 +35,15 @@ export default function AttachmentLightbox({ item, onClose }) {
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {imageUrl && (
-              <a
-                href={imageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Open original in new tab"
-                className="p-1.5 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] transition"
-              >
-                <div className="w-4 h-4">{Icon.maximize}</div>
-              </a>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsExpanded(prev => !prev)}
+              aria-label={isExpanded ? 'Restore size' : 'Expand full size'}
+              title={isExpanded ? 'Restore preview size' : 'Expand preview'}
+              className="p-1.5 rounded text-[#A0A6AF] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer"
+            >
+              <div className="w-4 h-4">{isExpanded ? Icon.minimize2 : Icon.maximize}</div>
+            </button>
             <button
               type="button"
               onClick={onClose}
@@ -53,11 +56,13 @@ export default function AttachmentLightbox({ item, onClose }) {
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center overflow-hidden p-2 min-h-0">
+        <div className="flex-1 flex items-center justify-center overflow-auto p-2 min-h-0">
           <img
             src={imageUrl}
             alt={title}
-            className="max-h-[76dvh] max-w-full rounded object-contain"
+            className={`rounded object-contain transition-all ${
+              isExpanded ? 'max-h-full max-w-full' : 'max-h-[76dvh] max-w-full'
+            }`}
           />
         </div>
       </div>

@@ -71,7 +71,7 @@ export default function AssetManagerModal({
 
   const executeDeleteSingle = async filename => {
     try {
-      await api.deleteAttachment(filename);
+      await api.deleteAttachment(filename, activeConversationId);
       toast.success(`Deleted ${filename}`, 'Asset Removed');
       setAttachments(prev => prev.filter(a => a.filename !== filename));
       setSelectedIds(prev => {
@@ -91,7 +91,7 @@ export default function AssetManagerModal({
 
     setIsDeleting(true);
     try {
-      const res = await api.deleteBatchAttachments(Array.from(selectedIds));
+      const res = await api.deleteBatchAttachments(Array.from(selectedIds), activeConversationId);
       if (res && res.success) {
         toast.success(
           `Deleted ${res.deleted_count} file(s) (${res.freed_mb} MB freed)`,

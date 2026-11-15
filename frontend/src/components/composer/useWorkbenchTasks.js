@@ -8,10 +8,32 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
   const [ideTerminalTasks, setIdeTerminalTasks] = useState([]);
   const [isLoadingTerminal, setIsLoadingTerminal] = useState(false);
 
-  // Background slow poll (every 15s) for task status indicator dot
+  // Background slow poll (every 20s while tab is visible) for task status indicator dot
   useEffect(() => {
+    let timeoutId = null;
     let isMounted = true;
-    const fetchTasks = async () => {
+
+    const schedulePoll = () => {
+      if (!isMounted) return;
+      if (document.hidden) {
+        timeoutId = setTimeout(schedulePoll, 30000);
+        return;
+      }
+      timeoutId = setTimeout(async () => {
+        if (!isMounted) return;
+        if (!document.hidden) {
+          try {
+            const res = await api.getTerminalTasks();
+            if (isMounted && res?.tasks) {
+              setIdeTerminalTasks(res.tasks);
+            }
+          } catch {}
+        }
+        schedulePoll();
+      }, 20000);
+    };
+
+    const initialFetch = async () => {
       try {
         const res = await api.getTerminalTasks();
         if (isMounted && res?.tasks) {
@@ -19,30 +41,59 @@ export function useWorkbenchTasks(activeConversationId, activeAttachedTab, setAc
         }
       } catch {}
     };
-    fetchTasks();
-    const interval = setInterval(fetchTasks, 15000);
+    initialFetch();
+    schedulePoll();
+
+    const onVisibilityChange = () => {
+      if (!document.hidden && isMounted) {
+        if (timeoutId) clearTimeout(timeoutId);
+        initialFetch();
+        schedulePoll();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
-  // Fast polling (every 2.5s) while terminal tab is actively opened
+  // Fast polling (every 3s) only while terminal tab is actively opened and visible
   useEffect(() => {
     if (activeAttachedTab !== 'terminal') return;
+    let timeoutId = null;
     let isMounted = true;
-    const fastPoll = async () => {
-      try {
-        const res = await api.getTerminalTasks();
-        if (isMounted && res?.tasks) {
-          setIdeTerminalTasks(res.tasks);
-        }
-      } catch {}
+
+    const poll = async () => {
+      if (!isMounted) return;
+      if (!document.hidden) {
+        try {
+          const res = await api.getTerminalTasks();
+          if (isMounted && res?.tasks) {
+            setIdeTerminalTasks(res.tasks);
+          }
+        } catch {}
+      }
+      const delay = document.hidden ? 15000 : 3000;
+      timeoutId = setTimeout(poll, delay);
     };
-    const interval = setInterval(fastPoll, 2500);
+
+    poll();
+
+    const onVisibility = () => {
+      if (!document.hidden && isMounted) {
+        if (timeoutId) clearTimeout(timeoutId);
+        poll();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [activeAttachedTab]);
 

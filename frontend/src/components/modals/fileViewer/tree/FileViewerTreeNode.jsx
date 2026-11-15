@@ -35,6 +35,8 @@ export function TreeNode({
   setCreatingState,
   renamingPath,
   setRenamingPath,
+  selectedMobilePath,
+  setSelectedMobilePath,
   onPerformCreate,
   onPerformRename,
   onPerformDelete,
@@ -63,6 +65,7 @@ export function TreeNode({
 
   const isRenaming = renamingPath === fullPath;
   const isCreatingInside = creatingState && creatingState.targetFolder === fullPath;
+  const isMobileSelected = selectedMobilePath === fullPath;
 
   const handleDragStart = (e) => {
     e.stopPropagation();
@@ -101,7 +104,9 @@ export function TreeNode({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
+          if (setSelectedMobilePath) setSelectedMobilePath(fullPath);
           if (isDir) toggleExpand(node.path);
           else if (onOpenFile) onOpenFile(fullPath);
         }}
@@ -154,6 +159,7 @@ export function TreeNode({
         <div className="flex items-center gap-1 shrink-0">
           <TreeNodeActions
             isDir={isDir}
+            isMobileActive={isMobileSelected}
             onNewFile={() => {
               toggleExpand(node.path, true);
               setCreatingState({ targetFolder: fullPath, isDir: false, level: level + 1 });
@@ -166,7 +172,7 @@ export function TreeNode({
             onDelete={() => onPerformDelete(fullPath, node.name)}
           />
           {!isDir && node.size > 0 && !isRenaming && (
-            <span className="text-[9px] font-mono text-[#747C87] group-hover:text-[#A0A6AF] tabular-nums group-hover:hidden">
+            <span className={`text-[9px] font-mono text-[#747C87] group-hover:text-[#A0A6AF] tabular-nums ${isMobileSelected ? 'hidden' : 'group-hover:hidden'}`}>
               {formatBytes(node.size)}
             </span>
           )}
@@ -198,6 +204,8 @@ export function TreeNode({
               setCreatingState={setCreatingState}
               renamingPath={renamingPath}
               setRenamingPath={setRenamingPath}
+              selectedMobilePath={selectedMobilePath}
+              setSelectedMobilePath={setSelectedMobilePath}
               onPerformCreate={onPerformCreate}
               onPerformRename={onPerformRename}
               onPerformDelete={onPerformDelete}

@@ -375,7 +375,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
         while True:
             text = await websocket.receive_text()
-            if text == "ping":
+            if text in ("ping", '{"type":"ping"}', '{"type": "ping"}'):
                 await websocket.send_json({"type": "pong"})
             elif text == "refresh_chat":
                 paginated = conversation_service.get_paginated_conversation(limit=15)

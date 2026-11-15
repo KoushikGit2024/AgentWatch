@@ -36,17 +36,25 @@ export default function AntigravityTerminalPanel({ isOpen, onClose, embedded = f
     }
   }, [isOpen, loadSessions]);
 
-  // 2. Fetch output for active session tab with adaptive interval (3s when idle, 1s when running)
+  // 2. Fetch output for active session tab with adaptive interval (5s when idle, 1.5s when running, paused when hidden)
   useEffect(() => {
     if (!isOpen || !currentSessionId) return;
 
     let isMounted = true;
+    let timeoutId = null;
+
     const fetchOutput = async () => {
-      if (isFetchingRef.current) return;
+      if (isFetchingRef.current || !isMounted) return;
+      if (document.hidden) {
+        timeoutId = setTimeout(fetchOutput, 15000);
+        return;
+      }
+      let isRunning = false;
       try {
         isFetchingRef.current = true;
         const res = await terminalApi.getSessionOutput(currentSessionId, 400);
         if (isMounted && res && res.success) {
+          isRunning = Boolean(res.is_running);
           setSessionOutputs(prev => ({
             ...prev,
             [currentSessionId]: res.lines || [],
@@ -68,15 +76,27 @@ export default function AntigravityTerminalPanel({ isOpen, onClose, embedded = f
       } catch {
       } finally {
         isFetchingRef.current = false;
+        if (isMounted) {
+          const delay = isRunning ? 1500 : 5000;
+          timeoutId = setTimeout(fetchOutput, delay);
+        }
       }
     };
 
     fetchOutput();
-    const intervalMs = 2000;
-    const interval = setInterval(fetchOutput, intervalMs);
+
+    const onVisibility = () => {
+      if (!document.hidden && isMounted) {
+        if (timeoutId) clearTimeout(timeoutId);
+        fetchOutput();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [isOpen, currentSessionId]);
 

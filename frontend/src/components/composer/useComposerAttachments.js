@@ -2,7 +2,61 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { toast } from '../../services/toastService';
 
-export function useComposerAttachments() {
+/**
+ * Pre-scale high-resolution mobile photos on the client before network upload.
+ * Constrains max dimensions to 2048px while maintaining aspect ratio and visual fidelity.
+ */
+async function prescaleImageIfOversized(file, maxDimension = 2048) {
+  if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
+    return file;
+  }
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width <= maxDimension && height <= maxDimension) {
+        resolve(file);
+        return;
+      }
+      if (width > height) {
+        height = Math.round((height * maxDimension) / width);
+        width = maxDimension;
+      } else {
+        width = Math.round((width * maxDimension) / height);
+        height = maxDimension;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        blob => {
+          if (!blob || blob.size >= file.size) {
+            resolve(file);
+          } else {
+            const scaled = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(scaled);
+          }
+        },
+        'image/jpeg',
+        0.88
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
+export function useComposerAttachments(activeConversationId = null) {
   const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -14,11 +68,14 @@ export function useComposerAttachments() {
   const handleUploadFiles = useCallback(
     async fileList => {
       if (!fileList || fileList.length === 0) return;
-      const filesArray = Array.from(fileList);
-      if (attachments.length + filesArray.length > 8) {
+      const rawFilesArray = Array.from(fileList);
+      if (attachments.length + rawFilesArray.length > 8) {
         toast.warning('Maximum 8 attachments allowed per prompt', 'Upload Limit');
         return;
       }
+
+      // Pre-scale large camera images in parallel on client
+      const filesArray = await Promise.all(rawFilesArray.map(f => prescaleImageIfOversized(f)));
 
       const optimisticItems = filesArray.map((f, i) => {
         const isImg = f.type.startsWith('image/') || f.name.match(/\.(png|jpe?g|webp|gif|svg)$/i);
@@ -37,7 +94,7 @@ export function useComposerAttachments() {
       setIsUploading(true);
 
       try {
-        const res = await api.uploadAttachments(filesArray);
+        const res = await api.uploadAttachments(filesArray, activeConversationId);
         if (res && res.attachments) {
           const uploaded = res.attachments;
           setAttachments(prev => {
@@ -58,7 +115,7 @@ export function useComposerAttachments() {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     },
-    [attachments.length]
+    [attachments.length, activeConversationId]
   );
 
   const handlePaste = useCallback(

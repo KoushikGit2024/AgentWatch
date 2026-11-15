@@ -1,9 +1,10 @@
 # Approval routes extracted to: api.routes.approvals
 # Remote and configuration routes extracted to: api.routes.controls_remote
 import os
+import base64
 import asyncio
 from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Response, Request
 from config.settings import settings
 from integrations.antigravity.core.adapter import antigravity_adapter
 from integrations.antigravity.core.capabilities import get_verified_capabilities
@@ -97,6 +98,48 @@ async def get_snapshot(
     }
 
 
+@router.get("/snapshot.jpg")
+@router.get("/api/v1/snapshot.jpg")
+async def get_snapshot_binary(
+    request: Request,
+    hash: Optional[str] = Query(None, description="Previous screenshot hash for 304 validation"),
+):
+    """
+    Return high-performance raw binary JPEG snapshot with HTTP 304 Not Modified caching.
+    Bypasses base64 encoding and JSON wrapping to save 33%+ mobile network bandwidth.
+    """
+    cdp_status = antigravity_adapter.get_status()
+    if not cdp_status["cdp"]["connected"]:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Antigravity CDP is not currently connected.",
+        )
+
+    screenshot_b64 = await antigravity_adapter.capture_screenshot()
+    cur_hash = antigravity_adapter.get_cached_screenshot_hash() or "initial"
+
+    client_etag = request.headers.get("if-none-match")
+    if (client_etag and client_etag.strip('"') == cur_hash) or (hash and hash == cur_hash):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+
+    if not screenshot_b64:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Screenshot could not be captured from workbench.",
+        )
+
+    image_bytes = base64.b64decode(screenshot_b64)
+    return Response(
+        content=image_bytes,
+        media_type="image/jpeg",
+        headers={
+            "ETag": f'"{cur_hash}"',
+            "Cache-Control": "public, max-age=1",
+            "X-Snapshot-Hash": cur_hash,
+        },
+    )
+
+
 @router.get("/api/v1/logs")
 def get_system_logs(limit: int = 150, min_level: Optional[str] = None):
     """Return live circular-buffer logs for frontend monitoring."""
@@ -117,7 +160,7 @@ async def get_app_state():
         active_ctx = antigravity_adapter.get_status()
         is_conn = bool(active_ctx.get("cdp", {}).get("connected", False))
 
-    tailscale_info = remote_access_service.get_tailscale_status()
+    tailscale_info = await asyncio.to_thread(remote_access_service.get_tailscale_status)
     model_info = await antigravity_adapter.get_active_model_and_plan()
     cdp_details = {
         "status": antigravity_adapter.last_status,

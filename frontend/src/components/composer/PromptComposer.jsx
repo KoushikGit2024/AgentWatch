@@ -1,12 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { Icon } from '../../constants/icons';
 import { api } from '../../services/api';
 import { toast } from '../../services/toastService';
 import AttachmentPreview from '../chat/AttachmentPreview';
 import WorkbenchBar from './WorkbenchBar';
 import AttachmentLightbox from './AttachmentLightbox';
-import AssetManagerModal from '../modals/AssetManagerModal';
-import TaskOutputModal from '../modals/TaskOutputModal';
 import AntigravityTerminalPanel from '../terminal/AntigravityTerminalPanel';
 import { useComposerAttachments } from './useComposerAttachments';
 import { useWorkbenchTasks } from './useWorkbenchTasks';
@@ -14,6 +12,9 @@ import { useTaskExecutionTimers } from '../../hooks/useTaskExecutionTimers';
 import { MinimizedViewerBadge } from './MinimizedViewerBadge';
 import { ComposerFooter } from './ComposerFooter';
 import { ModelSelectorButton } from './ModelSelectorButton';
+
+const AssetManagerModal = lazy(() => import('../modals/AssetManagerModal'));
+const TaskOutputModal = lazy(() => import('../modals/TaskOutputModal'));
 
 export function PromptComposer({
   promptText,
@@ -43,7 +44,7 @@ export function PromptComposer({
     handleDragOver,
     handleDragLeave,
     handleDrop,
-  } = useComposerAttachments();
+  } = useComposerAttachments(appState?.active_conversation_id);
   const [isAssetManagerOpen, setIsAssetManagerOpen] = useState(false);
   const [minimizedViewerStatus, setMinimizedViewerStatus] = useState(null);
   const [activeAttachedTab, setActiveAttachedTab] = useState(null);
@@ -292,24 +293,30 @@ export function PromptComposer({
 
       <AttachmentLightbox item={previewItem} onClose={() => setPreviewItem(null)} />
 
-      <AssetManagerModal
-        isOpen={isAssetManagerOpen}
-        onClose={() => setIsAssetManagerOpen(false)}
-        activeConversationId={appState?.active_conversation_id}
-        onSelectAttachment={selected => {
-          setAttachments(prev => {
-            if (prev.some(a => a.filename === selected.filename)) return prev;
-            return [...prev, selected];
-          });
-        }}
-        onPreviewItem={att => setPreviewItem(att)}
-      />
+      <Suspense fallback={null}>
+        {isAssetManagerOpen && (
+          <AssetManagerModal
+            isOpen={isAssetManagerOpen}
+            onClose={() => setIsAssetManagerOpen(false)}
+            activeConversationId={appState?.active_conversation_id}
+            onSelectAttachment={selected => {
+              setAttachments(prev => {
+                if (prev.some(a => a.filename === selected.filename)) return prev;
+                return [...prev, selected];
+              });
+            }}
+            onPreviewItem={att => setPreviewItem(att)}
+          />
+        )}
 
-      <TaskOutputModal
-        isOpen={Boolean(inspectingTask)}
-        task={inspectingTask}
-        onClose={() => setInspectingTask(null)}
-      />
+        {Boolean(inspectingTask) && (
+          <TaskOutputModal
+            isOpen={Boolean(inspectingTask)}
+            task={inspectingTask}
+            onClose={() => setInspectingTask(null)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

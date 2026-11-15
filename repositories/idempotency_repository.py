@@ -93,6 +93,17 @@ class IdempotencyRepository:
             if existing.get("status") == "completed":
                 return "completed", existing.get("response")
 
+            # If previous attempt failed, allow retry by updating status back to in_progress
+            if existing.get("status") == "failed":
+                try:
+                    self.collection.update_one(
+                        {"scope": scope, "idempotency_key": idempotency_key},
+                        {"$set": {"status": "in_progress", "updated_at": now}}
+                    )
+                except Exception:
+                    pass
+                return "reserved", None
+
             return "in_progress", None
         except (PyMongoError, Exception) as exc:
             logger.warning(
@@ -106,6 +117,10 @@ class IdempotencyRepository:
                     return "conflict_mismatch", None
                 if existing.get("status") == "completed":
                     return "completed", existing.get("response")
+                if existing.get("status") == "failed":
+                    existing["status"] = "in_progress"
+                    existing["updated_at"] = now
+                    return "reserved", None
                 return "in_progress", None
 
             # Enforce max 1000 items in in-memory fallback store to prevent memory leak

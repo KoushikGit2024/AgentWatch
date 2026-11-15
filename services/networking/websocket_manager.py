@@ -27,13 +27,13 @@ class WebSocketManager:
             )
 
     async def broadcast(self, message: Dict[str, Any]):
-        """Broadcast payload to all active clients, pruning stale connections."""
+        """Broadcast payload to all active clients with client isolation, pruning stale connections."""
         if not self.active_connections:
             return
 
         payload = json.dumps(message)
         dead = []
-        for connection in self.active_connections:
+        for connection in list(self.active_connections):
             try:
                 await connection.send_text(payload)
             except Exception:
