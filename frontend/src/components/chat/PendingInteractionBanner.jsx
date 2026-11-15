@@ -105,17 +105,6 @@ export default function PendingInteractionBanner({
                 Expand
               </button>
             )}
-            {onCancelInteraction && (
-              <button
-                type="button"
-                onClick={onCancelInteraction}
-                disabled={isSubmitting}
-                className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-rose-950/50 border border-zinc-700 hover:border-rose-800 text-zinc-400 hover:text-rose-300 text-[11px] font-medium transition cursor-pointer disabled:opacity-40"
-                title="Dismiss question"
-              >
-                Dismiss
-              </button>
-            )}
           </div>
         </div>
 

@@ -52,7 +52,7 @@ export default function InteractionModal({
     >
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
-        onClick={!isSubmitting ? onCancel || onDismiss : undefined}
+        onClick={!isSubmitting ? onDismiss : undefined}
       />
 
       <div className="relative w-full sm:max-w-lg bg-[#14171E] border border-sky-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-sky-950/40 overflow-hidden">
@@ -105,11 +105,11 @@ export default function InteractionModal({
 
             <button
               type="button"
-              onClick={onCancel || onDismiss}
+              onClick={onDismiss}
               disabled={isSubmitting}
               className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#252B36] transition cursor-pointer shrink-0 disabled:opacity-40"
-              title="Dismiss Question"
-              aria-label="Dismiss Question"
+              title="Minimize Question"
+              aria-label="Minimize Question"
             >
               <div className="w-4 h-4">{Icon.x}</div>
             </button>
@@ -190,6 +190,17 @@ export default function InteractionModal({
                   </div>
                 );
               })}
+
+              {interaction.allow_custom_response !== false && !useCustomMode && (
+                <button
+                  type="button"
+                  onClick={handleSelectCustomMode}
+                  className="w-full text-left flex items-center gap-2.5 p-3 rounded-xl border border-dashed border-[#3A4250] hover:border-sky-400 bg-[#12151B] text-[#94A3B8] hover:text-white transition cursor-pointer"
+                >
+                  <div className="w-4 h-4 text-sky-400 shrink-0">{Icon.plus}</div>
+                  <span className="text-xs font-medium">Other (write your answer)...</span>
+                </button>
+              )}
             </div>
           ) : (
             hasOptions && (
@@ -288,16 +299,6 @@ export default function InteractionModal({
               >
                 Minimize
               </button>
-              {onCancel && (
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  disabled={isSubmitting}
-                  className="text-xs text-rose-400 hover:bg-rose-500/15 transition px-3 py-1.5 rounded-lg cursor-pointer disabled:opacity-40"
-                >
-                  Dismiss
-                </button>
-              )}
             </div>
 
             <div>

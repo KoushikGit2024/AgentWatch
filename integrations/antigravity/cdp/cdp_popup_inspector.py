@@ -1,4 +1,4 @@
-﻿"""CDP Popup and Banner Inspection Dispatchers."""
+"""CDP Popup and Banner Inspection Dispatchers."""
 
 import asyncio
 import json
@@ -124,11 +124,11 @@ async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
                             hasCustomInput = true;
                             continue;
                         }
-                        // Clone label and remove inputs, SVGs, and index badges to extract full text and description
+                        // Clone label and remove inputs, SVGs, styles, scripts, and index badges to extract clean text
                         let rawText = '';
                         try {
                             const clone = lbl.cloneNode(true);
-                            clone.querySelectorAll('input, svg, .font-mono, [class*="select-none"]').forEach(el => el.remove());
+                            clone.querySelectorAll('style, script, input, svg, .font-mono, [class*="select-none"]').forEach(el => el.remove());
                             rawText = (clone.innerText || clone.textContent || '').trim();
                         } catch (e) {
                             rawText = (lbl.innerText || lbl.textContent || '').trim();

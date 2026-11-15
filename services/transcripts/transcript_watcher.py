@@ -110,21 +110,9 @@ async def run_transcript_watcher():
                         dom_popup = await antigravity_adapter.inspect_active_popup()
                         if dom_popup.get("has_popup"):
                             dom_miss_count = 0
-                            if dom_popup.get("popup_kind") == "question":
-                                cached_dom_approval = None
-                                interaction_service.sync_question_from_transcript(
-                                    session_id="cdp_live_session",
-                                    question_data={
-                                        "question": dom_popup.get("title") or "Select an option",
-                                        "options": dom_popup.get("options") or [],
-                                        "is_multi_select": dom_popup.get("is_multi_select", False),
-                                        "allow_custom_response": dom_popup.get(
-                                            "allow_custom_response", True
-                                        ),
-                                    },
-                                    is_active=True,
-                                )
-                            elif not pending_approval:
+                            # Question prompts are canonicalized exclusively via ask_question tool in transcript.
+                            # CDP inspection is strictly reserved for live terminal/action approvals.
+                            if dom_popup.get("popup_kind") != "question" and not pending_approval:
                                 target_str = (
                                     dom_popup.get("command")
                                     or dom_popup.get("target")
@@ -165,11 +153,6 @@ async def run_transcript_watcher():
                                     for k, v in conversation_service._resolved_approvals.items()
                                     if not k.startswith("dom-") and not k.startswith("cmd-")
                                 }
-                                interaction_service.sync_question_from_transcript(
-                                    session_id="cdp_live_session",
-                                    question_data=None,
-                                    is_active=False,
-                                )
 
                 if not pending_approval and cached_dom_approval:
                     pending_approval = cached_dom_approval
