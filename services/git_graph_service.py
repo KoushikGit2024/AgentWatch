@@ -226,8 +226,8 @@ def _build_keizu_graph(commits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return graph_lines
 
 
-async def get_git_graph(workspace_root: Path, limit: int = 150) -> Dict[str, Any]:
-    """Retrieve topological git log across all branches, stashes, and Keizu line segments."""
+async def get_git_graph(workspace_root: Path, limit: int = 150, branch: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve topological git log across branches/stashes and Keizu line segments."""
     git_dir = workspace_root / ".git"
     if not git_dir.exists():
         return {
@@ -258,22 +258,17 @@ async def get_git_graph(workspace_root: Path, limit: int = 150) -> Dict[str, Any
             current_branch = name
         all_branches.append({"name": name, "is_current": is_cur})
 
-    # 2. Extract commits across ALL branches, tags, and remotes (matching Git Keizu getGitLog)
+    # 2. Extract commits: if specific branch given (and not ALL), scope to that branch
     log_fmt = "%H%x00%P%x00%an%x00%ae%x00%ad%x00%s%x00%D%x01"
-    l_out = await asyncio.to_thread(
-        _run_git_cmd,
-        [
-            "git",
-            "log",
-            f"-n{max(10, min(limit, 50000))}",
-            "--branches",
-            "--tags",
-            "--remotes",
-            "--topo-order",
-            f"--format={log_fmt}",
-        ],
-        workspace_root,
-    )
+    clean_branch = branch.strip() if branch and branch.strip() and branch.strip() != "ALL" else None
+    
+    cmd = ["git", "log", f"-n{max(10, min(limit, 50000))}", "--topo-order", f"--format={log_fmt}"]
+    if clean_branch:
+        cmd.append(clean_branch)
+    else:
+        cmd.extend(["--branches", "--tags", "--remotes"])
+
+    l_out = await asyncio.to_thread(_run_git_cmd, cmd, workspace_root)
 
     commits: List[Dict[str, Any]] = []
     for block in l_out.split("\x01"):
@@ -360,11 +355,8 @@ async def get_git_graph(workspace_root: Path, limit: int = 150) -> Dict[str, Any
     lines = _build_keizu_graph(commits)
 
     # 5. Check if there are more commits beyond current limit
-    c_out = await asyncio.to_thread(
-        _run_git_cmd,
-        ["git", "rev-list", "--all", "--count"],
-        workspace_root,
-    )
+    count_cmd = ["git", "rev-list", clean_branch, "--count"] if clean_branch else ["git", "rev-list", "--all", "--count"]
+    c_out = await asyncio.to_thread(_run_git_cmd, count_cmd, workspace_root)
     total_repo_commits = len(commits)
     try:
         val = int(c_out.strip())

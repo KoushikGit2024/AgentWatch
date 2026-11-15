@@ -33,8 +33,8 @@ export function useGitGraph(isOpen) {
 
   const isMountedRef = useRef(true);
 
-  // Fetch graph data for a specific limit
-  const fetchGraphData = useCallback(async (targetLimit, isMore = false) => {
+  // Fetch graph data for a specific limit and branch
+  const fetchGraphData = useCallback(async (targetLimit, targetBranch = 'ALL', isMore = false) => {
     if (isMore) {
       setIsLoadingMore(true);
     } else {
@@ -43,7 +43,7 @@ export function useGitGraph(isOpen) {
     setError(null);
 
     try {
-      const result = await gitGraphApi.fetchGraph(targetLimit);
+      const result = await gitGraphApi.fetchGraph(targetLimit, targetBranch);
       if (isMountedRef.current) {
         setData(result);
       }
@@ -59,12 +59,12 @@ export function useGitGraph(isOpen) {
     }
   }, []);
 
-  // Reload initial batch when modal opens
+  // Reload initial batch when modal opens or selected branch changes
   useEffect(() => {
     isMountedRef.current = true;
     if (isOpen) {
       setLimit(INITIAL_BATCH_SIZE);
-      fetchGraphData(INITIAL_BATCH_SIZE, false);
+      fetchGraphData(INITIAL_BATCH_SIZE, selectedBranch, false);
     } else {
       setSelectedCommitSha(null);
       setSelectedCommitDiff(null);
@@ -73,15 +73,15 @@ export function useGitGraph(isOpen) {
     return () => {
       isMountedRef.current = false;
     };
-  }, [isOpen, fetchGraphData]);
+  }, [isOpen, selectedBranch, fetchGraphData]);
 
   // Lazy load more commits as user scrolls near bottom
   const loadMore = useCallback(() => {
     if (isLoading || isLoadingMore || !data.has_more) return;
     const nextLimit = limit + BATCH_INCREMENT;
     setLimit(nextLimit);
-    fetchGraphData(nextLimit, true);
-  }, [isLoading, isLoadingMore, data.has_more, limit, fetchGraphData]);
+    fetchGraphData(nextLimit, selectedBranch, true);
+  }, [isLoading, isLoadingMore, data.has_more, limit, selectedBranch, fetchGraphData]);
 
   // Load commit diff only when a commit is explicitly selected by the user
   useEffect(() => {
@@ -109,28 +109,19 @@ export function useGitGraph(isOpen) {
     };
   }, [selectedCommitSha, isOpen]);
 
-  // Filter commits by branch or search query
+  // Filter commits by search query (branch filtering is already handled accurately at the Git level)
   const filteredCommits = useMemo(() => {
     if (!data.commits) return [];
+    if (!searchQuery.trim()) return data.commits;
+
+    const q = searchQuery.toLowerCase();
     return data.commits.filter(commit => {
-      // 1. Branch filter
-      if (selectedBranch !== 'ALL') {
-        const matchesBranch =
-          commit.branches?.includes(selectedBranch) ||
-          commit.branches?.some(b => b.endsWith(`/${selectedBranch}`));
-        if (!matchesBranch) return false;
-      }
-      // 2. Search query filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchSha = commit.sha.toLowerCase().includes(q);
-        const matchSubject = commit.subject.toLowerCase().includes(q);
-        const matchAuthor = commit.author_name.toLowerCase().includes(q);
-        return matchSha || matchSubject || matchAuthor;
-      }
-      return true;
+      const matchSha = commit.sha.toLowerCase().includes(q);
+      const matchSubject = commit.subject.toLowerCase().includes(q);
+      const matchAuthor = commit.author_name.toLowerCase().includes(q);
+      return matchSha || matchSubject || matchAuthor;
     });
-  }, [data.commits, selectedBranch, searchQuery]);
+  }, [data.commits, searchQuery]);
 
   return {
     hasGit: data.has_git,
@@ -152,6 +143,6 @@ export function useGitGraph(isOpen) {
     selectedCommitDiff,
     isLoadingDiff,
     loadMore,
-    refresh: () => fetchGraphData(limit, false),
+    refresh: () => fetchGraphData(limit, selectedBranch, false),
   };
 }

@@ -10,8 +10,9 @@ export const gitGraphApi = {
    * @param {number} [limit=150]
    * @returns {Promise<{ has_git: boolean, current_branch: string, branches: Array, commits: Array, total_commits: number }>}
    */
-  async fetchGraph(limit = 150) {
-    const res = await request(`/api/v1/git/graph?limit=${encodeURIComponent(limit)}`);
+  async fetchGraph(limit = 150, branch = '') {
+    const branchParam = branch && branch !== 'ALL' ? `&branch=${encodeURIComponent(branch)}` : '';
+    const res = await request(`/api/v1/git/graph?limit=${encodeURIComponent(limit)}${branchParam}`);
     return res.json();
   },
 

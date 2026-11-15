@@ -48,15 +48,22 @@ export function GitGraphModal({ isOpen, onClose }) {
 
   // IntersectionObserver to automatically trigger loadMore as user scrolls to bottom
   useEffect(() => {
-    if (!isOpen || !hasMore || isLoadingMore || isLoading) return;
+    if (!isOpen || !hasMore) return;
 
     const sentinel = bottomSentinelRef.current;
     if (!sentinel) return;
 
+    let timeoutId = null;
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting) {
-          loadMore();
+        if (entries[0]?.isIntersecting) {
+          // Debounce slightly to prevent rapid multi-triggers
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            if (!isLoadingMore && !isLoading) {
+              loadMore();
+            }
+          }, 150);
         }
       },
       {
@@ -67,7 +74,10 @@ export function GitGraphModal({ isOpen, onClose }) {
     );
 
     observer.observe(sentinel);
-    return () => observer.disconnect();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      observer.disconnect();
+    };
   }, [isOpen, hasMore, isLoadingMore, isLoading, loadMore]);
 
   if (!isOpen) return null;
