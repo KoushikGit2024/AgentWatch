@@ -10,8 +10,26 @@ Strictly adheres to AGENTS.md (< 500 LOC limit).
 """
 
 import asyncio
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+
+def _run_git_cmd(args: List[str], cwd: Path) -> str:
+    """Run git command synchronously in thread pool to avoid Windows asyncio subprocess issues."""
+    try:
+        res = subprocess.run(
+            args,
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        return res.stdout
+    except Exception:
+        return ""
 
 
 def _parse_ref_names(ref_str: str) -> Tuple[List[str], List[str], bool]:
@@ -222,20 +240,15 @@ async def get_git_graph(workspace_root: Path, limit: int = 150) -> Dict[str, Any
         }
 
     # 1. Extract all branch heads
-    branches_proc = await asyncio.create_subprocess_exec(
-        "git",
-        "branch",
-        "-a",
-        "--format=%(refname:short)|%(HEAD)",
-        cwd=str(workspace_root),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    b_out = await asyncio.to_thread(
+        _run_git_cmd,
+        ["git", "branch", "-a", "--format=%(refname:short)|%(HEAD)"],
+        workspace_root,
     )
-    b_out, _ = await branches_proc.communicate()
 
     all_branches: List[Dict[str, Any]] = []
     current_branch = None
-    for line in b_out.decode("utf-8", errors="replace").splitlines():
+    for line in b_out.splitlines():
         parts = line.strip().split("|")
         if not parts or not parts[0]:
             continue
@@ -247,23 +260,23 @@ async def get_git_graph(workspace_root: Path, limit: int = 150) -> Dict[str, Any
 
     # 2. Extract commits across ALL branches, tags, and remotes (matching Git Keizu getGitLog)
     log_fmt = "%H%x00%P%x00%an%x00%ae%x00%ad%x00%s%x00%D%x01"
-    log_proc = await asyncio.create_subprocess_exec(
-        "git",
-        "log",
-        f"-n{max(10, min(limit, 500))}",
-        "--branches",
-        "--tags",
-        "--remotes",
-        "--topo-order",
-        f"--format={log_fmt}",
-        cwd=str(workspace_root),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    l_out = await asyncio.to_thread(
+        _run_git_cmd,
+        [
+            "git",
+            "log",
+            f"-n{max(10, min(limit, 50000))}",
+            "--branches",
+            "--tags",
+            "--remotes",
+            "--topo-order",
+            f"--format={log_fmt}",
+        ],
+        workspace_root,
     )
-    l_out, _ = await log_proc.communicate()
 
     commits: List[Dict[str, Any]] = []
-    for block in l_out.decode("utf-8", errors="replace").split("\x01"):
+    for block in l_out.split("\x01"):
         block = block.strip()
         if not block:
             continue
@@ -296,21 +309,21 @@ async def get_git_graph(workspace_root: Path, limit: int = 150) -> Dict[str, Any
         })
 
     # 3. Extract Stashes and inject as child branches of their base commits (matching Git Keizu getStashes)
-    stash_proc = await asyncio.create_subprocess_exec(
-        "git",
-        "reflog",
-        "--format=%H%x00%P%x00%gD%x00%an%x00%ae%x00%ad%x00%s",
-        "refs/stash",
-        "--",
-        cwd=str(workspace_root),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    s_out = await asyncio.to_thread(
+        _run_git_cmd,
+        [
+            "git",
+            "reflog",
+            "--format=%H%x00%P%x00%gD%x00%an%x00%ae%x00%ad%x00%s",
+            "refs/stash",
+            "--",
+        ],
+        workspace_root,
     )
-    s_out, _ = await stash_proc.communicate()
 
     commit_sha_set = {c["sha"] for c in commits}
     stashes: List[Dict[str, Any]] = []
-    for line in s_out.decode("utf-8", errors="replace").splitlines():
+    for line in s_out.splitlines():
         fields = line.strip().split("\x00")
         if len(fields) >= 7:
             s_sha = fields[0].strip()
@@ -346,13 +359,28 @@ async def get_git_graph(workspace_root: Path, limit: int = 150) -> Dict[str, Any
     # 4. Generate exact Keizu graph lines & lanes
     lines = _build_keizu_graph(commits)
 
+    # 5. Check if there are more commits beyond current limit
+    c_out = await asyncio.to_thread(
+        _run_git_cmd,
+        ["git", "rev-list", "--all", "--count"],
+        workspace_root,
+    )
+    total_repo_commits = len(commits)
+    try:
+        val = int(c_out.strip())
+        if val > 0:
+            total_repo_commits = val
+    except Exception:
+        pass
+
     return {
         "has_git": True,
         "current_branch": current_branch,
         "branches": all_branches,
         "commits": commits,
         "lines": lines,
-        "total_commits": len(commits),
+        "total_commits": total_repo_commits,
+        "has_more": len(commits) < total_repo_commits,
     }
 
 
@@ -363,35 +391,20 @@ async def get_commit_diff(workspace_root: Path, sha: str) -> Dict[str, Any]:
         return {"error": "Not a git repository"}
 
     # 1. Commit message & author info
-    show_meta = await asyncio.create_subprocess_exec(
-        "git",
-        "show",
-        "--stat",
-        "--format=%H%x00%an%x00%ae%x00%ad%x00%s%x00%b",
-        sha,
-        cwd=str(workspace_root),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    raw_meta = await asyncio.to_thread(
+        _run_git_cmd,
+        ["git", "show", "--stat", "--format=%H%x00%an%x00%ae%x00%ad%x00%s%x00%b", sha],
+        workspace_root,
     )
-    meta_out, _ = await show_meta.communicate()
-    raw_meta = meta_out.decode("utf-8", errors="replace")
 
     # 2. Changed files with status (A/M/D/R) and additions/deletions (matching Keizu)
-    ns_proc = await asyncio.create_subprocess_exec(
-        "git",
-        "diff-tree",
-        "-M",
-        "--name-status",
-        "-r",
-        "--root",
-        sha,
-        cwd=str(workspace_root),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    ns_out = await asyncio.to_thread(
+        _run_git_cmd,
+        ["git", "diff-tree", "-M", "--name-status", "-r", "--root", sha],
+        workspace_root,
     )
-    ns_out, _ = await ns_proc.communicate()
     status_map: Dict[str, Dict[str, str]] = {}
-    for line in ns_out.decode("utf-8", errors="replace").splitlines():
+    for line in ns_out.splitlines():
         parts = line.strip().split("\t")
         if len(parts) >= 2 and parts[0]:
             code = parts[0][0].upper()
@@ -400,22 +413,14 @@ async def get_commit_diff(workspace_root: Path, sha: str) -> Dict[str, Any]:
                 old_p = parts[1].strip() if code == "R" and len(parts) > 2 else new_p
                 status_map[new_p] = {"status": code, "old_path": old_p}
 
-    numstat_proc = await asyncio.create_subprocess_exec(
-        "git",
-        "diff-tree",
-        "-M",
-        "--numstat",
-        "-r",
-        "--root",
-        sha,
-        cwd=str(workspace_root),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    numstat_out = await asyncio.to_thread(
+        _run_git_cmd,
+        ["git", "diff-tree", "-M", "--numstat", "-r", "--root", sha],
+        workspace_root,
     )
-    numstat_out, _ = await numstat_proc.communicate()
     file_changes: List[Dict[str, Any]] = []
     seen_paths = set()
-    for line in numstat_out.decode("utf-8", errors="replace").splitlines():
+    for line in numstat_out.splitlines():
         parts = line.strip().split("\t")
         if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
             p = parts[-1].strip()
@@ -441,18 +446,11 @@ async def get_commit_diff(workspace_root: Path, sha: str) -> Dict[str, Any]:
             })
 
     # 3. Unified patch diff
-    show_diff = await asyncio.create_subprocess_exec(
-        "git",
-        "show",
-        "-p",
-        "--format=",
-        sha,
-        cwd=str(workspace_root),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    patch = await asyncio.to_thread(
+        _run_git_cmd,
+        ["git", "show", "-p", "--format=", sha],
+        workspace_root,
     )
-    diff_out, _ = await show_diff.communicate()
-    patch = diff_out.decode("utf-8", errors="replace")
 
     return {
         "sha": sha,

@@ -24,6 +24,7 @@ async def run_transcript_watcher():
     last_approval_key = None
     last_interaction_id = None
     last_conversation_id = None
+    last_workspace_path = None
     dom_probe_tick = 0
     cached_dom_approval = None
     dom_miss_count = 0
@@ -50,8 +51,21 @@ async def run_transcript_watcher():
 
             ag_status = antigravity_adapter.get_status()
             current_cid = ag_status.get("active_conversation_id")
+            current_ws_path = ag_status.get("workspace_path")
+            current_ws_name = ag_status.get("workspace_name")
+
+            # Check for workspace switch
+            if current_ws_path and current_ws_path != last_workspace_path:
+                last_workspace_path = current_ws_path
+                await websocket_manager.broadcast({
+                    "type": "workspace_changed",
+                    "workspace_path": current_ws_path,
+                    "workspace_name": current_ws_name,
+                    "conversation_id": current_cid,
+                })
+
             chat_switched = False
-            if current_cid and current_cid != last_conversation_id:
+            if current_cid != last_conversation_id:
                 last_conversation_id = current_cid
                 last_mtime = 0.0
                 last_size = 0
@@ -69,6 +83,19 @@ async def run_transcript_watcher():
                     last_mtime = mtime
                     last_size = size
                     transcript_changed = True
+            elif chat_switched:
+                # Switched to a new/blank conversation with no transcript on disk yet
+                if websocket_manager.active_connections:
+                    await websocket_manager.broadcast(
+                        {
+                            "type": "chat_update",
+                            "conversation_id": current_cid,
+                            "messages": [],
+                            "total": 0,
+                            "oldest_index": 0,
+                            "has_more": False,
+                        }
+                    )
 
             # Check agent working state transition even if transcript hasn't appended new bytes
             # (e.g. agent becomes idle or staleness heuristic triggers)

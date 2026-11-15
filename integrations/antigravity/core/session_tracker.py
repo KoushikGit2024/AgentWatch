@@ -42,19 +42,17 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
             if parts:
                 workspace_name = parts[-1]
 
-    # Query data-cascade-id, breadcrumb segment, and document.title directly from the webview DOM
+    # Query data-cascade-id, breadcrumb segment, mismatch banner, and title directly from webview DOM
     chat_title = None
     dom_cascade_id = None
     eval_val: Dict[str, Any] = {}
     try:
         dom_probe_js = """
         (() => {
-            // Check if there are active turns or if we are in an empty/new chat state
             const turns = document.querySelectorAll('[data-turn-index], [data-testid*="turn"], [data-testid*="message"]');
             const breadcrumb = document.querySelector('[data-testid="breadcrumb-segment"]');
-            
-            // Only look for conversation-view with data-cascade-id, NEVER match sidebar rows
             const view = document.querySelector('[data-testid="conversation-view"][data-cascade-id]');
+            const mismatchBanner = document.querySelector('[data-testid="workspace-mismatch-banner"]');
             
             // If there is no breadcrumb and 0 turns rendered, it is a brand-new blank conversation
             const isFreshChat = !breadcrumb && turns.length === 0;
@@ -63,6 +61,7 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
                 cascadeId: isFreshChat ? null : (view ? view.getAttribute('data-cascade-id') : null),
                 breadcrumb: breadcrumb ? breadcrumb.innerText.trim() : null,
                 isFreshChat: isFreshChat,
+                hasMismatch: Boolean(mismatchBanner),
                 docTitle: document.title || ''
             };
         })()
@@ -111,11 +110,26 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
     else:
         effective_conv_id = dom_cascade_id or conv_id
 
+    # If workspace mismatch is detected, resolve the conversation's true origin workspace from SQLite
+    is_mismatch = bool(eval_val.get("hasMismatch"))
+    workbench_ws_name = workspace_name
+    if is_mismatch and effective_conv_id:
+        try:
+            from services.workspace.workspace_context import workspace_context
+            conv_path, conv_name = workspace_context.get_workspace_for_conversation(effective_conv_id)
+            if conv_path and conv_name:
+                workspace_path = str(conv_path)
+                workspace_name = conv_name
+        except Exception:
+            pass
+
     return {
         "conversation_id": effective_conv_id,
         "conversation_title": chat_title or ("New Conversation" if not effective_conv_id else None),
         "workspace_name": workspace_name,
         "workspace_path": workspace_path,
+        "workbench_workspace_name": workbench_ws_name,
+        "is_workspace_mismatch": is_mismatch,
         "chat_target_url": ws_url,
     }
 

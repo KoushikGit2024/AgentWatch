@@ -48,11 +48,19 @@ export function useAgentSocket({
       },
       onMessage: data => {
         if (!isMountedRef.current) return;
+        if (data.type === 'workspace_changed') {
+          if (activeConvIdRef) activeConvIdRef.current = data.conversation_id || null;
+          oldestTurnIndexRef.current = null;
+          setHasMoreHistory(false);
+          setChatMessages([]);
+          fetchAppState();
+          return;
+        }
         if (data.type === 'init' || data.type === 'chat_update') {
           if (Array.isArray(data.messages)) {
             const incomingCid = data.conversation_id;
             const isChatSwitched = Boolean(
-              incomingCid && activeConvIdRef?.current && activeConvIdRef.current !== incomingCid
+              activeConvIdRef?.current !== incomingCid
             );
 
             if (isChatSwitched) {
@@ -67,10 +75,16 @@ export function useAgentSocket({
               if (incomingCid && activeConvIdRef && !activeConvIdRef.current) {
                 activeConvIdRef.current = incomingCid;
               }
-              setChatMessages(prev => mergeTurnsPreservingHistory(prev, data.messages));
-              if (oldestTurnIndexRef.current === null && typeof data.oldest_index === 'number') {
-                oldestTurnIndexRef.current = data.oldest_index;
-                setHasMoreHistory(Boolean(data.has_more));
+              if (data.messages.length === 0) {
+                setChatMessages([]);
+                oldestTurnIndexRef.current = null;
+                setHasMoreHistory(false);
+              } else {
+                setChatMessages(prev => mergeTurnsPreservingHistory(prev, data.messages));
+                if (oldestTurnIndexRef.current === null && typeof data.oldest_index === 'number') {
+                  oldestTurnIndexRef.current = data.oldest_index;
+                  setHasMoreHistory(Boolean(data.has_more));
+                }
               }
               if (setIsChatLoading) setIsChatLoading(false);
             }

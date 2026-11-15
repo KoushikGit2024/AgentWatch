@@ -3,7 +3,7 @@
  * Pure React implementation with zero third-party graph dependencies.
  * Uses Lucide icons only. Adheres strictly to AGENTS.md (< 500 LOC).
  */
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   GitFork,
   GitBranch,
@@ -12,6 +12,7 @@ import {
   X,
   AlertTriangle,
   Layers,
+  Loader2,
 } from 'lucide-react';
 import { useGitGraph } from '../../hooks/useGitGraph';
 import { GitGraphSvg } from './git-graph/GitGraphSvg';
@@ -26,7 +27,9 @@ export function GitGraphModal({ isOpen, onClose }) {
     commits,
     lines,
     totalCommits,
+    hasMore,
     isLoading,
+    isLoadingMore,
     error,
     searchQuery,
     setSearchQuery,
@@ -36,8 +39,36 @@ export function GitGraphModal({ isOpen, onClose }) {
     setSelectedCommitSha,
     selectedCommitDiff,
     isLoadingDiff,
+    loadMore,
     refresh,
   } = useGitGraph(isOpen);
+
+  const scrollContainerRef = useRef(null);
+  const bottomSentinelRef = useRef(null);
+
+  // IntersectionObserver to automatically trigger loadMore as user scrolls to bottom
+  useEffect(() => {
+    if (!isOpen || !hasMore || isLoadingMore || isLoading) return;
+
+    const sentinel = bottomSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        root: scrollContainerRef.current,
+        rootMargin: '240px',
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isOpen, hasMore, isLoadingMore, isLoading, loadMore]);
 
   if (!isOpen) return null;
 
@@ -120,7 +151,9 @@ export function GitGraphModal({ isOpen, onClose }) {
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[#8B949E] flex-none">
             <Layers className="w-3.5 h-3.5 text-blue-400" />
-            <span>{commits.length} commits</span>
+            <span>
+              {commits.length} of {totalCommits || commits.length} commits
+            </span>
           </div>
         </div>
 
@@ -139,24 +172,46 @@ export function GitGraphModal({ isOpen, onClose }) {
           ) : (
             <>
               {/* Scrollable DAG Area */}
-              <div className="flex-1 flex overflow-auto">
-                {/* SVG Visualizer Column */}
-                <GitGraphSvg
-                  commits={commits}
-                  lines={lines}
-                  selectedSha={selectedCommitSha}
-                />
+              <div ref={scrollContainerRef} className="flex-1 flex flex-col overflow-auto">
+                <div className="flex min-w-full">
+                  {/* SVG Visualizer Column */}
+                  <GitGraphSvg
+                    commits={commits}
+                    lines={lines}
+                    selectedSha={selectedCommitSha}
+                  />
 
-                {/* Commit Rows List */}
-                <div className="flex-1 min-w-[280px] sm:min-w-[450px]">
-                  {commits.map(commit => (
-                    <CommitRow
-                      key={commit.sha}
-                      commit={commit}
-                      isSelected={commit.sha === selectedCommitSha}
-                      onSelect={setSelectedCommitSha}
-                    />
-                  ))}
+                  {/* Commit Rows List */}
+                  <div className="flex-1 min-w-[280px] sm:min-w-[450px]">
+                    {commits.map(commit => (
+                      <CommitRow
+                        key={commit.sha}
+                        commit={commit}
+                        isSelected={commit.sha === selectedCommitSha}
+                        onSelect={setSelectedCommitSha}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bottom Sentinel & Loading Status */}
+                <div ref={bottomSentinelRef} className="flex items-center justify-center p-3 text-[11px] text-[#8B949E] border-t border-[#212429]/50">
+                  {isLoadingMore ? (
+                    <div className="flex items-center gap-2 text-blue-400">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Loading older commits...</span>
+                    </div>
+                  ) : hasMore ? (
+                    <button
+                      type="button"
+                      onClick={loadMore}
+                      className="text-blue-400 hover:text-blue-300 transition hover:underline"
+                    >
+                      Load older commits
+                    </button>
+                  ) : commits.length > 0 ? (
+                    <span className="text-[#6E7681]">All {commits.length} commits loaded</span>
+                  ) : null}
                 </div>
               </div>
 

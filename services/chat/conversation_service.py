@@ -103,20 +103,33 @@ class ConversationService:
                         candidate_found = cand_compat
                         break
 
-            if not candidate_found:
-                transcripts = []
-                for base in bases:
-                    if base.exists():
-                        transcripts.extend(list(base.glob("*/.system_generated/logs/transcript*.jsonl")))
+            # Only search for a transcript if conversation_id was not explicitly specified,
+            # and strictly restrict to conversations that belong to the active workspace.
+            if not candidate_found and not conversation_id:
+                try:
+                    from services.workspace.workspace_context import workspace_context
+                    active_ws_path = workspace_context.get_active_workspace_path()
+                    ws_cids = set(workspace_context.get_conversations_for_workspace(active_ws_path))
+                except Exception:
+                    ws_cids = set()
 
-                if transcripts:
-                    transcripts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-                    candidate = transcripts[0]
-                    if candidate.name == "transcript.jsonl":
-                        full_sibling = candidate.parent / "transcript_full.jsonl"
-                        if full_sibling.exists() and full_sibling.stat().st_size > 0:
-                            candidate = full_sibling
-                    candidate_found = candidate
+                if ws_cids:
+                    transcripts = []
+                    for base in bases:
+                        if not base.exists():
+                            continue
+                        for cid in ws_cids:
+                            c_full = base / cid / ".system_generated" / "logs" / "transcript_full.jsonl"
+                            if c_full.exists() and c_full.stat().st_size > 0:
+                                transcripts.append(c_full)
+                            else:
+                                c_std = base / cid / ".system_generated" / "logs" / "transcript.jsonl"
+                                if c_std.exists() and c_std.stat().st_size > 0:
+                                    transcripts.append(c_std)
+
+                    if transcripts:
+                        transcripts.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                        candidate_found = transcripts[0]
 
             self._cached_transcript_path = candidate_found
             self._cached_transcript_time = now

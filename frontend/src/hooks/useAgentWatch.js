@@ -34,9 +34,20 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
   const isLoadingOlderRef = useRef(false);
   const activeConvIdRef = useRef(null);
 
-  const fetchChatMessages = useCallback(async (reset = false) => {
+  const fetchChatMessages = useCallback(async (reset = false, targetCid = null) => {
     try {
-      const currentCid = activeConvIdRef.current;
+      const currentCid = targetCid || activeConvIdRef.current;
+      if (!currentCid) {
+        if (isMountedRef.current) {
+          if (reset) {
+            setChatMessages([]);
+            oldestTurnIndexRef.current = null;
+            setHasMoreHistory(false);
+          }
+          setIsChatLoading(false);
+        }
+        return;
+      }
       const data = await api.getChatMessages(PAGE_BLOCK_SIZE, null, currentCid);
       if (isMountedRef.current) {
         const incoming = data.messages || [];
@@ -104,13 +115,17 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
           connected: Boolean(data.connected ?? data.antigravity_connected),
         });
         const incomingCid = data.active_conversation_id;
-        if (incomingCid && activeConvIdRef.current && activeConvIdRef.current !== incomingCid) {
-          setIsChatLoading(true);
+        if (incomingCid !== activeConvIdRef.current) {
           activeConvIdRef.current = incomingCid;
           oldestTurnIndexRef.current = null;
-          fetchChatMessages(true);
-        } else if (incomingCid && !activeConvIdRef.current) {
-          activeConvIdRef.current = incomingCid;
+          if (incomingCid) {
+            setIsChatLoading(true);
+            fetchChatMessages(true);
+          } else {
+            setChatMessages([]);
+            setHasMoreHistory(false);
+            setIsChatLoading(false);
+          }
         }
       }
     } catch {}
@@ -372,12 +387,12 @@ export function useAgentWatch({ isScreenActive = false } = {}) {
       activeConvIdRef.current = cid;
       oldestTurnIndexRef.current = null;
       setIsChatLoading(true);
-      await fetchChatMessages(true, cid);
       setAppState(prev => ({
         ...prev,
         active_conversation_id: cid,
         active_conversation_title: title || prev.active_conversation_title,
       }));
+      await fetchChatMessages(true, cid);
     },
     [fetchChatMessages]
   );

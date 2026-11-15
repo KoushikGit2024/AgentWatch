@@ -182,6 +182,8 @@ async def get_app_state():
         "antigravity_connected": is_conn,
         "workspace_name": active_ctx.get("workspace_name"),
         "workspace_path": active_ctx.get("workspace_path"),
+        "workbench_workspace_name": active_ctx.get("workbench_workspace_name"),
+        "is_workspace_mismatch": active_ctx.get("is_workspace_mismatch", False),
         "active_conversation_id": active_ctx.get("active_conversation_id"),
         "active_conversation_title": active_ctx.get("active_conversation_title"),
         "tailscale_serve": tailscale_info["serve_active"],
@@ -397,10 +399,37 @@ async def stop_generation():
 
 @router.post("/new-chat")
 @router.post("/api/v1/new-chat")
-def new_chat():
+async def new_chat():
     """Start new conversation session."""
+    from services.chat.conversation_service import conversation_service
+    from services.networking.websocket_manager import websocket_manager
+    from integrations.antigravity.cdp.cdp_session_actions import dispatch_new_conversation
+
     ag_status = antigravity_adapter.get_status()
     cdp_connected = ag_status["cdp"]["connected"]
+
+    # Reset active state on adapter & conversation service
+    conversation_service.mark_new_chat_pending()
+    antigravity_adapter.active_conversation_id = None
+    antigravity_adapter.active_conversation_title = "New Conversation"
+
+    # Immediately notify frontend clients that conversation is reset
+    if websocket_manager.active_connections:
+        await websocket_manager.broadcast({
+            "type": "chat_update",
+            "conversation_id": None,
+            "messages": [],
+            "total": 0,
+            "oldest_index": 0,
+            "has_more": False,
+        })
+
+    target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+    if target_ws and cdp_connected:
+        try:
+            await dispatch_new_conversation(target_ws)
+        except Exception:
+            pass
 
     try:
         from repositories.event_repository import EventRepository

@@ -79,9 +79,12 @@ export function GitGraphSvg({ commits, lines = [], selectedSha }) {
 
           // 2. Exact Git Keizu Bézier curve calculation:
           // C x1, y1 + C, x2, y2 - C, x2, y2 (with C = ROW_HEIGHT * 0.8)
+          // When lockedFirst is true (branching out), the curve maintains the origin x lane longer
           const cY1 = y1 + CURVE_OFFSET;
           const cY2 = y2 - CURVE_OFFSET;
-          const pathData = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${x1.toFixed(1)} ${cY1.toFixed(1)} ${x2.toFixed(1)} ${cY2.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+          const pathData = seg.lockedFirst
+            ? `M ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x1.toFixed(1)} ${cY1.toFixed(1)} C ${x1.toFixed(1)} ${cY1.toFixed(1)} ${x2.toFixed(1)} ${cY2.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`
+            : `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${x1.toFixed(1)} ${cY1.toFixed(1)} ${x2.toFixed(1)} ${cY2.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
 
           return (
             <path

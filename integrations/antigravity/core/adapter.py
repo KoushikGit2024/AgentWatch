@@ -31,6 +31,8 @@ class AntigravityAdapter:
         self.active_conversation_title: Optional[str] = None
         self.active_workspace_name: Optional[str] = None
         self.active_workspace_path: Optional[str] = None
+        self.workbench_workspace_name: Optional[str] = None
+        self.is_workspace_mismatch: bool = False
         self.last_status: str = "disconnected"
         self.last_successful_observation: Optional[datetime] = None
         self.last_successful_connection: Optional[datetime] = None
@@ -131,8 +133,14 @@ class AntigravityAdapter:
                         # Inspect chat iframe if available in targets
                         chat_targets = [
                             t for t in targets
-                            if "/c/" in (t.get("url") or "") and t.get("webSocketDebuggerUrl")
+                            if t.get("webSocketDebuggerUrl") and (
+                                "/c/" in (t.get("url") or "")
+                                or "workspaceUri=" in (t.get("url") or "")
+                                or "extensionView=true" in (t.get("url") or "")
+                            )
                         ]
+                        if chat_targets:
+                            self.active_chat_url = chat_targets[0].get("webSocketDebuggerUrl")
                         if chat_targets and (now_ts - self._last_chat_scan_time > 1.2 or not self.active_conversation_id):
                             self._last_chat_scan_time = now_ts
                             try:
@@ -197,6 +205,9 @@ class AntigravityAdapter:
                 self.active_workspace_name = info["workspace_name"]
             if info.get("workspace_path"):
                 self.active_workspace_path = info["workspace_path"]
+            if info.get("workbench_workspace_name"):
+                self.workbench_workspace_name = info["workbench_workspace_name"]
+            self.is_workspace_mismatch = bool(info.get("is_workspace_mismatch", False))
             if info.get("chat_target_url"):
                 self.active_chat_url = info["chat_target_url"]
         except Exception as e:
@@ -214,9 +225,14 @@ class AntigravityAdapter:
                         targets = resp.json()
                         chat_targets = [
                             t for t in targets
-                            if "/c/" in (t.get("url") or "") and t.get("webSocketDebuggerUrl")
+                            if t.get("webSocketDebuggerUrl") and (
+                                "/c/" in (t.get("url") or "")
+                                or "workspaceUri=" in (t.get("url") or "")
+                                or "extensionView=true" in (t.get("url") or "")
+                            )
                         ]
                         if chat_targets:
+                            self.active_chat_url = chat_targets[0].get("webSocketDebuggerUrl")
                             await self._async_refresh_chat(chat_targets[0])
                             break
             except Exception:
@@ -226,6 +242,8 @@ class AntigravityAdapter:
             **discovery,
             "workspace_name": self.active_workspace_name,
             "workspace_path": self.active_workspace_path,
+            "workbench_workspace_name": self.workbench_workspace_name,
+            "is_workspace_mismatch": self.is_workspace_mismatch,
             "active_conversation_id": self.active_conversation_id,
             "active_conversation_title": self.active_conversation_title,
         }

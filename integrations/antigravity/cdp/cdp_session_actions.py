@@ -1,4 +1,4 @@
-﻿"""CDP Actions for switching conversations and starting new chat sessions in Antigravity."""
+"""CDP Actions for switching conversations and starting new chat sessions in Antigravity."""
 
 import json
 import logging
@@ -15,27 +15,59 @@ async def dispatch_switch_conversation(target_url: str, conversation_id: str) ->
     try:
         from integrations.antigravity.core.cdp_connection import cdp_connect
 
-        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=3.0) as ws:
+        async with cdp_connect(target_url, open_timeout=1.5, close_timeout=4.0) as ws:
             nav_js = f"""
             (() => {{
                 const targetCid = "{conversation_id}";
-                // First check if already on this conversation
-                if (window.location.pathname.includes(targetCid)) {{
-                    return {{ switched: true, alreadyActive: true }};
+                const activeView = document.querySelector('[data-testid="conversation-view"]');
+                const currentActiveCascade = activeView ? activeView.getAttribute('data-cascade-id') : null;
+                if (currentActiveCascade === targetCid && window.location.pathname.includes(targetCid)) {{
+                    return Promise.resolve({{ switched: true, alreadyActive: true }});
                 }}
 
-                // Check if link exists in sidebar and click it for smooth SPA transition
-                const link = document.querySelector(`a[href*="${{targetCid}}"]`);
-                if (link) {{
-                    link.click();
-                    return {{ switched: true, via: 'sidebar_link' }};
+                // Helper to fire authentic user click
+                function triggerClick(el) {{
+                    const a = el.querySelector('a') || el;
+                    a.dispatchEvent(new MouseEvent('click', {{ bubbles: true, cancelable: true, view: window }}));
                 }}
 
-                // Direct SPA navigation fallback
-                const currentSearch = window.location.search;
-                const newUrl = `/c/${{targetCid}}${{currentSearch}}`;
-                window.location.href = newUrl;
-                return {{ switched: true, via: 'window_location', url: newUrl }};
+                // 1. Direct match if row is already in the viewport
+                let row = document.querySelector(`[data-cascade-id="${{targetCid}}"]`);
+                if (row) {{
+                    triggerClick(row);
+                    return Promise.resolve({{ switched: true, via: 'visible_row' }});
+                }}
+
+                // 2. Virtualized sidebar scroll sweep
+                const list = document.querySelector('[data-testid="conversation-list-sidebar"]');
+                if (!list) {{
+                    // Fallback to location assignment
+                    const currentSearch = window.location.search;
+                    window.location.href = `/c/${{targetCid}}${{currentSearch}}`;
+                    return Promise.resolve({{ switched: true, via: 'location' }});
+                }}
+
+                return new Promise(resolve => {{
+                    const total = list.scrollHeight;
+                    let current = 0;
+                    const step = Math.max(350, Math.floor(list.clientHeight * 0.75));
+                    const interval = setInterval(() => {{
+                        current += step;
+                        list.scrollTop = current;
+                        const targetRow = document.querySelector(`[data-cascade-id="${{targetCid}}"]`);
+                        if (targetRow) {{
+                            clearInterval(interval);
+                            triggerClick(targetRow);
+                            resolve({{ switched: true, via: 'virtual_scroll_row', at: current }});
+                        }} else if (current >= total + step) {{
+                            clearInterval(interval);
+                            // Fallback
+                            const currentSearch = window.location.search;
+                            window.location.href = `/c/${{targetCid}}${{currentSearch}}`;
+                            resolve({{ switched: true, via: 'scroll_sweep_fallback' }});
+                        }}
+                    }}, 25);
+                }});
             }})()
             """
             await ws.send(
@@ -43,7 +75,7 @@ async def dispatch_switch_conversation(target_url: str, conversation_id: str) ->
                     {
                         "id": 501,
                         "method": "Runtime.evaluate",
-                        "params": {"expression": nav_js, "returnByValue": True},
+                        "params": {"expression": nav_js, "returnByValue": True, "awaitPromise": True},
                     }
                 )
             )

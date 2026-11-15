@@ -11,7 +11,7 @@ import re
 import sqlite3
 import urllib.parse
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Union
 
 logger = logging.getLogger("services.workspace_context")
 
@@ -69,6 +69,53 @@ class WorkspaceContext:
             except Exception as e:
                 logger.debug("Error querying conversation workspace from %s: %s", db_file, e)
         return None, None
+
+    def get_conversations_for_workspace(self, workspace_path: Union[str, Path]) -> List[str]:
+        """Return list of conversation IDs associated with a given workspace path, sorted newest first."""
+        if not workspace_path:
+            return []
+        target_norm = str(Path(workspace_path).resolve()).lower()
+        matched: List[Tuple[str, float]] = []
+
+        for db_file in self._db_paths:
+            if not db_file.exists():
+                continue
+            try:
+                uri = f"file:{db_file.as_posix()}?mode=ro"
+                with sqlite3.connect(uri, uri=True, timeout=1.0) as con:
+                    cur = con.cursor()
+                    rows = cur.execute(
+                        "SELECT conversation_id, workspace_uris, last_modified_time FROM conversation_summaries"
+                    ).fetchall()
+                    for cid, raw_uris, mtime_val in rows:
+                        if not raw_uris:
+                            continue
+                        try:
+                            uris = json.loads(raw_uris)
+                            if isinstance(uris, list):
+                                for u in uris:
+                                    p = self._decode_uri_to_path(u)
+                                    if p and str(p.resolve()).lower() == target_norm:
+                                        ts = 0.0
+                                        if mtime_val:
+                                            try:
+                                                ts = float(mtime_val)
+                                            except (ValueError, TypeError):
+                                                try:
+                                                    clean_ts = str(mtime_val).split("+")[0].strip()
+                                                    from datetime import datetime
+                                                    ts = datetime.fromisoformat(clean_ts).timestamp()
+                                                except Exception:
+                                                    ts = 0.0
+                                        matched.append((cid, ts))
+                                        break
+                        except Exception:
+                            continue
+            except Exception as e:
+                logger.debug("Error querying workspace conversations from %s: %s", db_file, e)
+
+        matched.sort(key=lambda x: x[1], reverse=True)
+        return [cid for cid, _ in matched]
 
     def get_active_workspace(self, target_conversation_id: Optional[str] = None) -> Tuple[Path, str]:
         """

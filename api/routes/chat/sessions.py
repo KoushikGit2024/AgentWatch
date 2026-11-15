@@ -1,4 +1,4 @@
-﻿"""Session and Conversation management API routes."""
+"""Session and Conversation management API routes."""
 
 import logging
 from typing import Optional, List, Dict, Any
@@ -54,10 +54,25 @@ async def switch_conversation(payload: SelectChatRequest):
     # Update active adapter state
     antigravity_adapter.active_conversation_id = cid
 
+    # Immediately push chat turns for the switched conversation over WebSocket
+    from services.chat.conversation_service import conversation_service
+    from services.networking.websocket_manager import websocket_manager
+
+    paginated = conversation_service.get_paginated_conversation(limit=15, conversation_id=cid)
+    await websocket_manager.broadcast({
+        "type": "chat_update",
+        "conversation_id": cid,
+        "messages": paginated.get("messages", []),
+        "total": paginated.get("total", 0),
+        "oldest_index": paginated.get("oldest_index"),
+        "has_more": paginated.get("has_more", False),
+    })
+
     return {
         "success": True,
         "conversation_id": cid,
         "cdp_result": cdp_result,
+        "turns_count": paginated.get("total", 0),
     }
 
 

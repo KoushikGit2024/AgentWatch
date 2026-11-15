@@ -65,7 +65,15 @@ export const request = async (url, options = {}) => {
     let errorDetail = `HTTP ${res.status} ${res.statusText}`;
     try {
       const data = await res.json();
-      errorDetail = data.detail || data.reason || data.error || errorDetail;
+      if (Array.isArray(data.detail)) {
+        errorDetail = data.detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+      } else if (typeof data.detail === 'string') {
+        errorDetail = data.detail;
+      } else if (typeof data.detail === 'object' && data.detail !== null) {
+        errorDetail = JSON.stringify(data.detail);
+      } else {
+        errorDetail = data.reason || data.error || errorDetail;
+      }
     } catch {
       try {
         const text = await res.text();

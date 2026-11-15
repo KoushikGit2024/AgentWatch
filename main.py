@@ -342,10 +342,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     await websocket_manager.connect(websocket)
     try:
-        paginated = conversation_service.get_paginated_conversation(limit=15)
-
         ag_status = antigravity_adapter.get_status()
         init_cid = ag_status.get("active_conversation_id")
+        paginated = conversation_service.get_paginated_conversation(
+            limit=15, conversation_id=init_cid
+        )
+
         await websocket.send_json(
             {
                 "type": "init",

@@ -256,6 +256,8 @@ export default function App() {
         targetTitle={snapshotData?.target ? snapshotData.target.split(' - ')[0] : 'AgentWatch'}
         workspaceName={appState.workspace_name}
         chatTitle={appState.active_conversation_title}
+        isWorkspaceMismatch={Boolean(appState.is_workspace_mismatch)}
+        workbenchWorkspaceName={appState.workbench_workspace_name}
         isConnected={appState.connected}
         cdpStatus={appState.cdp}
         onRefreshAppState={fetchAppState}

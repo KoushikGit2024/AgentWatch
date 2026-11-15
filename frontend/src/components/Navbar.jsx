@@ -8,6 +8,8 @@ export default function Navbar({
   targetTitle,
   workspaceName,
   chatTitle,
+  isWorkspaceMismatch = false,
+  workbenchWorkspaceName,
   isConnected,
   cdpStatus,
   onRefreshAppState,
@@ -100,6 +102,15 @@ export default function Navbar({
                   {chatTitle}
                 </span>
               </>
+            )}
+            {isWorkspaceMismatch && (
+              <span
+                title={`This conversation was created under ${displayName}, while your active Antigravity IDE window is currently ${workbenchWorkspaceName || 'another workspace'}.`}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-medium shrink-0 animate-in fade-in duration-200"
+              >
+                <span className="w-3 h-3 text-amber-400 shrink-0">{Icon.alertTriangle}</span>
+                <span className="hidden sm:inline">Different Workspace</span>
+              </span>
             )}
             <span className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded bg-[#1D2024] border border-[#30343A] text-[#A0A6AF] text-[10px] font-mono shrink-0">
               v2.0
