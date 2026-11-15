@@ -1,4 +1,4 @@
-﻿"""Service to resolve full, untruncated step outputs from Antigravity session storage."""
+"""Service to resolve full, untruncated step outputs from Antigravity session storage."""
 
 import logging
 import re
@@ -56,13 +56,7 @@ class StepOutputResolver:
             idx_match = STEP_INDEX_PATTERN.search(content)
             if idx_match:
                 step_idx = idx_match.group(1)
-                cand = (
-                    Path(session_dir)
-                    / ".system_generated"
-                    / "steps"
-                    / step_idx
-                    / "output.txt"
-                )
+                cand = Path(session_dir) / ".system_generated" / "steps" / step_idx / "output.txt"
                 if cand.exists() and cand.is_file():
                     target_file = cand
 
@@ -72,6 +66,7 @@ class StepOutputResolver:
         try:
             # Read up to max_bytes with graceful error handling
             from services.workspace.shared_file_reader import open_shared_read
+
             with open_shared_read(target_file, encoding="utf-8") as f:
                 full_text = f.read(self.max_bytes)
 
@@ -99,4 +94,3 @@ class StepOutputResolver:
 
 
 step_output_resolver = StepOutputResolver()
-

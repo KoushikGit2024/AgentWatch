@@ -3,13 +3,14 @@
 **Document ID:** CW-DOC-001  
 **Version:** 2.0.0  
 **Project:** AgentWatch  
-**Classification:** Technical Architecture Specification  
+**Classification:** Technical Architecture Specification
 
 ---
 
 ## 1. Architectural Philosophy
 
 AgentWatch is engineered following the principles of **Clean Architecture** and **Layered Separation of Concerns**. The design prioritizes:
+
 1. **Local Autonomy:** Zero dependency on remote cloud infrastructure for monitoring, persistence, or telemetry parsing.
 2. **Deterministic Processing:** Invariant handling of events, idempotency across mobile actions, and transactional status transitions in MongoDB.
 3. **Graceful Degradation:** The application remains fully functional as a historical telemetry viewer and interaction queue even if Antigravity's live CDP debugging port is temporarily unreachable.
@@ -47,21 +48,25 @@ The system is partitioned into four primary layers, with dependencies strictly p
 ```
 
 ### Layer 1: Transport & Presentation
+
 - **FastAPI Endpoints:** Routers partitioned by domain (`auth.py`, `events.py`, `interactions.py`, `controls.py`, `health.py`).
 - **Static Assets:** Serves the compiled Vite bundle (`index.html` and minified JS/CSS chunks under `/assets`) from `static/dist/`, along with the standalone `login.html` authentication page.
 - **WebSocket Streaming:** Upgrades authenticated browser connections for push-based viewport updates and live event notifications.
 
 ### Layer 2: Domain & Business Services
+
 - **`InteractionService`:** Central coordinator for pending agent questions. Validates choice selections against permissible option IDs, checks whether custom text responses are authorized, applies recursive secret redaction, and verifies atomic state transitions.
 - **`RemoteAccessService`:** Inspects local networking conditions via the `tailscale status` CLI. Confirms whether Tailscale Serve is active and enforces the invariant that Tailscale Funnel must remain disabled.
 - **`Redaction Engine`:** Recursively inspects nested dictionaries and lists, matching sensitive keys (e.g. `api_key`, `token`, `secret`, `password`) and regex patterns (JWT tokens, SSH keys, Bearer headers) to redact them in-place.
 
 ### Layer 3: Data Access & Repositories
+
 - **`EventRepository`:** Interacts with the `events` collection. Implements deterministic hash-based deduplication (`source_event_id`), ensuring duplicate telemetry events are safely ignored.
 - **`SessionRepository`:** Interacts with the `sessions` collection. Tracks conversation UUIDs, title metadata, agent identifiers, and timestamps.
 - **`InteractionRepository`:** Interacts with the `interactions` collection. Maintains pending agent questions, single/multi-choice configurations, and atomic response records.
 
 ### Layer 4: Infrastructure & External Adapters
+
 - **`AntigravityAdapter` (IDE Adapter):** Manages discovery of the IDE's remote debugging interface. Scans ports `9000` through `9003` and `9222`, interrogates `/json/list`, matches the active workbench target, and manages communication via the Chrome DevTools Protocol.
 - **`Database Client`:** Manages MongoDB connection pools with timeouts and automatic index verification on startup.
 
@@ -149,9 +154,9 @@ Mobile User                   FastAPI /send                   AntigravityAdapter
 
 ## 5. Security & Boundary Architecture
 
-| Zone | Boundary | Communication Mechanism | Security Controls |
-| :--- | :--- | :--- | :--- |
-| **Mobile Client to Host** | Network Edge | Tailscale WireGuard Mesh (TLS 1.3) | Tailscale auth, session cookie, CSRF tokens |
-| **FastAPI to MongoDB** | Host Loopback | Local TCP Socket (`127.0.0.1:27017`) | Loopback binding only; no external network route |
-| **FastAPI to Antigravity**| Host Loopback | Chrome DevTools Protocol (`127.0.0.1:9000`) | Target domain allowlisting; command filtering |
-| **Native IDE Dialogs** | Desktop Boundary | None (Remote Resolution Blocked) | Status `requires_native_ide`; user directed to desktop |
+| Zone                       | Boundary         | Communication Mechanism                     | Security Controls                                      |
+| :------------------------- | :--------------- | :------------------------------------------ | :----------------------------------------------------- |
+| **Mobile Client to Host**  | Network Edge     | Tailscale WireGuard Mesh (TLS 1.3)          | Tailscale auth, session cookie, CSRF tokens            |
+| **FastAPI to MongoDB**     | Host Loopback    | Local TCP Socket (`127.0.0.1:27017`)        | Loopback binding only; no external network route       |
+| **FastAPI to Antigravity** | Host Loopback    | Chrome DevTools Protocol (`127.0.0.1:9000`) | Target domain allowlisting; command filtering          |
+| **Native IDE Dialogs**     | Desktop Boundary | None (Remote Resolution Blocked)            | Status `requires_native_ide`; user directed to desktop |

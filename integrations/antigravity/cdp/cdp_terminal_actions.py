@@ -1,4 +1,4 @@
-﻿"""CDP Terminal & Background Tasks Automation Dispatchers."""
+"""CDP Terminal & Background Tasks Automation Dispatchers."""
 
 import asyncio
 import json

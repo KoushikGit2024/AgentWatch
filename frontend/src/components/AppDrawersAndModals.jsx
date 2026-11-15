@@ -157,10 +157,7 @@ export function AppDrawersAndModals({
         )}
 
         {gitGraphOpen && (
-          <GitGraphModal
-            isOpen={gitGraphOpen}
-            onClose={() => setGitGraphOpen(false)}
-          />
+          <GitGraphModal isOpen={gitGraphOpen} onClose={() => setGitGraphOpen(false)} />
         )}
 
         {activeModal === 'model' && (

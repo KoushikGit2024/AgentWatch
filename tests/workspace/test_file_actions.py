@@ -1,4 +1,4 @@
-﻿"""Unit tests for direct remote file editing (saving, reading, boundaries)."""
+"""Unit tests for direct remote file editing (saving, reading, boundaries)."""
 
 from fastapi.testclient import TestClient
 from main import app
@@ -44,9 +44,13 @@ def test_file_actions_create_rename_move_delete():
 
     try:
         # 1. Create directory
-        res_dir = client.post("/api/v1/files/create", json={"path": str(test_folder), "is_dir": True})
+        res_dir = client.post(
+            "/api/v1/files/create", json={"path": str(test_folder), "is_dir": True}
+        )
         assert res_dir.status_code == 200
-        res_dest = client.post("/api/v1/files/create", json={"path": str(test_subfolder), "is_dir": True})
+        res_dest = client.post(
+            "/api/v1/files/create", json={"path": str(test_subfolder), "is_dir": True}
+        )
         assert res_dest.status_code == 200
 
         # 2. Create file
@@ -55,13 +59,18 @@ def test_file_actions_create_rename_move_delete():
         assert file_a.exists()
 
         # 3. Rename file
-        res_rename = client.post("/api/v1/files/rename", json={"path": str(file_a), "new_name": "file_renamed.txt"})
+        res_rename = client.post(
+            "/api/v1/files/rename", json={"path": str(file_a), "new_name": "file_renamed.txt"}
+        )
         assert res_rename.status_code == 200
         assert not file_a.exists()
         assert file_renamed.exists()
 
         # 4. Move file
-        res_move = client.post("/api/v1/files/move", json={"source_path": str(file_renamed), "destination_folder": str(test_subfolder)})
+        res_move = client.post(
+            "/api/v1/files/move",
+            json={"source_path": str(file_renamed), "destination_folder": str(test_subfolder)},
+        )
         assert res_move.status_code == 200
         assert not file_renamed.exists()
         assert moved_file.exists()
@@ -72,6 +81,7 @@ def test_file_actions_create_rename_move_delete():
         assert not moved_file.exists()
     finally:
         import shutil
+
         if test_folder.exists():
             shutil.rmtree(test_folder)
         if test_subfolder.exists():

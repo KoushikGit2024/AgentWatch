@@ -9,7 +9,11 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from config.settings import settings
 from integrations.antigravity.core.session_tracker import inspect_chat_target, parse_workbench_title
-from integrations.antigravity.core.target_finder import is_antigravity_target, target_priority, sort_targets_by_priority
+from integrations.antigravity.core.target_finder import (
+    is_antigravity_target,
+    target_priority,
+    sort_targets_by_priority,
+)
 
 logger = logging.getLogger("integrations.antigravity.adapter")
 
@@ -132,8 +136,10 @@ class AntigravityAdapter:
 
                         # Inspect chat iframe if available in targets
                         chat_targets = [
-                            t for t in targets
-                            if t.get("webSocketDebuggerUrl") and (
+                            t
+                            for t in targets
+                            if t.get("webSocketDebuggerUrl")
+                            and (
                                 "/c/" in (t.get("url") or "")
                                 or "workspaceUri=" in (t.get("url") or "")
                                 or "extensionView=true" in (t.get("url") or "")
@@ -141,14 +147,19 @@ class AntigravityAdapter:
                         ]
                         if chat_targets:
                             self.active_chat_url = chat_targets[0].get("webSocketDebuggerUrl")
-                        if chat_targets and (now_ts - self._last_chat_scan_time > 1.2 or not self.active_conversation_id):
+                        if chat_targets and (
+                            now_ts - self._last_chat_scan_time > 1.2
+                            or not self.active_conversation_id
+                        ):
                             self._last_chat_scan_time = now_ts
                             try:
                                 loop = asyncio.get_event_loop()
                                 if loop.is_running():
                                     asyncio.create_task(self._async_refresh_chat(chat_targets[0]))
                                 else:
-                                    loop.run_until_complete(self._async_refresh_chat(chat_targets[0]))
+                                    loop.run_until_complete(
+                                        self._async_refresh_chat(chat_targets[0])
+                                    )
                             except Exception:
                                 pass
 
@@ -224,8 +235,10 @@ class AntigravityAdapter:
                     if resp.status_code == 200:
                         targets = resp.json()
                         chat_targets = [
-                            t for t in targets
-                            if t.get("webSocketDebuggerUrl") and (
+                            t
+                            for t in targets
+                            if t.get("webSocketDebuggerUrl")
+                            and (
                                 "/c/" in (t.get("url") or "")
                                 or "workspaceUri=" in (t.get("url") or "")
                                 or "extensionView=true" in (t.get("url") or "")
@@ -290,13 +303,19 @@ class AntigravityAdapter:
             target_ws = self.active_chat_url or self.active_target_url
 
         # Only perform invasive dropdown scanning if explicitly authorized and cache is stale/empty
-        if allow_dropdown_scan and target_ws and (not self._cached_available_models or (now - self._last_models_scan_time > 120.0)):
+        if (
+            allow_dropdown_scan
+            and target_ws
+            and (not self._cached_available_models or (now - self._last_models_scan_time > 120.0))
+        ):
             from integrations.antigravity.cdp.cdp_actions import dispatch_scan_available_models
 
             scanned = await dispatch_scan_available_models(target_ws)
             if scanned:
                 self._cached_available_models = [
-                    item["name"] for item in scanned if not item.get("disabled") and item.get("name")
+                    item["name"]
+                    for item in scanned
+                    if not item.get("disabled") and item.get("name")
                 ]
                 self._last_models_scan_time = now
 
@@ -345,6 +364,7 @@ class AntigravityAdapter:
             "available_modes": ["Fast", "Planning"],
             "cached": False,
         }
+
     async def set_active_model(self, model_name: str) -> bool:
         """Switch active model in Antigravity session."""
         target_ws = self.active_chat_url or self.active_target_url
@@ -535,9 +555,7 @@ class AntigravityAdapter:
             return {"success": False, "error": "Antigravity CDP not connected on port 9000"}
         from integrations.antigravity.cdp.cdp_actions import dispatch_kill_terminal_task
 
-        return await dispatch_kill_terminal_task(
-            target_ws, index=index, tooltip_id=tooltip_id
-        )
+        return await dispatch_kill_terminal_task(target_ws, index=index, tooltip_id=tooltip_id)
 
     def get_status(self) -> Dict[str, Any]:
         """Return cached or refreshed status of Antigravity connection."""

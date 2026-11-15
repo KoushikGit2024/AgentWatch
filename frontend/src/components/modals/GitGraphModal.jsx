@@ -95,7 +95,9 @@ export function GitGraphModal({ isOpen, onClose }) {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <h2 className="text-xs sm:text-sm font-semibold text-[#E8EAED] truncate">Git Graph</h2>
+                <h2 className="text-xs sm:text-sm font-semibold text-[#E8EAED] truncate">
+                  Git Graph
+                </h2>
                 {currentBranch && (
                   <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-medium bg-[#21262D] text-[#58A6FF] border border-[#30363D] truncate max-w-[120px] sm:max-w-[200px]">
                     <GitBranch className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-none" />
@@ -132,7 +134,9 @@ export function GitGraphModal({ isOpen, onClose }) {
               title="Refresh Graph"
               className="p-1 sm:p-1.5 rounded text-[#8B949E] hover:text-white hover:bg-[#252930] transition border border-transparent hover:border-[#30343A]"
             >
-              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin text-blue-400' : ''}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin text-blue-400' : ''}`}
+              />
             </button>
 
             {/* Close Button */}
@@ -172,7 +176,9 @@ export function GitGraphModal({ isOpen, onClose }) {
           {!hasGit ? (
             <div className="flex-1 flex flex-col items-center justify-center text-[#8B949E] p-6 text-center space-y-3">
               <AlertTriangle className="w-8 h-8 text-amber-400" />
-              <p className="text-sm font-medium">No Git repository detected in the active workspace.</p>
+              <p className="text-sm font-medium">
+                No Git repository detected in the active workspace.
+              </p>
             </div>
           ) : error ? (
             <div className="flex-1 flex flex-col items-center justify-center text-rose-400 p-6 text-center space-y-2">
@@ -185,11 +191,7 @@ export function GitGraphModal({ isOpen, onClose }) {
               <div ref={scrollContainerRef} className="flex-1 flex flex-col overflow-auto">
                 <div className="flex min-w-full">
                   {/* SVG Visualizer Column */}
-                  <GitGraphSvg
-                    commits={commits}
-                    lines={lines}
-                    selectedSha={selectedCommitSha}
-                  />
+                  <GitGraphSvg commits={commits} lines={lines} selectedSha={selectedCommitSha} />
 
                   {/* Commit Rows List */}
                   <div className="flex-1 min-w-[280px] sm:min-w-[450px]">
@@ -205,7 +207,10 @@ export function GitGraphModal({ isOpen, onClose }) {
                 </div>
 
                 {/* Bottom Sentinel & Loading Status */}
-                <div ref={bottomSentinelRef} className="flex items-center justify-center p-3 text-[11px] text-[#8B949E] border-t border-[#212429]/50">
+                <div
+                  ref={bottomSentinelRef}
+                  className="flex items-center justify-center p-3 text-[11px] text-[#8B949E] border-t border-[#212429]/50"
+                >
                   {isLoadingMore ? (
                     <div className="flex items-center gap-2 text-blue-400">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

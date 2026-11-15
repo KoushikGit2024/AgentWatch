@@ -1,4 +1,4 @@
-﻿"""CDP Question Answering and Interactive Response Dispatchers."""
+"""CDP Question Answering and Interactive Response Dispatchers."""
 
 import asyncio
 import json
@@ -7,6 +7,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("integrations.antigravity.cdp_question_actions")
+
 
 async def dispatch_answer_question(
     target_url: str,
@@ -240,4 +241,3 @@ async def dispatch_answer_question(
             "clicked_options": [],
             "closed_verified": False,
         }
-

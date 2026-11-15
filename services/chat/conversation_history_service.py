@@ -136,6 +136,7 @@ class ConversationHistoryService:
                     content = data.get("content") or ""
                     if data.get("type") == "USER_INPUT" or data.get("source") == "USER_EXPLICIT":
                         import re
+
                         clean = re.sub(r"<[^>]+>", " ", content).strip()
                         clean = " ".join(clean.split())
                         if clean:
@@ -194,9 +195,7 @@ class ConversationHistoryService:
                     workspace = (record.get("workspace") if record else None) or "Workspace"
                     workspace_path = record.get("workspace_path") if record else None
                     updated_at = (
-                        record["updated_at"]
-                        if record and record["updated_at"] > 0
-                        else disk_mtime
+                        record["updated_at"] if record and record["updated_at"] > 0 else disk_mtime
                     )
 
                     conversations.append(

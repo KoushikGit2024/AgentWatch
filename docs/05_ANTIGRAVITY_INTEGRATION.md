@@ -3,7 +3,7 @@
 **Document ID:** CW-DOC-005  
 **Version:** 2.0.0  
 **Project:** AgentWatch  
-**Classification:** Integration & Adapter Specification  
+**Classification:** Integration & Adapter Specification
 
 ---
 
@@ -21,6 +21,7 @@
 ## 2. Chrome DevTools Protocol (CDP) Discovery Architecture
 
 ### Discovery Lifecycle
+
 When Antigravity is launched with remote debugging enabled (`--remote-debugging-port=9000`), the embedded Chromium browser exposes an HTTP discovery endpoint at `http://127.0.0.1:9000/json/list`.
 
 The `AntigravityAdapter` (`integrations/antigravity/adapter.py`) executes the following discovery workflow:
@@ -59,11 +60,13 @@ If neither port responds, the adapter sets `last_status = "disconnected"`.
 To enable the live visual viewport snapshot and remote scroll synchronization, launch Antigravity with the `--remote-debugging-port` command-line argument:
 
 ### Method A: From Windows PowerShell or Command Prompt
+
 ```powershell
 & "C:\Users\koush\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe" --remote-debugging-port=9000
 ```
 
 ### Method B: Desktop Shortcut Configuration
+
 1. Right-click your desktop shortcut for **Antigravity IDE** and select **Properties**.
 2. In the **Target** field, append `--remote-debugging-port=9000` to the end of the executable path:
    ```
@@ -90,9 +93,11 @@ When connected via CDP, AgentWatch executes targeted JavaScript evaluation insid
 ## 5. Security & Permission Boundary Architecture
 
 ### The Strict Native Permission Boundary
+
 Antigravity coding agents periodically execute consequential operations (e.g. executing commands in the terminal or modifying system files). The IDE presents a native security dialog requiring user confirmation.
 
 **AgentWatch explicitly preserves this security boundary:**
+
 - Remote clicks dispatched through `/remote-click` inspect the target element's text.
 - If the text contains permission-granting verbs (e.g., `"Allow"`, `"Authorize"`, `"Grant Permission"`), the request is **rejected** with:
   ```json

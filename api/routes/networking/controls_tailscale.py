@@ -63,4 +63,3 @@ def delete_port_forward(port: int) -> Dict[str, Any]:
             detail=res.get("error", f"Could not stop port {port}"),
         )
     return res
-

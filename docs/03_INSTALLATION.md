@@ -3,7 +3,7 @@
 **Document ID:** CW-DOC-003  
 **Version:** 2.0.0  
 **Project:** AgentWatch  
-**Classification:** Operational Installation Guide  
+**Classification:** Operational Installation Guide
 
 ---
 
@@ -11,21 +11,23 @@
 
 Before installing AgentWatch, ensure your workstation meets the following minimum requirements:
 
-| Component | Requirement | Recommended | Notes |
-| :--- | :--- | :--- | :--- |
-| **Operating System** | Windows 10/11, macOS, Linux | Windows 11 (PowerShell 7) | Host where Antigravity IDE runs |
-| **Python Runtime** | Python 3.12.0+ | Python 3.12.6 | Must be on system PATH |
-| **Database** | MongoDB Community Server 7.x+ | MongoDB Community Server 8.0.x | Bound to `127.0.0.1:27017` |
-| **IDE** | Google Antigravity IDE | Latest stable build | Installed in user AppData |
-| **Remote Network** | Tailscale Client | Latest Tailscale version | Logged in on both PC and Phone |
-| **Browser (Mobile)** | Modern mobile browser | Android Chrome / iOS Safari | Supports ES6 Modules |
+| Component            | Requirement                   | Recommended                    | Notes                           |
+| :------------------- | :---------------------------- | :----------------------------- | :------------------------------ |
+| **Operating System** | Windows 10/11, macOS, Linux   | Windows 11 (PowerShell 7)      | Host where Antigravity IDE runs |
+| **Python Runtime**   | Python 3.12.0+                | Python 3.12.6                  | Must be on system PATH          |
+| **Database**         | MongoDB Community Server 7.x+ | MongoDB Community Server 8.0.x | Bound to `127.0.0.1:27017`      |
+| **IDE**              | Google Antigravity IDE        | Latest stable build            | Installed in user AppData       |
+| **Remote Network**   | Tailscale Client              | Latest Tailscale version       | Logged in on both PC and Phone  |
+| **Browser (Mobile)** | Modern mobile browser         | Android Chrome / iOS Safari    | Supports ES6 Modules            |
 
 ---
 
 ## 2. Step-by-Step Installation Guide
 
 ### Step 2.1: Clone the Repository
+
 Clone the repository to your local development drive:
+
 ```powershell
 cd "d:\All Codes\AllProjects"
 git clone https://github.com/KoushikGit2024/AgentWatch.git AgentWatch
@@ -33,7 +35,9 @@ cd AgentWatch
 ```
 
 ### Step 2.2: Set Up Python Virtual Environment
+
 Create and activate an isolated Python 3.12 virtual environment:
+
 ```powershell
 # Create virtual environment
 python -m venv .venv
@@ -46,28 +50,35 @@ python -m venv .venv
 ```
 
 ### Step 2.3: Install Dependencies
+
 Install all required Python backend dependencies:
+
 ```powershell
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
 Verify that key packages are correctly installed:
+
 ```powershell
 python -c "import fastapi, pymongo, pydantic, httpx, websockets, pytest; print('All core dependencies installed successfully!')"
 ```
 
 ### Step 2.4: Build React + Vite Frontend
+
 Install frontend dependencies and generate production assets:
+
 ```powershell
 cd frontend
 npm install
 npm run build
 cd ..
 ```
+
 This compiles the modern React 19 + Tailwind CSS dashboard into `static/dist/`, which FastAPI serves automatically.
 
 ### Step 2.5: Install & Verify Local MongoDB
+
 AgentWatch requires a local MongoDB Community Server running on `localhost:27017`.
 
 1. **Verify MongoDB Service:**
@@ -89,11 +100,13 @@ AgentWatch requires a local MongoDB Community Server running on `localhost:27017
 ## 3. Configuring Environment Variables
 
 Create your local `.env` configuration file from the template:
+
 ```powershell
 Copy-Item .env.example .env
 ```
 
 Open `.env` in your text editor and configure key parameters:
+
 ```ini
 # Environment Mode
 ENVIRONMENT=development
@@ -116,13 +129,14 @@ CDP_PORTS=9000,9222
 CDP_TARGET_DOMAIN=127.0.0.1
 ```
 
-*Note: For detailed information on every variable, see [04 — Configuration Guide](file:///d:/All%20Codes/AllProjects/AgentWatchV2/docs/04_CONFIGURATION.md).*
+_Note: For detailed information on every variable, see [04 — Configuration Guide](file:///d:/All%20Codes/AllProjects/AgentWatchV2/docs/04_CONFIGURATION.md)._
 
 ---
 
 ## 4. Initializing Database Indexes
 
 Run the initialization script to ensure all compound indexes and unique constraints are created in MongoDB:
+
 ```powershell
 python -c "from config.database import get_database, ensure_indexes; db = get_database(); ensure_indexes(db); print('Indexes verified!')"
 ```
@@ -132,15 +146,20 @@ python -c "from config.database import get_database, ensure_indexes; db = get_da
 ## 5. Running the Application
 
 ### Running Locally (Direct ASGI Server)
+
 Start the FastAPI server via Uvicorn with auto-reload:
+
 ```powershell
 .\.venv\Scripts\activate
 uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
+
 You can now access the local dashboard at: `http://127.0.0.1:8000`.
 
 ### Verifying Service Health
+
 Test the health and readiness endpoints in PowerShell or via curl:
+
 ```powershell
 # Health Check (Liveness)
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/health"
@@ -148,7 +167,9 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/health"
 # Readiness Check (MongoDB & Configuration)
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/ready"
 ```
+
 Expected output:
+
 ```json
 {
   "status": "ready",

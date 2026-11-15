@@ -35,10 +35,6 @@ def target_priority(target: Dict[str, Any]) -> int:
 
 def sort_targets_by_priority(targets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Filter and sort targets descending by relevance to the active Antigravity workbench."""
-    valid = [
-        t for t in targets
-        if is_antigravity_target(t) and t.get("webSocketDebuggerUrl")
-    ]
+    valid = [t for t in targets if is_antigravity_target(t) and t.get("webSocketDebuggerUrl")]
     valid.sort(key=target_priority, reverse=True)
     return valid
-

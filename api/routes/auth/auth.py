@@ -38,7 +38,10 @@ def login(payload: LoginRequest, request: Request, response: Response):
     token = generate_session_token(payload.password)
 
     # Secure cookie attributes (allow HTTPS via x-forwarded-proto or request scheme)
-    is_secure = request.headers.get("x-forwarded-proto", "").lower() == "https" or request.url.scheme == "https"
+    is_secure = (
+        request.headers.get("x-forwarded-proto", "").lower() == "https"
+        or request.url.scheme == "https"
+    )
 
     response.set_cookie(
         key=AUTH_COOKIE_NAME,
@@ -68,10 +71,7 @@ def login(payload: LoginRequest, request: Request, response: Response):
 @router.post("/api/v1/logout")
 def logout(request: Request, response: Response):
     """Clear session cookie and revoke server-side token."""
-    token = (
-        request.cookies.get(AUTH_COOKIE_NAME)
-        or request.cookies.get("agentwatch_token")
-    )
+    token = request.cookies.get(AUTH_COOKIE_NAME) or request.cookies.get("agentwatch_token")
     if not token:
         auth_hdr = request.headers.get("Authorization", "")
         if auth_hdr.startswith("Bearer "):

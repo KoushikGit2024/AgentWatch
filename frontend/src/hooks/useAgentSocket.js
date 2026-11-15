@@ -59,9 +59,7 @@ export function useAgentSocket({
         if (data.type === 'init' || data.type === 'chat_update') {
           if (Array.isArray(data.messages)) {
             const incomingCid = data.conversation_id;
-            const isChatSwitched = Boolean(
-              activeConvIdRef?.current !== incomingCid
-            );
+            const isChatSwitched = Boolean(activeConvIdRef?.current !== incomingCid);
 
             if (isChatSwitched) {
               if (setIsChatLoading) setIsChatLoading(true);
@@ -130,7 +128,9 @@ export function useAgentSocket({
           setIsApprovalMinimized(false);
         }
         if (data.type === 'queue_update') {
-          window.dispatchEvent(new CustomEvent('agentwatch:queue-updated', { detail: data.messages }));
+          window.dispatchEvent(
+            new CustomEvent('agentwatch:queue-updated', { detail: data.messages })
+          );
         }
       },
     });
@@ -144,7 +144,10 @@ export function useAgentSocket({
       const delay = wsConnectedRef.current ? 25000 : 8000;
       appStateTimeoutId = setTimeout(() => {
         if (isMountedRef.current) {
-          if ((typeof navigator === 'undefined' || navigator.onLine) && (typeof document === 'undefined' || !document.hidden)) {
+          if (
+            (typeof navigator === 'undefined' || navigator.onLine) &&
+            (typeof document === 'undefined' || !document.hidden)
+          ) {
             fetchAppState();
           }
           scheduleAppStatePoll();
@@ -158,7 +161,10 @@ export function useAgentSocket({
       const delay = wsConnectedRef.current ? 20000 : 1500;
       interactionsTimeoutId = setTimeout(() => {
         if (isMountedRef.current) {
-          if ((typeof navigator === 'undefined' || navigator.onLine) && (typeof document === 'undefined' || !document.hidden)) {
+          if (
+            (typeof navigator === 'undefined' || navigator.onLine) &&
+            (typeof document === 'undefined' || !document.hidden)
+          ) {
             fetchInteractions();
             fetchPendingApprovals();
             if (!wsConnectedRef.current) {

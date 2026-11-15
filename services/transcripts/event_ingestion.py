@@ -49,7 +49,10 @@ class EventIngestionService:
         source_evt_id = request.source_event_id
         if not source_evt_id:
             import hashlib
-            payload_str = str(sorted(sanitized.items())) if isinstance(sanitized, dict) else str(sanitized)
+
+            payload_str = (
+                str(sorted(sanitized.items())) if isinstance(sanitized, dict) else str(sanitized)
+            )
             sig = f"{request.session_id}:{request.event_type}:{ts.isoformat()}:{summary}:{payload_str}"
             source_evt_id = f"auto-{hashlib.sha256(sig.encode('utf-8')).hexdigest()[:24]}"
 

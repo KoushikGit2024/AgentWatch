@@ -1,4 +1,4 @@
-﻿"""Tests for Antigravity environment metadata parsing."""
+"""Tests for Antigravity environment metadata parsing."""
 
 import json
 from integrations.antigravity.parsers.event_parser import parse_environment_metadata

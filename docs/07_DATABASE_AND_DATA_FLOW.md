@@ -4,7 +4,7 @@
 **Version:** 2.0.0  
 **Project:** AgentWatch  
 **Database:** MongoDB Community Server 8.x  
-**Classification:** Database Architecture Specification  
+**Classification:** Database Architecture Specification
 
 ---
 
@@ -38,38 +38,40 @@ AgentWatch maintains its state within the local database `AgentWatch_v2` partiti
 ## 2. Collection Schemas & Field Definitions
 
 ### 2.1 The `events` Collection
+
 Stores immutable agent lifecycle and tool execution events.
 
-| Field Name | BSON Type | Indexed | Description |
-| :--- | :--- | :--- | :--- |
-| `_id` | ObjectId | Yes (PK) | Internal MongoDB document identifier |
-| `source_event_id` | String | **Unique** | Deterministic SHA-256 hash or source UUID used for deduplication |
-| `session_id` | String | Compound | UUID of the active conversation session |
-| `agent_id` | String | No | Identifier of the emitting agent (`antigravity_agent`) |
-| `task_id` | String | No | Active agent task identifier (optional) |
-| `event_type` | String | Compound | Event class: `PreToolUse`, `PostToolUse`, `AgentMessage`, `Stop` |
-| `timestamp` | Date / UTC | Compound | Exact time of event occurrence |
-| `source` | String | No | Source integration origin (`antigravity`) |
-| `source_confidence`| String | No | Declared confidence level (`DECLARED`, `DERIVED`) |
-| `sanitized_payload`| Object | No | Fully redacted metadata payload (secrets removed) |
+| Field Name          | BSON Type  | Indexed    | Description                                                      |
+| :------------------ | :--------- | :--------- | :--------------------------------------------------------------- |
+| `_id`               | ObjectId   | Yes (PK)   | Internal MongoDB document identifier                             |
+| `source_event_id`   | String     | **Unique** | Deterministic SHA-256 hash or source UUID used for deduplication |
+| `session_id`        | String     | Compound   | UUID of the active conversation session                          |
+| `agent_id`          | String     | No         | Identifier of the emitting agent (`antigravity_agent`)           |
+| `task_id`           | String     | No         | Active agent task identifier (optional)                          |
+| `event_type`        | String     | Compound   | Event class: `PreToolUse`, `PostToolUse`, `AgentMessage`, `Stop` |
+| `timestamp`         | Date / UTC | Compound   | Exact time of event occurrence                                   |
+| `source`            | String     | No         | Source integration origin (`antigravity`)                        |
+| `source_confidence` | String     | No         | Declared confidence level (`DECLARED`, `DERIVED`)                |
+| `sanitized_payload` | Object     | No         | Fully redacted metadata payload (secrets removed)                |
 
 ### 2.2 The `interactions` Collection
+
 Stores dynamic interactive questions and their resolutions.
 
-| Field Name | BSON Type | Indexed | Description |
-| :--- | :--- | :--- | :--- |
-| `_id` | ObjectId | Yes (PK) | Internal MongoDB document identifier |
-| `interaction_id` | String | **Unique** | Unique identifier for the question instance |
-| `session_id` | String | Compound | Conversation session UUID this question belongs to |
-| `kind` | String | No | `single_choice`, `multiple_choice`, `free_text`, `form` |
-| `title` | String | No | Primary question prompt displayed on mobile |
-| `description` | String | No | Contextual guidance or details |
-| `options` | Array[Object] | No | Array of `{id, label, description, is_recommended}` |
-| `allow_custom_response`| Boolean | No | Whether the user may enter arbitrary "Other" text |
-| `status` | String | Compound | Current status: `pending`, `submitted`, `cancelled`, `expired` |
-| `submitted_response`| Object | No | Captured user response with redacted custom text |
-| `created_at` | Date / UTC | Compound | Timestamp when the question was emitted |
-| `resolved_at` | Date / UTC | No | Timestamp when the response was submitted |
+| Field Name              | BSON Type     | Indexed    | Description                                                    |
+| :---------------------- | :------------ | :--------- | :------------------------------------------------------------- |
+| `_id`                   | ObjectId      | Yes (PK)   | Internal MongoDB document identifier                           |
+| `interaction_id`        | String        | **Unique** | Unique identifier for the question instance                    |
+| `session_id`            | String        | Compound   | Conversation session UUID this question belongs to             |
+| `kind`                  | String        | No         | `single_choice`, `multiple_choice`, `free_text`, `form`        |
+| `title`                 | String        | No         | Primary question prompt displayed on mobile                    |
+| `description`           | String        | No         | Contextual guidance or details                                 |
+| `options`               | Array[Object] | No         | Array of `{id, label, description, is_recommended}`            |
+| `allow_custom_response` | Boolean       | No         | Whether the user may enter arbitrary "Other" text              |
+| `status`                | String        | Compound   | Current status: `pending`, `submitted`, `cancelled`, `expired` |
+| `submitted_response`    | Object        | No         | Captured user response with redacted custom text               |
+| `created_at`            | Date / UTC    | Compound   | Timestamp when the question was emitted                        |
+| `resolved_at`           | Date / UTC    | No         | Timestamp when the response was submitted                      |
 
 ---
 

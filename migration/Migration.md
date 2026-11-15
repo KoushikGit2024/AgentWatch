@@ -7,12 +7,14 @@
 ---
 
 > ### Mandatory Directive for Any AI Agent Reading This File:
+>
 > When you read this guide to adapt AgentWatch for a target IDE, **immediately notify the user in your response**:  
-> *"I have thoroughly reviewed `migration/Migration.md`. I understand the dual-engine architecture (CDP webview automation + local OS/storage watchers), the specific selectors required, and the troubleshooting protocol. Let's inspect the target IDE via Chrome DevTools together so we can adapt the selectors, variables, and collectors for your environment."*
+> _"I have thoroughly reviewed `migration/Migration.md`. I understand the dual-engine architecture (CDP webview automation + local OS/storage watchers), the specific selectors required, and the troubleshooting protocol. Let's inspect the target IDE via Chrome DevTools together so we can adapt the selectors, variables, and collectors for your environment."_
 
 ---
 
 ## Table of Contents
+
 1. [Core Architectural Philosophy & Freedom to Refactor](#1-core-architectural-philosophy--freedom-to-refactor)
 2. [Dual-Engine Data Gathering Architecture](#2-dual-engine-data-gathering-architecture)
    - [2.1 Engine 1: Local Storage, SQLite & OS Process Watcher](#21-engine-1-local-storage-sqlite--os-process-watcher)
@@ -37,10 +39,12 @@
 
 ## 1. Core Architectural Philosophy & Freedom to Refactor
 
-AgentWatch is designed to be **pluggable, modular, and unopinionated about the specific IDE**. 
+AgentWatch is designed to be **pluggable, modular, and unopinionated about the specific IDE**.
 
 ### Freedom to Rename Variables and Adapt Logic:
+
 As an agent or developer adapting AgentWatch for a new IDE (e.g., Cursor, Windsurf, JetBrains Fleet, or VS Code):
+
 - **You are fully authorized and encouraged to rename internal variables, module names, configurations, and method signatures** to accurately match the terminology and storage conventions of the target IDE.
 - If the target IDE uses different status identifiers (e.g., `"running"` instead of integer `6`, or `"agent_state"` instead of `"action_lifecycle"`), **modify the parser logic directly** in `services/transcripts/` or `integrations/`.
 - If the IDE stores chat transcripts in JSON files, LevelDB, SQLite, or exposes them via a local socket/HTTP daemon rather than JSONL, **refactor the service classes accordingly**.
@@ -72,6 +76,7 @@ AgentWatch does not rely solely on scraping the UI, nor does it rely solely on s
 ```
 
 ### 2.1 Engine 1: Local Storage, SQLite & OS Process Watcher
+
 - **Conversation State & History (`services/chat/conversation_history_service.py`)**:
   - Primary source: Reads SQLite databases in `~/.gemini/antigravity/conversations/` or `conversation_summaries.db`.
   - Fallback: Scans project-level `.system_generated/logs/transcript.jsonl`.
@@ -94,6 +99,7 @@ AgentWatch does not rely solely on scraping the UI, nor does it rely solely on s
   - Decodes `file://` URIs from conversation step metadata to identify which folder on disk belongs to the current chat session.
 
 ### 2.2 Engine 2: Chrome DevTools Protocol (CDP) Webview Automation
+
 - **Target Finder & Connection (`integrations/antigravity/core/target_finder.py`, `cdp_connection.py`)**:
   - Connects via HTTP loopback to `http://127.0.0.1:9000/json/list` (and probe ports `9001-9003`, `9222`).
   - Filters out background extensions, devtools windows, and telemetry workers.
@@ -103,6 +109,7 @@ AgentWatch does not rely solely on scraping the UI, nor does it rely solely on s
   - Computes an MD5 hash of the frame buffer. If unchanged, returns an HTTP 304 or ~50 byte payload to prevent mobile bandwidth exhaustion.
 
 ### 2.3 Real-time WebSocket Ingestion & Push Loop
+
 - **File:** `services/transcripts/transcript_watcher.py`
   - Runs a lightweight asynchronous loop every ~350ms.
   - Monitors file modification timestamps (`mtime`) and byte sizes of `transcript.jsonl`.
@@ -116,6 +123,7 @@ AgentWatch does not rely solely on scraping the UI, nor does it rely solely on s
 Every action supported by AgentWatch maps to a dedicated CDP module under `integrations/antigravity/cdp/`. Below is the complete specification of elements, queries, and fallback strategies.
 
 ### 3.1 Prompt Composer & Submission Engine
+
 - **Module:** `integrations/antigravity/cdp/cdp_prompt_actions.py`
 - **Route:** `POST /api/v1/send` / `POST /api/v1/prompt`
 - **Execution Strategy:**
@@ -133,6 +141,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   5. Clicks button or dispatches `Enter` (`keyCode: 13`) event.
 
 ### 3.2 Stop Generation Dispatcher
+
 - **Module:** `integrations/antigravity/cdp/cdp_prompt_actions.py`
 - **Route:** `POST /api/v1/stop`
 - **Execution Strategy:**
@@ -145,6 +154,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   3. Fallback: Dispatches `Escape` key event (`Input.dispatchKeyEvent`) to cancel active generation.
 
 ### 3.3 AI Model & Reasoning Effort Selector
+
 - **Module:** `integrations/antigravity/cdp/cdp_model_actions.py`
 - **Routes:** `GET /api/v1/models/scan`, `POST /api/v1/set-model`, `POST /api/v1/set-mode`
 - **Execution Strategy:**
@@ -158,6 +168,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   5. **Effort Mode:** Locates toggle group `[data-testid="model-selector-effort-group"]` to toggle between **Fast** and **Planning**.
 
 ### 3.4 Question Answering & Choice Disambiguation
+
 - **Module:** `integrations/antigravity/cdp/cdp_question_actions.py`
 - **Route:** `POST /api/v1/interactions/{id}/respond`
 - **Execution Strategy:**
@@ -172,6 +183,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   6. **Custom "Type Something Else" Option:** If user selected custom write-in, clicks custom button (or `input[placeholder*="Other"]`), enters text, and submits.
 
 ### 3.5 Tool & Shell Command Approvals
+
 - **Module:** `integrations/antigravity/cdp/cdp_forward_approval.py`, `cdp_approval_actions.py`
 - **Route:** `POST /api/v1/approvals/respond`
 - **Execution Strategy:**
@@ -182,6 +194,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   2. **Custom Instructions on Rejection:** If the user provided custom text guidance with a Deny or Allow action, clicks the decision button, focuses the composer input, and sends the custom text.
 
 ### 3.6 Queued Messages Card Inspector
+
 - **Module:** `integrations/antigravity/cdp/cdp_queue_actions.py`
 - **Routes:** `GET /api/v1/chat/queued`, `POST /api/v1/chat/queued/send-now`, `DELETE /api/v1/chat/queued/{id}`
 - **Execution Strategy:**
@@ -191,6 +204,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   4. Actions: Clicks `button[aria-label*="Send now"]` or `button[aria-label*="Delete"]`.
 
 ### 3.7 Conversation History & Session Switching
+
 - **Module:** `integrations/antigravity/cdp/cdp_session_actions.py`
 - **Routes:** `POST /api/v1/switch-chat`, `POST /api/v1/new-chat`
 - **Execution Strategy:**
@@ -198,6 +212,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   2. **New Chat:** Clicks `button[data-testid="new-chat-button"]` or `button[aria-label*="New Chat"]` (`button[title*="New Conversation"]`, `.codicon-plus`).
 
 ### 3.8 Terminal Task Peeking & Process Termination
+
 - **Modules:** `services/monitoring/task_monitor_service.py`, `services/monitoring/task_proto_helper.py`, `integrations/antigravity/cdp/cdp_terminal_actions.py`
 - **Routes:** `GET /api/v1/tasks?active_only=true`, `POST /api/v1/tasks/{pid}/kill`
 - **Execution Strategy:**
@@ -207,6 +222,7 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
   4. `POST /api/v1/tasks/{pid}/kill` recursively terminates the process tree.
 
 ### 3.9 Viewport Screenshot Capture & Mobile Sync
+
 - **Module:** `integrations/antigravity/core/screenshot_service.py`
 - **Routes:** `GET /api/v1/snapshot`, `GET /api/v1/snapshot.jpg`, `POST /remote-scroll`
 - **Execution Strategy:**
@@ -219,16 +235,16 @@ Every action supported by AgentWatch maps to a dedicated CDP module under `integ
 
 When adapting to a new IDE or troubleshooting an existing installation, use this diagnostic checklist:
 
-| Check | Route / Action | Success Criteria | Failure Symptom | Most Likely Root Cause |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. CDP Link** | `GET /api/v1/diagnostics` | `"cdp_connected": true` | `"cdp_connected": false` | Port 9000 not open; wrong target title in `target_finder.py`. |
-| **2. Snapshot** | `GET /api/v1/snapshot` | Returns base64 image data | `status: "unavailable"` | Chat webview target is sleeping, backgrounded, or URL changed. |
-| **3. Model Scan** | `GET /api/v1/models/scan` | Returns array of model names | Returns empty array `[]` | Trigger selector `[data-testid="model-selector-trigger"]` missing. |
-| **4. Prompt Send**| `POST /api/v1/send` | `"status": "submitted"` | `"cdp_dispatch_failed"` | Input box or submit button selector changed. |
-| **5. Stop Signal**| `POST /api/v1/stop` | Agent generation halts | Agent continues writing | Stop button query changed; keyboard `Escape` not bound. |
-| **6. Approval** | `POST /api/v1/approvals/respond` | Action executes in IDE | Modal remains open | Button text differs or dialog is enclosed in a ShadowRoot. |
-| **7. New Chat** | `POST /api/v1/new-chat` | IDE opens fresh session | Current chat remains open | New chat button selector changed. |
-| **8. Tasks** | `GET /api/v1/tasks?active_only=true` | Returns tasks with PIDs | Empty tasks list | Step status codes differ or DB path differs. |
+| Check              | Route / Action                       | Success Criteria             | Failure Symptom           | Most Likely Root Cause                                             |
+| :----------------- | :----------------------------------- | :--------------------------- | :------------------------ | :----------------------------------------------------------------- |
+| **1. CDP Link**    | `GET /api/v1/diagnostics`            | `"cdp_connected": true`      | `"cdp_connected": false`  | Port 9000 not open; wrong target title in `target_finder.py`.      |
+| **2. Snapshot**    | `GET /api/v1/snapshot`               | Returns base64 image data    | `status: "unavailable"`   | Chat webview target is sleeping, backgrounded, or URL changed.     |
+| **3. Model Scan**  | `GET /api/v1/models/scan`            | Returns array of model names | Returns empty array `[]`  | Trigger selector `[data-testid="model-selector-trigger"]` missing. |
+| **4. Prompt Send** | `POST /api/v1/send`                  | `"status": "submitted"`      | `"cdp_dispatch_failed"`   | Input box or submit button selector changed.                       |
+| **5. Stop Signal** | `POST /api/v1/stop`                  | Agent generation halts       | Agent continues writing   | Stop button query changed; keyboard `Escape` not bound.            |
+| **6. Approval**    | `POST /api/v1/approvals/respond`     | Action executes in IDE       | Modal remains open        | Button text differs or dialog is enclosed in a ShadowRoot.         |
+| **7. New Chat**    | `POST /api/v1/new-chat`              | IDE opens fresh session      | Current chat remains open | New chat button selector changed.                                  |
+| **8. Tasks**       | `GET /api/v1/tasks?active_only=true` | Returns tasks with PIDs      | Empty tasks list          | Step status codes differ or DB path differs.                       |
 
 ---
 
@@ -237,14 +253,18 @@ When adapting to a new IDE or troubleshooting an existing installation, use this
 When adapting AgentWatch to a new IDE (e.g. Cursor, VS Code, Windsurf) or debugging broken selectors, execute this protocol with the user:
 
 ### Step 1: User Launches IDE with Debugging Port
+
 Ask the user to start their IDE with the remote debugging argument:
+
 ```powershell
 # Windows Example
 & "C:\Path\To\YourIDE.exe" --remote-debugging-port=9000
 ```
 
 ### Step 2: User Connects via Chromium Browser
+
 Instruct the user:
+
 1. Open Google Chrome or any Chromium browser on the desktop.
 2. Navigate to `http://localhost:9000`.
 3. Locate the item corresponding to the **Agent Workbench** or **Chat Panel** and click it.
@@ -255,7 +275,9 @@ Instruct the user:
 There are two collaborative ways to capture DOM elements for the target IDE. **Method A (User Element Hover & Copy)** is strongly recommended because it is faster, avoids false positives, and reveals the exact DOM hierarchy effortlessly.
 
 #### Method A: Direct User Element Hover & Copy (Recommended)
+
 Instruct the user:
+
 1. In the open DevTools window (`http://localhost:9000`), click the **Inspect Element** cursor icon in the top-left corner (or press `Ctrl + Shift + C` on Windows/Linux or `Cmd + Shift + C` on macOS).
 2. **Hover over and click** the target UI element inside the IDE window:
    - Chat input box / prompt composer
@@ -267,10 +289,11 @@ Instruct the user:
 3. The corresponding HTML element will be highlighted in the **Elements** panel.
 4. Instruct the user to **right-click the highlighted element** and choose:
    - **Copy > Copy outerHTML** (provides the full tag, classes, `data-testid`, and `aria-label` attributes)
-   - *OR* **Copy > Copy selector** (provides the exact browser CSS path)
+   - _OR_ **Copy > Copy selector** (provides the exact browser CSS path)
 5. Have the user paste that snippet directly into your chat. As an agent, extract the resilient selectors (preferring `data-testid`, `aria-label`, or unique class names) and apply them to the adapter modules.
 
 #### Method B: Automated Comprehensive DOM Inspection Script (Fallback)
+
 If the user prefers running a script across the entire document at once, ask the user to open the **Console** tab in DevTools, paste this script, and press Enter:
 
 ```javascript
@@ -278,41 +301,50 @@ If the user prefers running a script across the entire document at once, ask the
   const audit = {
     url: window.location.href,
     title: document.title,
-    inputs: Array.from(document.querySelectorAll('textarea, input, [contenteditable="true"], [role="textbox"]')).map(el => ({
+    inputs: Array.from(
+      document.querySelectorAll('textarea, input, [contenteditable="true"], [role="textbox"]')
+    ).map(el => ({
       tagName: el.tagName,
-      role: el.getAttribute('role'),
-      testId: el.getAttribute('data-testid'),
-      ariaLabel: el.getAttribute('aria-label'),
-      placeholder: el.getAttribute('placeholder'),
-      className: el.className
+      role: el.getAttribute("role"),
+      testId: el.getAttribute("data-testid"),
+      ariaLabel: el.getAttribute("aria-label"),
+      placeholder: el.getAttribute("placeholder"),
+      className: el.className,
     })),
     buttons: Array.from(document.querySelectorAll('button, [role="button"]'))
       .filter(b => b.offsetWidth > 0 && b.offsetHeight > 0)
       .map(b => ({
-        text: b.innerText.trim().replace(/\n+/g, ' '),
-        testId: b.getAttribute('data-testid'),
-        ariaLabel: b.getAttribute('aria-label'),
+        text: b.innerText.trim().replace(/\n+/g, " "),
+        testId: b.getAttribute("data-testid"),
+        ariaLabel: b.getAttribute("aria-label"),
         title: b.title,
-        className: b.className
+        className: b.className,
       })),
-    dialogs: Array.from(document.querySelectorAll('[role="dialog"], [role="radiogroup"], .quick-input-widget, .monaco-dialog-box')).map(d => ({
-      role: d.getAttribute('role'),
+    dialogs: Array.from(
+      document.querySelectorAll(
+        '[role="dialog"], [role="radiogroup"], .quick-input-widget, .monaco-dialog-box'
+      )
+    ).map(d => ({
+      role: d.getAttribute("role"),
       className: d.className,
-      innerTextPreview: d.innerText.slice(0, 150)
+      innerTextPreview: d.innerText.slice(0, 150),
     })),
-    models: Array.from(document.querySelectorAll('[data-testid*="model"], [class*="model"], [aria-label*="model"]')).map(m => ({
-      testId: m.getAttribute('data-testid'),
-      ariaLabel: m.getAttribute('aria-label'),
-      text: m.innerText.trim()
-    }))
+    models: Array.from(
+      document.querySelectorAll('[data-testid*="model"], [class*="model"], [aria-label*="model"]')
+    ).map(m => ({
+      testId: m.getAttribute("data-testid"),
+      ariaLabel: m.getAttribute("aria-label"),
+      text: m.innerText.trim(),
+    })),
   };
-  console.log('=== AGENTWATCH DOM AUDIT ===');
+  console.log("=== AGENTWATCH DOM AUDIT ===");
   console.log(JSON.stringify(audit, null, 2));
   return audit;
 })();
 ```
 
 ### Step 4: Map Audit Results to AgentWatch Modules
+
 - **Chat Input:** Copy the input's `data-testid`, `aria-label`, or class to `integrations/<ide>/cdp/cdp_prompt_actions.py`.
 - **Send & Stop Buttons:** Map button selectors to `cdp_prompt_actions.py`.
 - **Model Selector:** Map dropdown button to `cdp_model_actions.py`.

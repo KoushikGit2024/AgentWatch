@@ -1,4 +1,4 @@
-﻿"""API endpoints for dynamic agent interaction requests, choices, and capabilities."""
+"""API endpoints for dynamic agent interaction requests, choices, and capabilities."""
 
 from fastapi import APIRouter, HTTPException, Query, status
 from typing import List, Optional, Dict, Any

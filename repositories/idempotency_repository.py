@@ -98,7 +98,7 @@ class IdempotencyRepository:
                 try:
                     self.collection.update_one(
                         {"scope": scope, "idempotency_key": idempotency_key},
-                        {"$set": {"status": "in_progress", "updated_at": now}}
+                        {"$set": {"status": "in_progress", "updated_at": now}},
                     )
                 except Exception:
                     pass

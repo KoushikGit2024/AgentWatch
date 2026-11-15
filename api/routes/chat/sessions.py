@@ -19,7 +19,9 @@ class SelectChatRequest(BaseModel):
 
 @router.get("/conversations")
 def list_conversations(
-    q: Optional[str] = Query(None, description="Search query across conversation titles and folders"),
+    q: Optional[str] = Query(
+        None, description="Search query across conversation titles and folders"
+    ),
     offset: int = Query(0, ge=0, description="Offset cursor for lazy pagination"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     refresh: bool = Query(False, description="Force refresh cache from disk"),
@@ -59,14 +61,16 @@ async def switch_conversation(payload: SelectChatRequest):
     from services.networking.websocket_manager import websocket_manager
 
     paginated = conversation_service.get_paginated_conversation(limit=15, conversation_id=cid)
-    await websocket_manager.broadcast({
-        "type": "chat_update",
-        "conversation_id": cid,
-        "messages": paginated.get("messages", []),
-        "total": paginated.get("total", 0),
-        "oldest_index": paginated.get("oldest_index"),
-        "has_more": paginated.get("has_more", False),
-    })
+    await websocket_manager.broadcast(
+        {
+            "type": "chat_update",
+            "conversation_id": cid,
+            "messages": paginated.get("messages", []),
+            "total": paginated.get("total", 0),
+            "oldest_index": paginated.get("oldest_index"),
+            "has_more": paginated.get("has_more", False),
+        }
+    )
 
     return {
         "success": True,
@@ -102,14 +106,16 @@ async def new_conversation():
 
     # Broadcast wipe to all connected websocket clients immediately
     if websocket_manager.active_connections:
-        await websocket_manager.broadcast({
-            "type": "chat_update",
-            "conversation_id": None,
-            "messages": [],
-            "total": 0,
-            "oldest_index": 0,
-            "has_more": False,
-        })
+        await websocket_manager.broadcast(
+            {
+                "type": "chat_update",
+                "conversation_id": None,
+                "messages": [],
+                "total": 0,
+                "oldest_index": 0,
+                "has_more": False,
+            }
+        )
 
     res = await dispatch_new_conversation(target_ws)
     return res
@@ -134,6 +140,7 @@ async def select_chat_legacy(payload: Dict[str, Any]):
     if not cid:
         raise HTTPException(status_code=400, detail="session_id is required")
     from integrations.antigravity.core.adapter import antigravity_adapter
+
     antigravity_adapter.active_conversation_id = str(cid)
     return {"success": True, "selected": cid}
 

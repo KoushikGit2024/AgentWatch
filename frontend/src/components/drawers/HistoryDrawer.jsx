@@ -188,7 +188,9 @@ export function HistoryDrawer({
               <div className="w-8 h-8 mx-auto text-[#4E545F] mb-2">{Icon.messageSquare}</div>
               <p className="font-medium text-[#A0A6AF]">No conversations found</p>
               <p className="text-[11px] text-[#747C87]">
-                {searchQuery ? 'Try matching another keyword or folder' : 'Start a new conversation'}
+                {searchQuery
+                  ? 'Try matching another keyword or folder'
+                  : 'Start a new conversation'}
               </p>
             </div>
           ) : (

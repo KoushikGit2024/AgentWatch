@@ -116,21 +116,25 @@ class AttachmentService:
                         if not self._matches_search(search, original_name, fname, ext):
                             continue
 
-                        url_path = f"/uploads/{rel_root}/{fname}" if is_subfolder else f"/uploads/{fname}"
+                        url_path = (
+                            f"/uploads/{rel_root}/{fname}" if is_subfolder else f"/uploads/{fname}"
+                        )
 
-                        items.append({
-                            "id": f"{rel_root}_{fname}" if is_subfolder else fname,
-                            "filename": f"{rel_root}/{fname}" if is_subfolder else fname,
-                            "original_name": original_name,
-                            "category": cat,
-                            "size": stat.st_size,
-                            "is_image": cat == "image",
-                            "url": url_path,
-                            "mtime": stat.st_mtime,
-                            "scope": "chat" if is_subfolder else "global",
-                            "conversation_id": subfolder_cid,
-                            "can_delete": True,
-                        })
+                        items.append(
+                            {
+                                "id": f"{rel_root}_{fname}" if is_subfolder else fname,
+                                "filename": f"{rel_root}/{fname}" if is_subfolder else fname,
+                                "original_name": original_name,
+                                "category": cat,
+                                "size": stat.st_size,
+                                "is_image": cat == "image",
+                                "url": url_path,
+                                "mtime": stat.st_mtime,
+                                "scope": "chat" if is_subfolder else "global",
+                                "conversation_id": subfolder_cid,
+                                "can_delete": True,
+                            }
+                        )
                     except Exception:
                         continue
 
@@ -144,6 +148,7 @@ class AttachmentService:
             else:
                 try:
                     from integrations.antigravity.core.adapter import antigravity_adapter
+
                     st = antigravity_adapter.get_status()
                     cid = st.get("active_conversation_id")
                     if cid:
@@ -169,19 +174,21 @@ class AttachmentService:
                             continue
 
                         # Route to raw file stream endpoint
-                        items.append({
-                            "id": f"chat_{entry.name}",
-                            "filename": entry.name,
-                            "original_name": entry.name,
-                            "category": cat,
-                            "size": stat.st_size,
-                            "is_image": cat == "image",
-                            "url": f"/api/v1/files/raw?path={entry.path.replace('\\', '/')}",
-                            "mtime": stat.st_mtime,
-                            "scope": "chat",
-                            "conversation_id": cid,
-                            "can_delete": True,
-                        })
+                        items.append(
+                            {
+                                "id": f"chat_{entry.name}",
+                                "filename": entry.name,
+                                "original_name": entry.name,
+                                "category": cat,
+                                "size": stat.st_size,
+                                "is_image": cat == "image",
+                                "url": f"/api/v1/files/raw?path={entry.path.replace('\\', '/')}",
+                                "mtime": stat.st_mtime,
+                                "scope": "chat",
+                                "conversation_id": cid,
+                                "can_delete": True,
+                            }
+                        )
                     except Exception:
                         continue
                         continue
@@ -198,7 +205,9 @@ class AttachmentService:
             "offset": offset,
         }
 
-    def delete_attachment(self, filename: str, conversation_id: Optional[str] = None) -> Optional[int]:
+    def delete_attachment(
+        self, filename: str, conversation_id: Optional[str] = None
+    ) -> Optional[int]:
         """Delete an attachment whether global or chat-scoped. Returns freed byte count on success, None on failure."""
         clean_name = filename.replace("chat_", "").strip().replace("\\", "/")
         parts = clean_name.split("/")
@@ -249,4 +258,3 @@ class AttachmentService:
 
 
 attachment_service = AttachmentService()
-

@@ -47,11 +47,7 @@ export function GitGraphSvg({ commits, lines = [], selectedSha }) {
       className="relative flex-none select-none bg-[#141619]"
       style={{ width: `${svgWidth}px`, height: `${svgHeight}px` }}
     >
-      <svg
-        width={svgWidth}
-        height={svgHeight}
-        className="absolute inset-0 pointer-events-none"
-      >
+      <svg width={svgWidth} height={svgHeight} className="absolute inset-0 pointer-events-none">
         {/* Draw Continuous Keizu Line Paths */}
         {lines.map((seg, idx) => {
           const x1 = seg.p1.x * LANE_WIDTH + 12;

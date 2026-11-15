@@ -1,4 +1,4 @@
-﻿"""Hook dispatcher CLI utility for Antigravity hook scripts and subprocesses."""
+"""Hook dispatcher CLI utility for Antigravity hook scripts and subprocesses."""
 
 import sys
 import os

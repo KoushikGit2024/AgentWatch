@@ -44,4 +44,3 @@ def test_cannot_delete_primary_port(client):
     res = client.delete("/api/v1/tailscale/ports/443")
     assert res.status_code == 400
     assert "reserved" in res.json()["detail"].lower()
-

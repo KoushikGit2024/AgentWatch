@@ -16,10 +16,7 @@ def test_terminal_session_lifecycle():
     assert len(data["sessions"]) >= 1
 
     # 2. Create new session
-    create_res = client.post(
-        "/api/v1/terminal/sessions",
-        json={"shell_type": "powershell"}
-    )
+    create_res = client.post("/api/v1/terminal/sessions", json={"shell_type": "powershell"})
     assert create_res.status_code == 200
     new_session = create_res.json()
     session_id = new_session["session_id"]
@@ -28,7 +25,7 @@ def test_terminal_session_lifecycle():
     # 3. Execute echo command
     exec_res = client.post(
         f"/api/v1/terminal/sessions/{session_id}/execute",
-        json={"command": "echo test_agentwatch_output"}
+        json={"command": "echo test_agentwatch_output"},
     )
     assert exec_res.status_code == 200
     exec_data = exec_res.json()
@@ -59,8 +56,7 @@ def test_terminal_persistent_cd_navigation():
     try:
         # 2. Execute cd frontend
         cd_res = client.post(
-            f"/api/v1/terminal/sessions/{session_id}/execute",
-            json={"command": "cd frontend"}
+            f"/api/v1/terminal/sessions/{session_id}/execute", json={"command": "cd frontend"}
         )
         assert cd_res.status_code == 200
         cd_data = cd_res.json()
@@ -74,8 +70,7 @@ def test_terminal_persistent_cd_navigation():
 
         # 4. Navigate back up with cd ..
         cd_back = client.post(
-            f"/api/v1/terminal/sessions/{session_id}/execute",
-            json={"command": "cd .."}
+            f"/api/v1/terminal/sessions/{session_id}/execute", json={"command": "cd .."}
         )
         assert cd_back.status_code == 200
         assert cd_back.json()["cwd"] == initial_cwd
@@ -83,7 +78,7 @@ def test_terminal_persistent_cd_navigation():
         # 5. Test nonexistent directory fails gracefully without changing cwd
         bad_cd = client.post(
             f"/api/v1/terminal/sessions/{session_id}/execute",
-            json={"command": "cd definitely_nonexistent_dir_12345"}
+            json={"command": "cd definitely_nonexistent_dir_12345"},
         )
         assert bad_cd.status_code == 200
         assert bad_cd.json()["cwd"] == initial_cwd

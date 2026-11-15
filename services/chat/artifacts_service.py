@@ -1,4 +1,4 @@
-﻿"""Service to resolve and query session artifacts across Antigravity brain storage."""
+"""Service to resolve and query session artifacts across Antigravity brain storage."""
 
 import json
 import logging
@@ -22,6 +22,7 @@ class ArtifactsService:
         if not conversation_id:
             try:
                 from integrations.antigravity.core.adapter import antigravity_adapter
+
                 st = antigravity_adapter.get_status()
                 conversation_id = st.get("active_conversation_id")
             except Exception:
@@ -65,16 +66,18 @@ class ArtifactsService:
                     except Exception:
                         pass
 
-                artifacts.append({
-                    "id": md_file.stem,
-                    "title": md_file.name.replace("_", " ").replace(".md", "").title(),
-                    "filename": md_file.name,
-                    "path": str(md_file).replace("\\", "/"),
-                    "type": "markdown",
-                    "summary": meta_info.get("summary", ""),
-                    "size_bytes": st.st_size,
-                    "mtime": st.st_mtime,
-                })
+                artifacts.append(
+                    {
+                        "id": md_file.stem,
+                        "title": md_file.name.replace("_", " ").replace(".md", "").title(),
+                        "filename": md_file.name,
+                        "path": str(md_file).replace("\\", "/"),
+                        "type": "markdown",
+                        "summary": meta_info.get("summary", ""),
+                        "size_bytes": st.st_size,
+                        "mtime": st.st_mtime,
+                    }
+                )
             except Exception:
                 continue
 
@@ -104,16 +107,18 @@ class ArtifactsService:
                             if is_video
                             else f"Image artifact ({size_kb} KB)"
                         )
-                        artifacts.append({
-                            "id": file_path.stem,
-                            "title": file_path.name,
-                            "filename": file_path.name,
-                            "path": normalized_path,
-                            "type": artifact_type,
-                            "summary": summary_label,
-                            "size_bytes": st.st_size,
-                            "mtime": st.st_mtime,
-                        })
+                        artifacts.append(
+                            {
+                                "id": file_path.stem,
+                                "title": file_path.name,
+                                "filename": file_path.name,
+                                "path": normalized_path,
+                                "type": artifact_type,
+                                "summary": summary_label,
+                                "size_bytes": st.st_size,
+                                "mtime": st.st_mtime,
+                            }
+                        )
                         seen_paths.add(normalized_path)
                     except Exception:
                         continue
@@ -127,4 +132,3 @@ class ArtifactsService:
 
 
 artifacts_service = ArtifactsService()
-

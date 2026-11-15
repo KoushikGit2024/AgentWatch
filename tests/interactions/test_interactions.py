@@ -120,7 +120,8 @@ def test_send_prompt_validation_and_idempotency():
     # 2. Valid prompt (mocked to avoid dispatching live CDP prompt during testing)
     valid_payload = {"message": "Hello Antigravity Agent", "idempotency_key": "idemp-test-12345"}
     with patch(
-        "integrations.antigravity.core.adapter.antigravity_adapter.send_prompt", new_callable=AsyncMock
+        "integrations.antigravity.core.adapter.antigravity_adapter.send_prompt",
+        new_callable=AsyncMock,
     ) as mock_send:
         mock_send.return_value = {"success": True, "dispatched": True}
         res_valid = client.post("/send", json=valid_payload)

@@ -246,6 +246,7 @@ async def _execute_send_prompt_cdp(target_url: str, message: str) -> Dict[str, A
         logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
         return {"success": False, "error": str(exc)}
 
+
 async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
     """
     Dispatch prompt text directly into Antigravity IDE workbench via CDP.
@@ -262,8 +263,11 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
         )
         try:
             from integrations.antigravity.core.adapter import antigravity_adapter
+
             antigravity_adapter.discover_cdp(force=True)
-            new_target = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+            new_target = (
+                antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+            )
             if new_target and new_target != target_url:
                 logger.info("Retrying prompt dispatch on fresh CDP target: %s", new_target)
                 await asyncio.sleep(0.3)
@@ -274,6 +278,7 @@ async def dispatch_send_prompt(target_url: str, message: str) -> Dict[str, Any]:
     except Exception as exc:
         logger.error("Failed to dispatch prompt via CDP: %s", str(exc))
         return {"success": False, "error": str(exc)}
+
 
 async def dispatch_stop_generation(target_url: str) -> Dict[str, Any]:
     """

@@ -87,8 +87,11 @@ def terminate_system_process(payload: TerminateProcessRequest, request: Request)
     origin = request.headers.get("origin") or request.headers.get("referer")
     if origin:
         import re
+
         if not re.match(r"^https?://(localhost|127\.0\.0\.1|.*\.ts\.net)(:\d+)?", origin):
-            raise HTTPException(status_code=403, detail="Cross-origin process termination forbidden")
+            raise HTTPException(
+                status_code=403, detail="Cross-origin process termination forbidden"
+            )
 
     from services.monitoring.system_metrics_service import system_metrics_service
     from repositories.event_repository import EventRepository
@@ -96,7 +99,6 @@ def terminate_system_process(payload: TerminateProcessRequest, request: Request)
     import datetime
 
     result = system_metrics_service.terminate_processes(payload.pids, payload.name)
-
 
     try:
         EventRepository().insert_event(

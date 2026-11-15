@@ -142,4 +142,3 @@ def evaluate_system_capabilities() -> List[CapabilityItem]:
             else "Process termination disabled by server configuration (ENABLE_PROCESS_TERMINATION=false)",
         ),
     ]
-

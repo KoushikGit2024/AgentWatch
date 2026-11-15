@@ -3,7 +3,7 @@
 **Document ID:** CW-DOC-013  
 **Version:** 2.0.0  
 **Project:** AgentWatch  
-**Classification:** Engineering Guidelines  
+**Classification:** Engineering Guidelines
 
 ---
 

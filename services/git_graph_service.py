@@ -100,7 +100,9 @@ class _Vertex:
                 self.connections.append(None)
             self.connections[x] = {"connectsTo": connects_to, "onBranch": on_branch}
 
-    def get_point_connecting_to(self, target_vertex: Any, branch: "_Branch") -> Optional[Dict[str, int]]:
+    def get_point_connecting_to(
+        self, target_vertex: Any, branch: "_Branch"
+    ) -> Optional[Dict[str, int]]:
         for i, conn in enumerate(self.connections):
             if conn and conn["connectsTo"] == target_vertex and conn["onBranch"] == branch:
                 return {"x": i, "y": self.y}
@@ -121,7 +123,12 @@ def _build_keizu_graph(commits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     sha_to_idx = {c["sha"]: i for i, c in enumerate(commits)}
 
     vertices = [
-        _Vertex(i, c["sha"], [sha_to_idx[p] for p in c["parents"] if p in sha_to_idx], c.get("is_stash", False))
+        _Vertex(
+            i,
+            c["sha"],
+            [sha_to_idx[p] for p in c["parents"] if p in sha_to_idx],
+            c.get("is_stash", False),
+        )
         for i, c in enumerate(commits)
     ]
 
@@ -152,7 +159,12 @@ def _build_keizu_graph(commits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         target_v = vertices[next_p_idx] if next_p_idx is not None else None
         pt = cur_v.get_next_point() if cur_v.is_not_on_branch() else cur_v.get_point()
 
-        if target_v is not None and len(cur_v.parents) > 1 and not cur_v.is_not_on_branch() and not target_v.is_not_on_branch():
+        if (
+            target_v is not None
+            and len(cur_v.parents) > 1
+            and not cur_v.is_not_on_branch()
+            and not target_v.is_not_on_branch()
+        ):
             # Merge route
             connected = False
             u_branch = target_v.onBranch
@@ -216,17 +228,21 @@ def _build_keizu_graph(commits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     graph_lines = []
     for b in branches:
         for l in b.lines:
-            graph_lines.append({
-                "p1": l["p1"],
-                "p2": l["p2"],
-                "color": b.color,
-                "lockedFirst": l["lockedFirst"],
-            })
+            graph_lines.append(
+                {
+                    "p1": l["p1"],
+                    "p2": l["p2"],
+                    "color": b.color,
+                    "lockedFirst": l["lockedFirst"],
+                }
+            )
 
     return graph_lines
 
 
-async def get_git_graph(workspace_root: Path, limit: int = 150, branch: Optional[str] = None) -> Dict[str, Any]:
+async def get_git_graph(
+    workspace_root: Path, limit: int = 150, branch: Optional[str] = None
+) -> Dict[str, Any]:
     """Retrieve topological git log across branches/stashes and Keizu line segments."""
     git_dir = workspace_root / ".git"
     if not git_dir.exists():
@@ -261,7 +277,7 @@ async def get_git_graph(workspace_root: Path, limit: int = 150, branch: Optional
     # 2. Extract commits: if specific branch given (and not ALL), scope to that branch
     log_fmt = "%H%x00%P%x00%an%x00%ae%x00%ad%x00%s%x00%D%x01"
     clean_branch = branch.strip() if branch and branch.strip() and branch.strip() != "ALL" else None
-    
+
     cmd = ["git", "log", f"-n{max(10, min(limit, 50000))}", "--topo-order", f"--format={log_fmt}"]
     if clean_branch:
         cmd.append(clean_branch)
@@ -289,19 +305,21 @@ async def get_git_graph(workspace_root: Path, limit: int = 150, branch: Optional
 
         branches_list, tags, is_head = _parse_ref_names(ref_str)
 
-        commits.append({
-            "sha": sha,
-            "short_sha": sha[:7],
-            "parents": parents,
-            "author_name": author_name,
-            "author_email": author_email,
-            "date": author_date,
-            "subject": subject,
-            "branches": branches_list,
-            "tags": tags,
-            "is_head": is_head,
-            "is_stash": False,
-        })
+        commits.append(
+            {
+                "sha": sha,
+                "short_sha": sha[:7],
+                "parents": parents,
+                "author_name": author_name,
+                "author_email": author_email,
+                "date": author_date,
+                "subject": subject,
+                "branches": branches_list,
+                "tags": tags,
+                "is_head": is_head,
+                "is_stash": False,
+            }
+        )
 
     # 3. Extract Stashes and inject as child branches of their base commits (matching Git Keizu getStashes)
     s_out = await asyncio.to_thread(
@@ -326,19 +344,21 @@ async def get_git_graph(workspace_root: Path, limit: int = 150, branch: Optional
             base_sha = s_parents[0] if s_parents else ""
             selector = fields[2].strip().replace("refs/", "")
 
-            stashes.append({
-                "sha": s_sha,
-                "short_sha": s_sha[:7],
-                "parents": [base_sha] if base_sha else [],
-                "author_name": fields[3].strip(),
-                "author_email": fields[4].strip(),
-                "date": fields[5].strip(),
-                "subject": fields[6].strip(),
-                "branches": [],
-                "tags": [selector],
-                "is_head": False,
-                "is_stash": True,
-            })
+            stashes.append(
+                {
+                    "sha": s_sha,
+                    "short_sha": s_sha[:7],
+                    "parents": [base_sha] if base_sha else [],
+                    "author_name": fields[3].strip(),
+                    "author_email": fields[4].strip(),
+                    "date": fields[5].strip(),
+                    "subject": fields[6].strip(),
+                    "branches": [],
+                    "tags": [selector],
+                    "is_head": False,
+                    "is_stash": True,
+                }
+            )
 
     # Splice stashes directly above their base commit in the timeline (exact Keizu behavior)
     for st in stashes:
@@ -355,7 +375,11 @@ async def get_git_graph(workspace_root: Path, limit: int = 150, branch: Optional
     lines = _build_keizu_graph(commits)
 
     # 5. Check if there are more commits beyond current limit
-    count_cmd = ["git", "rev-list", clean_branch, "--count"] if clean_branch else ["git", "rev-list", "--all", "--count"]
+    count_cmd = (
+        ["git", "rev-list", clean_branch, "--count"]
+        if clean_branch
+        else ["git", "rev-list", "--all", "--count"]
+    )
     c_out = await asyncio.to_thread(_run_git_cmd, count_cmd, workspace_root)
     total_repo_commits = len(commits)
     try:
@@ -418,24 +442,28 @@ async def get_commit_diff(workspace_root: Path, sha: str) -> Dict[str, Any]:
             p = parts[-1].strip()
             seen_paths.add(p)
             meta = status_map.get(p, {"status": "M", "old_path": p})
-            file_changes.append({
-                "additions": int(parts[0]),
-                "deletions": int(parts[1]),
-                "path": p,
-                "status": meta["status"],
-                "old_path": meta["old_path"],
-            })
+            file_changes.append(
+                {
+                    "additions": int(parts[0]),
+                    "deletions": int(parts[1]),
+                    "path": p,
+                    "status": meta["status"],
+                    "old_path": meta["old_path"],
+                }
+            )
 
     # Include binary/renamed files from status_map not in numstat
     for p, meta in status_map.items():
         if p not in seen_paths:
-            file_changes.append({
-                "additions": 0,
-                "deletions": 0,
-                "path": p,
-                "status": meta["status"],
-                "old_path": meta["old_path"],
-            })
+            file_changes.append(
+                {
+                    "additions": 0,
+                    "deletions": 0,
+                    "path": p,
+                    "status": meta["status"],
+                    "old_path": meta["old_path"],
+                }
+            )
 
     # 3. Unified patch diff
     patch = await asyncio.to_thread(

@@ -1,4 +1,4 @@
-﻿"""Resilient fast-fail CDP connection wrapper with auto-health notification."""
+"""Resilient fast-fail CDP connection wrapper with auto-health notification."""
 
 import asyncio
 import logging
@@ -33,9 +33,18 @@ async def cdp_connect(
             timeout=open_timeout + 0.3,
         )
         yield ws
-    except (asyncio.TimeoutError, websockets.InvalidURI, websockets.WebSocketException, OSError, ConnectionResetError) as err:
-        logger.warning("CDP connection to %s failed/timed out (%s): %s", target_url, type(err).__name__, err)
+    except (
+        asyncio.TimeoutError,
+        websockets.InvalidURI,
+        websockets.WebSocketException,
+        OSError,
+        ConnectionResetError,
+    ) as err:
+        logger.warning(
+            "CDP connection to %s failed/timed out (%s): %s", target_url, type(err).__name__, err
+        )
         from integrations.antigravity.core.adapter import antigravity_adapter
+
         antigravity_adapter.mark_target_unresponsive(target_url, error_message=str(err))
         raise
     finally:

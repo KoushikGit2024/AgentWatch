@@ -75,7 +75,11 @@ async def dispatch_switch_conversation(target_url: str, conversation_id: str) ->
                     {
                         "id": 501,
                         "method": "Runtime.evaluate",
-                        "params": {"expression": nav_js, "returnByValue": True, "awaitPromise": True},
+                        "params": {
+                            "expression": nav_js,
+                            "returnByValue": True,
+                            "awaitPromise": True,
+                        },
                     }
                 )
             )

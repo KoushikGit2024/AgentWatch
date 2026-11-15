@@ -29,6 +29,7 @@ class FileEditorService:
                 return False
 
             from services.workspace.workspace_context import workspace_context
+
             active_ws = workspace_context.get_active_workspace_path()
             allowed_roots = [
                 active_ws.resolve(),
@@ -55,11 +56,15 @@ class FileEditorService:
     def save_file_content(self, target_path: Path, content: str) -> Dict[str, Any]:
         """Atomically save content directly to target file on disk."""
         if not self.is_path_safe(target_path):
-            raise PermissionError("Access denied: Target path outside authorized workspace boundaries")
+            raise PermissionError(
+                "Access denied: Target path outside authorized workspace boundaries"
+            )
 
         content_bytes = content.encode("utf-8")
         if len(content_bytes) > MAX_EDIT_SIZE_BYTES:
-            raise ValueError(f"Content exceeds maximum allowable size of {MAX_EDIT_SIZE_BYTES} bytes")
+            raise ValueError(
+                f"Content exceeds maximum allowable size of {MAX_EDIT_SIZE_BYTES} bytes"
+            )
 
         # Atomic write: write to temp file then replace
         temp_file = target_path.with_name(f"{target_path.name}.tmp.{int(time.time() * 1000)}")
@@ -88,7 +93,9 @@ class FileEditorService:
     def create_new_file_or_dir(self, target_path: Path, is_dir: bool = False) -> Dict[str, Any]:
         """Create a new file or directory directly in workspace."""
         if not self.is_path_safe(target_path):
-            raise PermissionError("Access denied: Target path outside authorized workspace boundaries")
+            raise PermissionError(
+                "Access denied: Target path outside authorized workspace boundaries"
+            )
 
         if target_path.exists():
             raise FileExistsError(f"Target path already exists: {target_path.name}")
@@ -104,12 +111,15 @@ class FileEditorService:
     def delete_file_or_dir(self, target_path: Path) -> Dict[str, Any]:
         """Delete a file or directory from workspace."""
         if not self.is_path_safe(target_path):
-            raise PermissionError("Access denied: Target path outside authorized workspace boundaries")
+            raise PermissionError(
+                "Access denied: Target path outside authorized workspace boundaries"
+            )
 
         if not target_path.exists():
             raise FileNotFoundError(f"Target path not found: {target_path.name}")
 
         import shutil
+
         if target_path.is_file():
             target_path.unlink()
         elif target_path.is_dir():
@@ -120,7 +130,9 @@ class FileEditorService:
     def rename_item(self, target_path: Path, new_name: str) -> Dict[str, Any]:
         """Rename a file or directory within its current parent directory."""
         if not self.is_path_safe(target_path):
-            raise PermissionError("Access denied: Target path outside authorized workspace boundaries")
+            raise PermissionError(
+                "Access denied: Target path outside authorized workspace boundaries"
+            )
 
         if not target_path.exists():
             raise FileNotFoundError(f"Target path not found: {target_path.name}")
@@ -131,7 +143,9 @@ class FileEditorService:
 
         destination_path = target_path.parent / clean_name
         if not self.is_path_safe(destination_path):
-            raise PermissionError("Access denied: Destination path outside authorized workspace boundaries")
+            raise PermissionError(
+                "Access denied: Destination path outside authorized workspace boundaries"
+            )
 
         if destination_path.exists():
             raise FileExistsError(f"An item named '{clean_name}' already exists in this folder")
@@ -147,14 +161,20 @@ class FileEditorService:
     def move_item(self, source_path: Path, destination_folder: Path) -> Dict[str, Any]:
         """Move a file or directory into a target directory within workspace."""
         if not self.is_path_safe(source_path):
-            raise PermissionError("Access denied: Source path outside authorized workspace boundaries")
+            raise PermissionError(
+                "Access denied: Source path outside authorized workspace boundaries"
+            )
         if not self.is_path_safe(destination_folder):
-            raise PermissionError("Access denied: Destination folder outside authorized workspace boundaries")
+            raise PermissionError(
+                "Access denied: Destination folder outside authorized workspace boundaries"
+            )
 
         if not source_path.exists():
             raise FileNotFoundError(f"Source path not found: {source_path.name}")
         if not destination_folder.is_dir():
-            raise ValueError(f"Destination must be an existing directory: {destination_folder.name}")
+            raise ValueError(
+                f"Destination must be an existing directory: {destination_folder.name}"
+            )
 
         # Guard against circular directory nesting
         resolved_src = source_path.resolve()
@@ -166,9 +186,12 @@ class FileEditorService:
 
         target_destination = destination_folder / source_path.name
         if target_destination.exists():
-            raise FileExistsError(f"An item named '{source_path.name}' already exists in the destination folder")
+            raise FileExistsError(
+                f"An item named '{source_path.name}' already exists in the destination folder"
+            )
 
         import shutil
+
         shutil.move(str(source_path), str(target_destination))
         return {
             "success": True,

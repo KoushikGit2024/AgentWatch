@@ -9,6 +9,7 @@ from integrations.antigravity.core.adapter import AntigravityAdapter
 
 def test_cdp_connect_fast_fail_timeout():
     """Verify that cdp_connect fast-fails when target socket hangs or is unreachable."""
+
     async def run_test():
         adapter = AntigravityAdapter()
         with patch("integrations.antigravity.core.adapter.antigravity_adapter", adapter):

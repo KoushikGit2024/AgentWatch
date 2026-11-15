@@ -121,12 +121,10 @@ const ChatStream = forwardRef(function ChatStream(
                     <div className="w-4 h-4">{Icon.terminal}</div>
                   </div>
                   <div className="space-y-1">
-                    <h2 className="text-sm font-semibold text-[#E8EAED]">
-                      IDE Agent Ready
-                    </h2>
+                    <h2 className="text-sm font-semibold text-[#E8EAED]">IDE Agent Ready</h2>
                     <p className="text-xs text-[#A0A6AF] max-w-sm">
-                      Connected to your live IDE workspace. Real-time execution traces,
-                      interactive decision prompts, and conversation turns appear here.
+                      Connected to your live IDE workspace. Real-time execution traces, interactive
+                      decision prompts, and conversation turns appear here.
                     </p>
                   </div>
                 </div>

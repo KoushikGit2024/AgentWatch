@@ -11,4 +11,3 @@ def list_messages(limit: int = Query(30, ge=1, le=100)):
     """List inter-agent IPC messages and task completion notifications."""
     msgs = message_sync_service.list_messages(limit=limit)
     return {"messages": msgs, "total": len(msgs)}
-

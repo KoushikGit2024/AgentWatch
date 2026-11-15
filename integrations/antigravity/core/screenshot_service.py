@@ -1,4 +1,4 @@
-﻿"""CDP Viewport Screenshot Capture Service."""
+"""CDP Viewport Screenshot Capture Service."""
 
 import asyncio
 import hashlib
@@ -51,4 +51,3 @@ async def capture_cdp_screenshot(
             return cached_data, cached_hash, last_time
 
     return None, cached_hash, last_time
-

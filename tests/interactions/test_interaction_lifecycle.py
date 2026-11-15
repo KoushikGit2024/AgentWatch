@@ -1,4 +1,4 @@
-﻿"""Unit tests covering interaction lifecycle, atomic transitions, and superseding."""
+"""Unit tests covering interaction lifecycle, atomic transitions, and superseding."""
 
 import pytest
 import uuid

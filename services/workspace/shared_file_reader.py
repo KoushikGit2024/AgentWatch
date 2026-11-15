@@ -14,7 +14,12 @@ from typing import Generator, Union, Optional
 logger = logging.getLogger(__name__)
 
 
-def open_shared_read(file_path: Union[str, Path], encoding: str = "utf-8", max_retries: int = 3, retry_delay: float = 0.05):
+def open_shared_read(
+    file_path: Union[str, Path],
+    encoding: str = "utf-8",
+    max_retries: int = 3,
+    retry_delay: float = 0.05,
+):
     """
     Open a file for reading with shared read/write access.
     On Windows, uses os.O_RDONLY with shared access semantics.
@@ -40,4 +45,3 @@ def open_shared_read(file_path: Union[str, Path], encoding: str = "utf-8", max_r
 
     logger.warning("Shared read failed for %s after %d retries: %s", target, max_retries, last_err)
     raise last_err if last_err else IOError(f"Could not open {target}")
-

@@ -3,13 +3,14 @@
 **Document ID:** CW-DOC-011  
 **Version:** 2.0.0  
 **Project:** AgentWatch  
-**Classification:** Quality Assurance & Testing Specification  
+**Classification:** Quality Assurance & Testing Specification
 
 ---
 
 ## 1. Test Architecture & Coverage Goals
 
 AgentWatch enforces strict verification standards across all layers:
+
 - **Unit Tests:** Validates secret redaction engines, environment metadata parsers, and input schemas.
 - **Integration Tests:** Exercises live FastAPI endpoints against local MongoDB collections using `TestClient`.
 - **Interaction Contract Tests:** Exercises single/multi-choice validation, duplicate submission rejection (409 Conflict), custom "Other" text guards, and prompt idempotency.
@@ -20,13 +21,16 @@ AgentWatch enforces strict verification standards across all layers:
 ## 2. Executing Automated Tests
 
 ### 2.1 Running the Pytest Suite
+
 Run the full automated test suite:
+
 ```powershell
 .\.venv\Scripts\activate
 python -m pytest -v
 ```
 
 ### Expected Output (16 / 16 Passing Tests):
+
 ```
 tests/integration/test_api.py::test_health_endpoint PASSED               [  6%]
 tests/integration/test_api.py::test_readiness_endpoint PASSED            [ 12%]
@@ -53,10 +57,13 @@ tests/unit/test_redaction.py::test_redact_sensitive_values_in_lists PASSED [100%
 ## 3. Running the Privacy & Secret Scanner
 
 Run the privacy verification script:
+
 ```powershell
 python scripts/check_privacy.py
 ```
+
 Output:
+
 ```
 [SCAN] Starting Privacy and Secret Scan across D:\All Codes\AllProjects\AgentWatchV2...
 [REPORT] Scanned 68 files.

@@ -24,7 +24,7 @@ def _resolve_workspace() -> Path:
 @router.get("/graph")
 async def git_graph_endpoint(
     limit: int = Query(default=75, ge=1, le=50000, description="Max commits to fetch"),
-    branch: str = Query(default="", description="Filter commits to specific branch")
+    branch: str = Query(default="", description="Filter commits to specific branch"),
 ) -> Dict[str, Any]:
     """Retrieve topological commit graph with deterministic DAG lanes."""
     workspace_root = _resolve_workspace()
@@ -32,9 +32,11 @@ async def git_graph_endpoint(
         return await get_git_graph(workspace_root=workspace_root, limit=limit, branch=branch)
     except Exception as exc:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate git graph: {type(exc).__name__}: {str(exc) or repr(exc)}"
+            status_code=500,
+            detail=f"Failed to generate git graph: {type(exc).__name__}: {str(exc) or repr(exc)}",
         )
 
 
@@ -55,6 +57,4 @@ async def git_commit_diff_endpoint(sha: str) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to read commit diff: {str(exc)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to read commit diff: {str(exc)}")

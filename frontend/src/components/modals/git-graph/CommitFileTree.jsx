@@ -17,11 +17,41 @@ function StatusBadge({ status }) {
   if (!status) return null;
 
   const config = {
-    A: { label: 'A', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', title: 'Added' },
-    M: { label: 'M', bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', title: 'Modified' },
-    D: { label: 'D', bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/30', title: 'Deleted' },
-    R: { label: 'R', bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', title: 'Renamed' },
-  }[status] || { label: status, bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', title: status };
+    A: {
+      label: 'A',
+      bg: 'bg-emerald-500/20',
+      text: 'text-emerald-400',
+      border: 'border-emerald-500/30',
+      title: 'Added',
+    },
+    M: {
+      label: 'M',
+      bg: 'bg-amber-500/20',
+      text: 'text-amber-400',
+      border: 'border-amber-500/30',
+      title: 'Modified',
+    },
+    D: {
+      label: 'D',
+      bg: 'bg-rose-500/20',
+      text: 'text-rose-400',
+      border: 'border-rose-500/30',
+      title: 'Deleted',
+    },
+    R: {
+      label: 'R',
+      bg: 'bg-cyan-500/20',
+      text: 'text-cyan-400',
+      border: 'border-cyan-500/30',
+      title: 'Renamed',
+    },
+  }[status] || {
+    label: status,
+    bg: 'bg-blue-500/20',
+    text: 'text-blue-400',
+    border: 'border-blue-500/30',
+    title: status,
+  };
 
   return (
     <span
@@ -112,11 +142,7 @@ function FileTreeNode({ node, depth = 0 }) {
         {isOpen && (
           <div>
             {entries.map(child => (
-              <FileTreeNode
-                key={child.path || child.name}
-                node={child}
-                depth={depth + 1}
-              />
+              <FileTreeNode key={child.path || child.name} node={child} depth={depth + 1} />
             ))}
           </div>
         )}
@@ -125,12 +151,13 @@ function FileTreeNode({ node, depth = 0 }) {
   }
 
   // File row with Status Badge
-  const fileNameColor = {
-    A: 'text-emerald-300',
-    D: 'text-rose-400 line-through opacity-80',
-    M: 'text-[#A5D6FF]',
-    R: 'text-cyan-300',
-  }[node.status] || 'text-[#A5D6FF]';
+  const fileNameColor =
+    {
+      A: 'text-emerald-300',
+      D: 'text-rose-400 line-through opacity-80',
+      M: 'text-[#A5D6FF]',
+      R: 'text-cyan-300',
+    }[node.status] || 'text-[#A5D6FF]';
 
   return (
     <div
@@ -145,12 +172,8 @@ function FileTreeNode({ node, depth = 0 }) {
         </span>
       </div>
       <div className="flex items-center gap-1.5 font-mono text-[10px] flex-none">
-        {node.additions > 0 && (
-          <span className="text-emerald-400">+{node.additions}</span>
-        )}
-        {node.deletions > 0 && (
-          <span className="text-rose-400">-{node.deletions}</span>
-        )}
+        {node.additions > 0 && <span className="text-emerald-400">+{node.additions}</span>}
+        {node.deletions > 0 && <span className="text-rose-400">-{node.deletions}</span>}
       </div>
     </div>
   );

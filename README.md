@@ -318,7 +318,7 @@ AgentWatch includes dedicated blueprints for keeping your installation calibrate
 When you want to verify that all AgentWatch subsystems (CDP sessions, models, effort tiers, running tasks, terminal subshells, and decision cards) are fully synchronized with your current IDE installation, use the updater protocol:
 
 1. **Prompt to Trigger:** Tell your coding agent:
-   > *"Run the update protocol from `updates/Update.md` and audit all endpoints."*
+   > _"Run the update protocol from `updates/Update.md` and audit all endpoints."_
 2. **What the Agent Does:**
    - Follows the phased workflow in [updates/Update.md](file:///d:/All%20Codes/AllProjects/AgentWatchV2/updates/Update.md).
    - Executes the automated diagnostic script checking ports `9000`, `9001-9003`, and `9222`.
@@ -335,7 +335,7 @@ When adapting AgentWatch to a new IDE (e.g. Cursor, Windsurf, or a newly release
    & "C:\Path\To\YourIDE.exe" --remote-debugging-port=9000
    ```
 2. **Prompt to Trigger Migration:** Tell your coding agent:
-   > *"Read `migration/Migration.md` and help me adapt AgentWatch for [Target IDE Name]."*
+   > _"Read `migration/Migration.md` and help me adapt AgentWatch for [Target IDE Name]."_
 3. **What the Agent Does:**
    - Reads the comprehensive guide in [migration/Migration.md](file:///d:/All%20Codes/AllProjects/AgentWatchV2/migration/Migration.md).
    - Instructs you to open `http://localhost:9000` in Google Chrome to inspect the IDE's live webview DOM.
@@ -344,13 +344,27 @@ When adapting AgentWatch to a new IDE (e.g. Cursor, Windsurf, or a newly release
      // Runs full input, button, dialog, and model selector audit
      (() => {
        const audit = {
-         inputs: Array.from(document.querySelectorAll('textarea, input, [contenteditable="true"]')).map(e => ({ tag: e.tagName, role: e.getAttribute('role'), testId: e.getAttribute('data-testid'), aria: e.getAttribute('aria-label') })),
-         buttons: Array.from(document.querySelectorAll('button, [role="button"]')).filter(b => b.offsetWidth > 0).map(b => ({ text: b.innerText.trim(), testId: b.getAttribute('data-testid'), aria: b.getAttribute('aria-label') })),
-         dialogs: Array.from(document.querySelectorAll('[role="dialog"], [role="radiogroup"]')).map(d => ({ role: d.getAttribute('role'), text: d.innerText.slice(0, 100) }))
+         inputs: Array.from(
+           document.querySelectorAll('textarea, input, [contenteditable="true"]')
+         ).map(e => ({
+           tag: e.tagName,
+           role: e.getAttribute("role"),
+           testId: e.getAttribute("data-testid"),
+           aria: e.getAttribute("aria-label"),
+         })),
+         buttons: Array.from(document.querySelectorAll('button, [role="button"]'))
+           .filter(b => b.offsetWidth > 0)
+           .map(b => ({
+             text: b.innerText.trim(),
+             testId: b.getAttribute("data-testid"),
+             aria: b.getAttribute("aria-label"),
+           })),
+         dialogs: Array.from(document.querySelectorAll('[role="dialog"], [role="radiogroup"]')).map(
+           d => ({ role: d.getAttribute("role"), text: d.innerText.slice(0, 100) })
+         ),
        };
-       console.log('=== DOM AUDIT ===', JSON.stringify(audit, null, 2));
+       console.log("=== DOM AUDIT ===", JSON.stringify(audit, null, 2));
        return audit;
      })();
      ```
    - Automatically maps the extracted selectors into `integrations/<ide>/cdp/` and adapts the storage watchers in `services/transcripts/` or `services/monitoring/` to match the target IDE's local database and session structure.
-

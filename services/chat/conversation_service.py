@@ -94,11 +94,19 @@ class ConversationService:
             candidate_found: Optional[Path] = None
             if conversation_id:
                 for base in bases:
-                    cand = base / conversation_id / ".system_generated" / "logs" / "transcript_full.jsonl"
+                    cand = (
+                        base
+                        / conversation_id
+                        / ".system_generated"
+                        / "logs"
+                        / "transcript_full.jsonl"
+                    )
                     if cand.exists() and cand.stat().st_size > 0:
                         candidate_found = cand
                         break
-                    cand_compat = base / conversation_id / ".system_generated" / "logs" / "transcript.jsonl"
+                    cand_compat = (
+                        base / conversation_id / ".system_generated" / "logs" / "transcript.jsonl"
+                    )
                     if cand_compat.exists() and cand_compat.stat().st_size > 0:
                         candidate_found = cand_compat
                         break
@@ -108,6 +116,7 @@ class ConversationService:
             if not candidate_found and not conversation_id:
                 try:
                     from services.workspace.workspace_context import workspace_context
+
                     active_ws_path = workspace_context.get_active_workspace_path()
                     ws_cids = set(workspace_context.get_conversations_for_workspace(active_ws_path))
                 except Exception:
@@ -119,11 +128,15 @@ class ConversationService:
                         if not base.exists():
                             continue
                         for cid in ws_cids:
-                            c_full = base / cid / ".system_generated" / "logs" / "transcript_full.jsonl"
+                            c_full = (
+                                base / cid / ".system_generated" / "logs" / "transcript_full.jsonl"
+                            )
                             if c_full.exists() and c_full.stat().st_size > 0:
                                 transcripts.append(c_full)
                             else:
-                                c_std = base / cid / ".system_generated" / "logs" / "transcript.jsonl"
+                                c_std = (
+                                    base / cid / ".system_generated" / "logs" / "transcript.jsonl"
+                                )
                                 if c_std.exists() and c_std.stat().st_size > 0:
                                     transcripts.append(c_std)
 
@@ -143,6 +156,7 @@ class ConversationService:
         if not conversation_id:
             try:
                 from integrations.antigravity.core.adapter import antigravity_adapter
+
                 ag_st = antigravity_adapter.get_status()
                 conversation_id = ag_st.get("active_conversation_id")
             except Exception:
@@ -178,13 +192,19 @@ class ConversationService:
             session_dir = transcript_path.parent.parent.parent
 
             from services.workspace.shared_file_reader import open_shared_read
+
             with open_shared_read(transcript_path, encoding="utf-8") as f:
                 for line in f:
                     try:
                         step = json.loads(line)
                         stype = step.get("type")
                         raw_content = (step.get("content") or "").strip()
-                        content = step_output_resolver.resolve_output(raw_content, session_dir=session_dir) or raw_content
+                        content = (
+                            step_output_resolver.resolve_output(
+                                raw_content, session_dir=session_dir
+                            )
+                            or raw_content
+                        )
                         tools = step.get("tool_calls") or []
                         thinking = (step.get("thinking") or "").strip()
                         created_at = step.get("created_at")
@@ -202,13 +222,15 @@ class ConversationService:
                                     turns.append(current_agent_turn)
                                     current_agent_turn = None
                                 turn_idx = len(turns)
-                                turns.append({
-                                    "id": f"turn-{turn_idx}",
-                                    "turn_index": turn_idx,
-                                    "role": "user",
-                                    "text": clean,
-                                    "timestamp": created_at,
-                                })
+                                turns.append(
+                                    {
+                                        "id": f"turn-{turn_idx}",
+                                        "turn_index": turn_idx,
+                                        "role": "user",
+                                        "text": clean,
+                                        "timestamp": created_at,
+                                    }
+                                )
 
                         elif stype == "PLANNER_RESPONSE":
                             if not current_agent_turn:
@@ -227,13 +249,15 @@ class ConversationService:
                             if thinking:
                                 word_count = len(thinking.split())
                                 est_sec = max(1, min(15, max(1, word_count // 45)))
-                                current_agent_turn["items"].append({
-                                    "id": f"item-{len(current_agent_turn['items'])}",
-                                    "type": "thought",
-                                    "title": f"Thought for {est_sec}s",
-                                    "text": thinking,
-                                    "timestamp": created_at,
-                                })
+                                current_agent_turn["items"].append(
+                                    {
+                                        "id": f"item-{len(current_agent_turn['items'])}",
+                                        "type": "thought",
+                                        "title": f"Thought for {est_sec}s",
+                                        "text": thinking,
+                                        "timestamp": created_at,
+                                    }
+                                )
                                 if current_agent_turn["thinking"]:
                                     current_agent_turn["thinking"] += "\n\n" + thinking
                                 else:
@@ -258,15 +282,18 @@ class ConversationService:
                             elif content:
                                 current_agent_turn["text"] = content
                                 # Record conversational comment within execution sequence
-                                current_agent_turn["items"].append({
-                                    "id": f"comment-{len(current_agent_turn['items'])}",
-                                    "type": "comment",
-                                    "text": content,
-                                    "timestamp": created_at,
-                                })
+                                current_agent_turn["items"].append(
+                                    {
+                                        "id": f"comment-{len(current_agent_turn['items'])}",
+                                        "type": "comment",
+                                        "text": content,
+                                        "timestamp": created_at,
+                                    }
+                                )
 
                         elif (
-                            stype in (
+                            stype
+                            in (
                                 "RUN_COMMAND",
                                 "WRITE_TO_FILE",
                                 "REPLACE_FILE_CONTENT",
@@ -295,8 +322,13 @@ class ConversationService:
                                 elif last_item.get("kind") == "command":
                                     exit_code = step.get("exit_code")
                                     clean_out = content or ""
-                                    if exit_code is None and "Command exited with code " in clean_out:
-                                        m_code = re.search(r"Command exited with code (\d+)", clean_out)
+                                    if (
+                                        exit_code is None
+                                        and "Command exited with code " in clean_out
+                                    ):
+                                        m_code = re.search(
+                                            r"Command exited with code (\d+)", clean_out
+                                        )
                                         if m_code:
                                             exit_code = int(m_code.group(1))
                                     if exit_code is not None:
@@ -305,14 +337,17 @@ class ConversationService:
                                         clean_out = clean_out.split("\t\t\t\tOutput:\n", 1)[1]
                                     elif "\t\t\t\tStdout:\n" in clean_out:
                                         clean_out = clean_out.split("\t\t\t\tStdout:\n", 1)[1]
-                                    
+
                                     stripped_out = clean_out.strip()
                                     # Truncate inline tool stdout in live conversation turns to ~4 KB
                                     MAX_STREAM_OUTPUT = 4096
                                     if len(stripped_out) > MAX_STREAM_OUTPUT:
                                         last_item["total_bytes"] = len(stripped_out)
                                         last_item["output_truncated"] = True
-                                        last_item["output"] = stripped_out[:MAX_STREAM_OUTPUT] + "\n... [Output truncated. View full output in Task Details]"
+                                        last_item["output"] = (
+                                            stripped_out[:MAX_STREAM_OUTPUT]
+                                            + "\n... [Output truncated. View full output in Task Details]"
+                                        )
                                     else:
                                         last_item["output"] = stripped_out
 
@@ -329,38 +364,62 @@ class ConversationService:
                                     "timestamp": created_at,
                                     "is_working": False,
                                 }
-                            err_raw = str(step.get("error") or step.get("message") or content or "Agent step error").strip()
+                            err_raw = str(
+                                step.get("error")
+                                or step.get("message")
+                                or content
+                                or "Agent step error"
+                            ).strip()
                             err_raw_lower = err_raw.lower()
-                            
+
                             # Only terminal failures (cancellations, quota exhaustion, fatal abortion) abort the working state
                             # Transient API retry attempts or step errors allow agent execution to continue
-                            is_retry_attempt = bool(re.search(r"\(attempt\s+\d+\)", err_raw_lower)) or "interrupted" in err_raw_lower
-                            is_terminal_failure = (
-                                not is_retry_attempt
-                                and any(w in err_raw_lower for w in ["quota", "resource_exhausted", "too many requests", "cancelled", "canceled", "aborted"])
+                            is_retry_attempt = (
+                                bool(re.search(r"\(attempt\s+\d+\)", err_raw_lower))
+                                or "interrupted" in err_raw_lower
+                            )
+                            is_terminal_failure = not is_retry_attempt and any(
+                                w in err_raw_lower
+                                for w in [
+                                    "quota",
+                                    "resource_exhausted",
+                                    "too many requests",
+                                    "cancelled",
+                                    "canceled",
+                                    "aborted",
+                                ]
                             )
 
                             if is_terminal_failure:
                                 current_agent_turn["is_working"] = False
-                            
+
                             # Extract Error ID if present
                             err_id_match = re.search(r"Error ID:\s*([a-zA-Z0-9\-]+)", err_raw)
                             error_id = err_id_match.group(1) if err_id_match else None
                             err_obj = {
-                                "message": "Agent execution encountered an error." if not is_terminal_failure else "Agent terminated due to error.",
+                                "message": "Agent execution encountered an error."
+                                if not is_terminal_failure
+                                else "Agent terminated due to error.",
                                 "raw_error": err_raw,
                                 "error_id": error_id,
-                                "kind": "network_timeout" if any(w in err_raw_lower for w in ["timeout", "deadline", "wsasend", "wsarecv", "closed"]) else "runtime_error",
+                                "kind": "network_timeout"
+                                if any(
+                                    w in err_raw_lower
+                                    for w in ["timeout", "deadline", "wsasend", "wsarecv", "closed"]
+                                )
+                                else "runtime_error",
                                 "timestamp": created_at,
                             }
                             current_agent_turn["error"] = err_obj
                             # Place error in execution timeline right where it occurred
-                            current_agent_turn["items"].append({
-                                "id": f"err-{len(current_agent_turn['items'])}",
-                                "type": "error",
-                                "error": err_obj,
-                                "timestamp": created_at,
-                            })
+                            current_agent_turn["items"].append(
+                                {
+                                    "id": f"err-{len(current_agent_turn['items'])}",
+                                    "type": "error",
+                                    "error": err_obj,
+                                    "timestamp": created_at,
+                                }
+                            )
                             for it in current_agent_turn.get("items", []):
                                 it["requires_permission"] = False
                                 it["status"] = "done"
@@ -430,7 +489,9 @@ class ConversationService:
 
                 if has_active_command:
                     current_agent_turn["is_working"] = True
-                    current_agent_turn["active_command"] = last_action.get("command") or last_action.get("target")
+                    current_agent_turn["active_command"] = last_action.get(
+                        "command"
+                    ) or last_action.get("target")
 
                 # Only mark stale if no command/tool is currently executing
                 if is_stopped:
@@ -444,6 +505,7 @@ class ConversationService:
 
             try:
                 from services.interactions.interaction_service import interaction_service
+
                 interaction_service.sync_question_from_transcript(
                     session_id=session_id,
                     question_data=pending_question_data,

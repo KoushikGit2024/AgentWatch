@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger("integrations.antigravity.cdp_forward_approval")
 
+
 async def dispatch_forward_approval(
     target_url: str,
     request_type: str = "command",
@@ -405,10 +406,10 @@ async def dispatch_forward_approval(
             "reason": res.get("reason"),
             "custom_response_dispatched": bool(custom_dispatch and custom_dispatch.get("success")),
             "requires_native_ide": not clicked,
-            "message": "Action forwarded to IDE" if clicked else res.get("reason", "Dialog button not found"),
+            "message": "Action forwarded to IDE"
+            if clicked
+            else res.get("reason", "Dialog button not found"),
         }
     except Exception as exc:
         logger.error("Failed to forward approval via CDP: %s", str(exc))
         return {"success": False, "requires_native_ide": False, "error": str(exc)}
-
-

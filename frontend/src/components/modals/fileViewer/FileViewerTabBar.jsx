@@ -92,7 +92,9 @@ export function FileViewerTabBar({
                     ? 'text-amber-400 hover:text-rose-400'
                     : 'text-[#747C87] hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100 opacity-80'
                 }`}
-                title={isDirty && isActive ? 'Unsaved changes (Click to close)' : 'Close tab (Ctrl+W)'}
+                title={
+                  isDirty && isActive ? 'Unsaved changes (Click to close)' : 'Close tab (Ctrl+W)'
+                }
               >
                 {isDirty && isActive ? (
                   <span className="w-2 h-2 rounded-full bg-amber-400 group-hover:hidden" />

@@ -26,8 +26,7 @@ class TailscalePortForwardService:
     def is_tailscale_installed(self) -> bool:
         """Check if tailscale binary is present on system PATH or standard location."""
         return (
-            shutil.which("tailscale") is not None
-            or shutil.which(self.tailscale_path) is not None
+            shutil.which("tailscale") is not None or shutil.which(self.tailscale_path) is not None
         )
 
     def get_status(self, force: bool = False) -> Dict[str, Any]:
@@ -36,7 +35,11 @@ class TailscalePortForwardService:
         Uses 15-second cache to prevent synchronous subprocess execution on high-frequency polls.
         """
         now = time.time()
-        if not force and self._cached_status and (now - self._cached_status_time < self._status_cache_ttl):
+        if (
+            not force
+            and self._cached_status
+            and (now - self._cached_status_time < self._status_cache_ttl)
+        ):
             return self._cached_status
 
         if not self.is_tailscale_installed():
@@ -158,11 +161,7 @@ class TailscalePortForwardService:
                 if port_match:
                     local_port = int(port_match.group(1))
 
-                url = (
-                    f"https://{host}"
-                    if ext_port == 443
-                    else f"https://{host}:{ext_port}"
-                )
+                url = f"https://{host}" if ext_port == 443 else f"https://{host}:{ext_port}"
 
                 forwards.append(
                     {
@@ -288,4 +287,3 @@ class TailscalePortForwardService:
 
 
 tailscale_service = TailscalePortForwardService()
-

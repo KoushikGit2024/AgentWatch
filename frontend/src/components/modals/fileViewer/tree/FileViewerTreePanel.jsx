@@ -127,7 +127,10 @@ export function FileViewerTreePanel({
       {/* Header */}
       <div className="p-2.5 border-b border-[#22262B] bg-[#101215] space-y-2 select-none shrink-0">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-[#A0A6AF] flex items-center gap-1.5 truncate max-w-[160px]" title={rootName}>
+          <span
+            className="text-[10px] font-mono uppercase tracking-wider font-semibold text-[#A0A6AF] flex items-center gap-1.5 truncate max-w-[160px]"
+            title={rootName}
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
             <span className="truncate">{rootName}</span>
           </span>
@@ -136,7 +139,9 @@ export function FileViewerTreePanel({
               <>
                 <button
                   type="button"
-                  onClick={() => setCreatingState({ targetFolder: treeData.full_path, isDir: false, level: 0 })}
+                  onClick={() =>
+                    setCreatingState({ targetFolder: treeData.full_path, isDir: false, level: 0 })
+                  }
                   title="New File in Root"
                   className="p-1 rounded text-[#747C87] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer"
                 >
@@ -144,7 +149,9 @@ export function FileViewerTreePanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCreatingState({ targetFolder: treeData.full_path, isDir: true, level: 0 })}
+                  onClick={() =>
+                    setCreatingState({ targetFolder: treeData.full_path, isDir: true, level: 0 })
+                  }
                   title="New Folder in Root"
                   className="p-1 rounded text-[#747C87] hover:text-[#E8EAED] hover:bg-[#1D2024] transition cursor-pointer"
                 >

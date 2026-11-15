@@ -1,4 +1,4 @@
-﻿"""Unit tests for StepOutputResolver."""
+"""Unit tests for StepOutputResolver."""
 
 import tempfile
 from pathlib import Path
@@ -17,7 +17,9 @@ def test_resolver_resolves_from_step_file():
         steps_dir = base / ".system_generated" / "steps" / "42"
         steps_dir.mkdir(parents=True)
         out_file = steps_dir / "output.txt"
-        out_file.write_text("Command output:\nFull untruncated result from step 42", encoding="utf-8")
+        out_file.write_text(
+            "Command output:\nFull untruncated result from step 42", encoding="utf-8"
+        )
 
         resolver = StepOutputResolver()
         truncated_msg = f"The tool's output was truncated. file:///{out_file.as_posix()}"
@@ -29,4 +31,3 @@ def test_resolver_handles_missing_file_gracefully():
     resolver = StepOutputResolver()
     fake_msg = "The tool's output was truncated. file:///C:/non_existent_path/.system_generated/steps/9999/output.txt"
     assert resolver.resolve_output(fake_msg) == fake_msg
-

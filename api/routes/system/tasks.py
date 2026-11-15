@@ -10,7 +10,9 @@ router = APIRouter(prefix="/api/v1/tasks", tags=["Background Tasks"])
 @router.get("")
 def list_tasks(
     limit: int = Query(20, ge=1, le=100),
-    active_only: bool = Query(True, description="Return live active background tasks verified via SQLite and OS processes"),
+    active_only: bool = Query(
+        True, description="Return live active background tasks verified via SQLite and OS processes"
+    ),
     conversation_id: Optional[str] = Query(None, description="Optional target conversation ID"),
 ):
     """List background tasks detected in the active brain session."""
@@ -37,4 +39,3 @@ def kill_task_process(pid: int):
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Failed to kill process"))
     return result
-

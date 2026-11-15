@@ -164,7 +164,9 @@ def parse_edit_tool_diff(
 
     elif tool_name in ("edit_file", "replace_file_content"):
         tc = args.get("Target") if "Target" in args else args.get("TargetContent", "")
-        rc = args.get("Replacement") if "Replacement" in args else args.get("ReplacementContent", "")
+        rc = (
+            args.get("Replacement") if "Replacement" in args else args.get("ReplacementContent", "")
+        )
         start_l = args.get("StartLine")
         end_l = args.get("EndLine")
 

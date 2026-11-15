@@ -86,7 +86,9 @@ async def respond_to_approval(payload: ApprovalDecisionRequest):
 
     doc = EventDocument(
         session_id="active-session",
-        event_type=f"permission_{payload.decision}" if forward_success else "permission_forward_failed",
+        event_type=f"permission_{payload.decision}"
+        if forward_success
+        else "permission_forward_failed",
         category="security",
         summary=f"User {payload.decision.upper()}: {payload.request_type.title()} Request for {payload.target}",
         timestamp=datetime.now(timezone.utc),
@@ -223,4 +225,3 @@ async def test_approval_popup(request_type: str = "command", target: str = "git 
         "step_id": step_id,
         "approval": approval_data,
     }
-

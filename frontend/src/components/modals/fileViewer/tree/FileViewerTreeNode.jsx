@@ -1,11 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icon } from '../../../../constants/icons';
 import { FileIcon } from '../../../../constants/fileIcons';
-import {
-  InlineCreationRow,
-  InlineRenameInput,
-  TreeNodeActions,
-} from './FileViewerTreeActions';
+import { InlineCreationRow, InlineRenameInput, TreeNodeActions } from './FileViewerTreeActions';
 
 function formatBytes(bytes) {
   if (!bytes || bytes <= 0) return '';
@@ -67,12 +63,12 @@ export function TreeNode({
   const isCreatingInside = creatingState && creatingState.targetFolder === fullPath;
   const isMobileSelected = selectedMobilePath === fullPath;
 
-  const handleDragStart = (e) => {
+  const handleDragStart = e => {
     e.stopPropagation();
     e.dataTransfer.setData('text/plain', fullPath);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = e => {
     if (isDir) {
       e.preventDefault();
       e.stopPropagation();
@@ -80,12 +76,12 @@ export function TreeNode({
     }
   };
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = e => {
     e.stopPropagation();
     setIsDragOver(false);
   };
 
-  const handleDrop = async (e) => {
+  const handleDrop = async e => {
     if (!isDir) return;
     e.preventDefault();
     e.stopPropagation();
@@ -104,7 +100,7 @@ export function TreeNode({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={(e) => {
+        onClick={e => {
           e.stopPropagation();
           if (setSelectedMobilePath) setSelectedMobilePath(fullPath);
           if (isDir) toggleExpand(node.path);
@@ -126,7 +122,9 @@ export function TreeNode({
             <div className="flex items-center gap-0.5 shrink-0">
               <span className="text-[#747C87] w-3 h-3 flex items-center justify-center">
                 {hasChildren ? (
-                  <div className={`w-3 h-3 transition-transform duration-100 ${isExpanded ? 'rotate-90' : ''}`}>
+                  <div
+                    className={`w-3 h-3 transition-transform duration-100 ${isExpanded ? 'rotate-90' : ''}`}
+                  >
                     {Icon.chevronRight}
                   </div>
                 ) : (
@@ -146,11 +144,13 @@ export function TreeNode({
           {isRenaming ? (
             <InlineRenameInput
               initialName={node.name}
-              onConfirm={(newName) => onPerformRename(fullPath, newName)}
+              onConfirm={newName => onPerformRename(fullPath, newName)}
               onCancel={() => setRenamingPath(null)}
             />
           ) : (
-            <span className={`font-mono text-[11px] truncate ${isDir ? 'font-medium text-[#E8EAED]' : ''}`}>
+            <span
+              className={`font-mono text-[11px] truncate ${isDir ? 'font-medium text-[#E8EAED]' : ''}`}
+            >
               {node.name}
             </span>
           )}
@@ -172,7 +172,9 @@ export function TreeNode({
             onDelete={() => onPerformDelete(fullPath, node.name)}
           />
           {!isDir && node.size > 0 && !isRenaming && (
-            <span className={`text-[9px] font-mono text-[#747C87] group-hover:text-[#A0A6AF] tabular-nums ${isMobileSelected ? 'hidden' : 'group-hover:hidden'}`}>
+            <span
+              className={`text-[9px] font-mono text-[#747C87] group-hover:text-[#A0A6AF] tabular-nums ${isMobileSelected ? 'hidden' : 'group-hover:hidden'}`}
+            >
               {formatBytes(node.size)}
             </span>
           )}
@@ -183,7 +185,7 @@ export function TreeNode({
         <InlineCreationRow
           level={creatingState.level}
           isDir={creatingState.isDir}
-          onConfirm={(name) => onPerformCreate(fullPath, name, creatingState.isDir)}
+          onConfirm={name => onPerformCreate(fullPath, name, creatingState.isDir)}
           onCancel={() => setCreatingState(null)}
         />
       )}
@@ -217,4 +219,3 @@ export function TreeNode({
     </div>
   );
 }
-

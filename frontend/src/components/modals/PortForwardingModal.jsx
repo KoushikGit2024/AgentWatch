@@ -64,7 +64,9 @@ export default function PortForwardingModal({ isOpen, onClose }) {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h3 className="text-xs sm:text-sm font-semibold text-[#E8EAED] truncate">Tailscale Port Forwarding</h3>
+                <h3 className="text-xs sm:text-sm font-semibold text-[#E8EAED] truncate">
+                  Tailscale Port Forwarding
+                </h3>
                 <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-mono bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Online</span>

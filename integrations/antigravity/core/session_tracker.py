@@ -80,11 +80,11 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
             )
             msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=1.5))
             eval_val = msg.get("result", {}).get("result", {}).get("value") or {}
-            
+
             # 1. Prefer data-cascade-id from DOM
             if eval_val.get("cascadeId"):
                 dom_cascade_id = eval_val["cascadeId"].strip()
-                
+
             # 2. Prefer breadcrumb text for active chat title
             breadcrumb_text = (eval_val.get("breadcrumb") or "").strip()
             if breadcrumb_text and breadcrumb_text != "Agent":
@@ -98,7 +98,11 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
                         .replace("- Antigravity", "")
                         .strip()
                     )
-                    if clean_title and clean_title != "Agent" and not clean_title.startswith("http"):
+                    if (
+                        clean_title
+                        and clean_title != "Agent"
+                        and not clean_title.startswith("http")
+                    ):
                         chat_title = clean_title
     except Exception as exc:
         logger.debug("Chat iframe DOM probe notice: %s", exc)
@@ -116,7 +120,10 @@ async def inspect_chat_target(target: Dict[str, Any]) -> Dict[str, Any]:
     if is_mismatch and effective_conv_id:
         try:
             from services.workspace.workspace_context import workspace_context
-            conv_path, conv_name = workspace_context.get_workspace_for_conversation(effective_conv_id)
+
+            conv_path, conv_name = workspace_context.get_workspace_for_conversation(
+                effective_conv_id
+            )
             if conv_path and conv_name:
                 workspace_path = str(conv_path)
                 workspace_name = conv_name
@@ -148,7 +155,11 @@ def parse_workbench_title(raw_title: str) -> Tuple[Optional[str], Optional[str]]
     parts = [p.strip() for p in cleaned.split(" - ") if p.strip()]
 
     # Filter out known IDE brand strings
-    parts = [p for p in parts if p.lower() not in ("antigravity ide", "antigravity", "visual studio code")]
+    parts = [
+        p
+        for p in parts
+        if p.lower() not in ("antigravity ide", "antigravity", "visual studio code")
+    ]
     if not parts:
         return None, None
 

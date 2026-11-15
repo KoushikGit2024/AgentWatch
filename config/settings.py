@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="AgentWatch_v2_default_secret_key", alias="JWT_SECRET")
     auth_disabled: bool = Field(default=False, alias="AUTH_DISABLED")
     allowed_origins: str = Field(default="*", alias="ALLOWED_ORIGINS")
-    allowed_hosts: str = Field(default="localhost,127.0.0.1,testserver,testclient,*.ts.net", alias="ALLOWED_HOSTS")
+    allowed_hosts: str = Field(
+        default="localhost,127.0.0.1,testserver,testclient,*.ts.net", alias="ALLOWED_HOSTS"
+    )
 
     # MongoDB Local Persistence
     mongodb_uri: str = Field(default="mongodb://127.0.0.1:27017/", alias="MONGODB_URI")

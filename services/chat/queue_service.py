@@ -108,7 +108,9 @@ class QueueMessageService:
             target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
             if not target_ws:
                 antigravity_adapter.discover_cdp()
-                target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+                target_ws = (
+                    antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+                )
             if not target_ws:
                 return {"success": False, "error": "Antigravity CDP not connected"}
 
@@ -119,9 +121,7 @@ class QueueMessageService:
 
             from integrations.antigravity.cdp.cdp_queue_actions import dispatch_queued_action
 
-            return await dispatch_queued_action(
-                target_ws, act, index=index, text=new_text
-            )
+            return await dispatch_queued_action(target_ws, act, index=index, text=new_text)
 
         # Otherwise, local buffer item
         if act == "delete":
@@ -174,9 +174,7 @@ class QueueMessageService:
                 ide_items = await get_ide_queued_messages(target_ws)
                 if ide_items:
                     logger.info("Auto-dispatching oldest IDE native queued message (index 0)")
-                    res = await dispatch_queued_action(
-                        target_ws, "send_now", index=0
-                    )
+                    res = await dispatch_queued_action(target_ws, "send_now", index=0)
                     return {"source": "ide_native", "result": res}
             except Exception as e:
                 logger.debug("Failed auto-dispatching IDE native queue: %s", str(e))
@@ -188,6 +186,7 @@ class QueueMessageService:
             res = await self.execute_action(next_item["id"], "send_now")
             try:
                 from services.networking.websocket_manager import websocket_manager
+
                 remaining = await self.get_all_queued_messages()
                 await websocket_manager.broadcast({"type": "queue_update", "messages": remaining})
             except Exception as b_err:

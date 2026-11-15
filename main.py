@@ -321,6 +321,7 @@ async def websocket_endpoint(websocket: WebSocket):
     if origin:
         # Check if origin matches localhost, 127.0.0.1, or Tailscale domain (.ts.net)
         import re
+
         is_allowed_origin = bool(
             re.match(r"^https?://(localhost|127\.0\.0\.1|.*\.ts\.net)(:\d+)?$", origin)
         )
@@ -332,8 +333,12 @@ async def websocket_endpoint(websocket: WebSocket):
     # Check authentication if APP_PASSWORD configured and auth not explicitly disabled
     if settings.app_password and not auth_disabled:
         token = websocket.query_params.get("token")
-        cookie_token = websocket.cookies.get("cw_auth_token") or websocket.cookies.get("agentwatch_token")
-        valid_auth = (token and verify_session_token(token)) or (cookie_token and verify_session_token(cookie_token))
+        cookie_token = websocket.cookies.get("cw_auth_token") or websocket.cookies.get(
+            "agentwatch_token"
+        )
+        valid_auth = (token and verify_session_token(token)) or (
+            cookie_token and verify_session_token(cookie_token)
+        )
         if not valid_auth:
             client_host = websocket.client.host if websocket.client else "unknown"
             logger.warning("Rejected unauthenticated WebSocket connection from %s", client_host)

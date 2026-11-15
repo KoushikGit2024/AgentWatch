@@ -85,10 +85,7 @@ export function useAgentInteractions({ fetchChatMessages, isMountedRef }) {
             'Receipt Confirmed'
           );
         } else if (receiptConfirmed) {
-          toast.success(
-            `'${decision}' accepted by IDE (receipt confirmed).`,
-            'Receipt Confirmed'
-          );
+          toast.success(`'${decision}' accepted by IDE (receipt confirmed).`, 'Receipt Confirmed');
         } else if (forwarded) {
           toast.success(`'${decision}' forwarded to IDE.`, 'Decision Sent');
         } else {

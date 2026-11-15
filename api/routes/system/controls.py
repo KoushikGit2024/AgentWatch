@@ -268,7 +268,9 @@ async def send_message(payload: PromptSubmissionRequest):
             "reason": None
             if dispatched
             else (
-                dispatch_details.get("error", "IDE CDP is not currently connected on remote debugging port")
+                dispatch_details.get(
+                    "error", "IDE CDP is not currently connected on remote debugging port"
+                )
                 if isinstance(dispatch_details, dict)
                 else "IDE CDP is not currently connected on remote debugging port"
             ),
@@ -290,7 +292,9 @@ async def send_message(payload: PromptSubmissionRequest):
                     event_type="PromptSubmitted",
                     category="prompt",
                     summary=f"User prompt submitted ({len(prompt_msg)} chars)",
-                    execution_state="dispatch_acknowledged" if cdp_connected else "request_accepted",
+                    execution_state="dispatch_acknowledged"
+                    if cdp_connected
+                    else "request_accepted",
                     correlation_id=payload.idempotency_key,
                     timestamp=datetime.datetime.now(datetime.timezone.utc),
                     source="mobile_user",
@@ -415,14 +419,16 @@ async def new_chat():
 
     # Immediately notify frontend clients that conversation is reset
     if websocket_manager.active_connections:
-        await websocket_manager.broadcast({
-            "type": "chat_update",
-            "conversation_id": None,
-            "messages": [],
-            "total": 0,
-            "oldest_index": 0,
-            "has_more": False,
-        })
+        await websocket_manager.broadcast(
+            {
+                "type": "chat_update",
+                "conversation_id": None,
+                "messages": [],
+                "total": 0,
+                "oldest_index": 0,
+                "has_more": False,
+            }
+        )
 
     target_ws = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
     if target_ws and cdp_connected:
@@ -477,13 +483,19 @@ def get_chat_history():
 def get_workbench_terminal_tasks():
     """Compatibility alias returning live active background tasks."""
     from services.monitoring.task_monitor_service import task_monitor_service
+
     tasks = task_monitor_service.get_active_tasks()
     return {"success": True, "tasks": tasks, "total": len(tasks)}
+
 
 @router.post("/api/v1/controls/terminal/kill")
 def kill_workbench_terminal_task(payload: Dict[str, Any]):
     """Terminate background task process via PID."""
     from services.monitoring.task_monitor_service import task_monitor_service
-    pid = payload.get("pid")
-    return task_monitor_service.kill_task_process(int(pid)) if pid else {"success": False, "error": "PID is required"}
 
+    pid = payload.get("pid")
+    return (
+        task_monitor_service.kill_task_process(int(pid))
+        if pid
+        else {"success": False, "error": "PID is required"}
+    )

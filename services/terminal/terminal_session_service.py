@@ -59,14 +59,20 @@ class TerminalSessionService:
     def get_or_create_default_session(self) -> TerminalProcess:
         if not self.sessions:
             from services.workspace.workspace_context import workspace_context
+
             active_ws = workspace_context.get_active_workspace_path()
-            return self.create_session("powershell" if sys.platform == "win32" else "bash", cwd=str(active_ws))
+            return self.create_session(
+                "powershell" if sys.platform == "win32" else "bash", cwd=str(active_ws)
+            )
         return next(iter(self.sessions.values()))
 
-    def create_session(self, shell_type: str = "powershell", cwd: Optional[str] = None) -> TerminalProcess:
+    def create_session(
+        self, shell_type: str = "powershell", cwd: Optional[str] = None
+    ) -> TerminalProcess:
         session_id = f"term-{uuid.uuid4().hex[:8]}"
         if not cwd:
             from services.workspace.workspace_context import workspace_context
+
             target_cwd = str(workspace_context.get_active_workspace_path())
         else:
             target_cwd = cwd
@@ -85,15 +91,17 @@ class TerminalSessionService:
     def list_sessions(self) -> List[Dict[str, Any]]:
         results = []
         for s in self.sessions.values():
-            results.append({
-                "session_id": s.session_id,
-                "shell_type": s.shell_type,
-                "cwd": s.cwd,
-                "created_at": s.created_at,
-                "is_running": s.is_running,
-                "current_command": s.current_command,
-                "exit_code": s.exit_code,
-            })
+            results.append(
+                {
+                    "session_id": s.session_id,
+                    "shell_type": s.shell_type,
+                    "cwd": s.cwd,
+                    "created_at": s.created_at,
+                    "is_running": s.is_running,
+                    "current_command": s.current_command,
+                    "exit_code": s.exit_code,
+                }
+            )
         return results
 
     def get_session(self, session_id: str) -> Optional[TerminalProcess]:
@@ -189,7 +197,14 @@ class TerminalSessionService:
             if proc.shell_type.lower() == "cmd":
                 cmd_args = ["cmd.exe", "/c", clean_cmd]
             else:
-                cmd_args = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", clean_cmd]
+                cmd_args = [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    clean_cmd,
+                ]
         else:
             shell = "/bin/bash" if os.path.exists("/bin/bash") else "/bin/sh"
             cmd_args = [shell, "-c", clean_cmd]

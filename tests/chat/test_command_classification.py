@@ -21,7 +21,11 @@ def test_elevated_command_requires_native_ide_confirmation():
     """Commands requesting BypassSandbox=True require native desktop confirmation."""
     tc = {
         "name": "run_command",
-        "args": {"CommandLine": "pip install something", "Cwd": "D:/workspace", "BypassSandbox": True},
+        "args": {
+            "CommandLine": "pip install something",
+            "Cwd": "D:/workspace",
+            "BypassSandbox": True,
+        },
     }
     item = TranscriptStepParser.parse_tool_call(
         tc, item_index=0, turn_id="turn-2", resolved_approvals={}

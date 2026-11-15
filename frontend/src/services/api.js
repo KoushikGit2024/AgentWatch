@@ -92,7 +92,8 @@ export const api = {
   },
 
   async sendPrompt(prompt, attachments = [], idempotencyKey = null) {
-    const key = idempotencyKey || `client-prompt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const key =
+      idempotencyKey || `client-prompt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const res = await request('/api/v1/prompt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

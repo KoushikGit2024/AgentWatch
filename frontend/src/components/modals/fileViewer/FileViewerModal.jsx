@@ -17,7 +17,12 @@ import { FileViewerTabBar } from './FileViewerTabBar';
 import { FileViewerTreePanel } from './tree/FileViewerTreePanel';
 import { FileViewerErrorViewport, FileViewerFooterBar } from './FileViewerViewports';
 
-export default function FileViewerModal({ targetFile, onClose, onToggleTreeDrawer, conversationId }) {
+export default function FileViewerModal({
+  targetFile,
+  onClose,
+  onToggleTreeDrawer,
+  conversationId,
+}) {
   const [tabs, setTabs] = useState([]);
   const [activeTabPath, setActiveTabPath] = useState(null);
   const [tabDataMap, setTabDataMap] = useState({});

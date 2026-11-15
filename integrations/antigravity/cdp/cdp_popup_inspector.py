@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 logger = logging.getLogger("integrations.antigravity.cdp_popup_inspector")
 
+
 async def dispatch_inspect_active_popup(target_url: str) -> Dict[str, Any]:
     """
     Inspect the active Antigravity IDE workbench DOM via CDP for any live command approval
@@ -324,5 +325,3 @@ async def dispatch_inspect_active_banners(target_url: str) -> Dict[str, Any]:
     except Exception as exc:
         logger.debug("CDP banner inspection notice: %s", str(exc))
         return {"has_banners": False, "banners": []}
-
-

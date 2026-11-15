@@ -58,7 +58,9 @@ async def dispatch_auth_middleware(request: Request, call_next):
             if auth_hdr.startswith("Bearer "):
                 token = auth_hdr.split("Bearer ", 1)[1].strip()
             if not token:
-                token = request.cookies.get("agentwatch_token") or request.cookies.get("cw_auth_token")
+                token = request.cookies.get("agentwatch_token") or request.cookies.get(
+                    "cw_auth_token"
+                )
 
             if not token or not verify_session_token(token):
                 if is_ajax_or_api:
@@ -74,4 +76,3 @@ async def dispatch_auth_middleware(request: Request, call_next):
         if "connection closed" in err_msg or "client disconnected" in err_msg:
             return JSONResponse(status_code=499, content={"detail": "Client disconnected"})
         raise
-

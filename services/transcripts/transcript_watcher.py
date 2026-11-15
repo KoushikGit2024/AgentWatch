@@ -41,13 +41,17 @@ async def run_transcript_watcher():
             # Every ~3 seconds (approx 9 ticks of 0.35s), push queue changes if modified
             if state_broadcast_tick % 9 == 0:
                 cur_queue = queue_service.get_queued_messages()
-                cur_hash = hashlib.md5(str([m.get("id") for m in cur_queue]).encode("utf-8")).hexdigest()[:8]
+                cur_hash = hashlib.md5(
+                    str([m.get("id") for m in cur_queue]).encode("utf-8")
+                ).hexdigest()[:8]
                 if cur_hash != last_pushed_queue_hash:
                     last_pushed_queue_hash = cur_hash
-                    await websocket_manager.broadcast({
-                        "type": "queue_update",
-                        "messages": cur_queue,
-                    })
+                    await websocket_manager.broadcast(
+                        {
+                            "type": "queue_update",
+                            "messages": cur_queue,
+                        }
+                    )
 
             ag_status = antigravity_adapter.get_status()
             current_cid = ag_status.get("active_conversation_id")
@@ -57,12 +61,14 @@ async def run_transcript_watcher():
             # Check for workspace switch
             if current_ws_path and current_ws_path != last_workspace_path:
                 last_workspace_path = current_ws_path
-                await websocket_manager.broadcast({
-                    "type": "workspace_changed",
-                    "workspace_path": current_ws_path,
-                    "workspace_name": current_ws_name,
-                    "conversation_id": current_cid,
-                })
+                await websocket_manager.broadcast(
+                    {
+                        "type": "workspace_changed",
+                        "workspace_path": current_ws_path,
+                        "workspace_name": current_ws_name,
+                        "conversation_id": current_cid,
+                    }
+                )
 
             chat_switched = False
             if current_cid != last_conversation_id:
@@ -275,4 +281,3 @@ async def run_transcript_watcher():
         except Exception as e:
             logger.debug("Transcript watcher loop notice: %s", str(e))
         await asyncio.sleep(0.35)
-

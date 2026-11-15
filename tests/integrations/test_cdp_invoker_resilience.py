@@ -42,7 +42,9 @@ async def test_resilient_invoker_replays_on_connection_reset():
             assert res.get("replayed") is True
             assert mock_action.call_count == 2
             # Second call was passed the newly discovered target URL
-            assert mock_action.call_args_list[1][0][0] == "ws://127.0.0.1:9000/devtools/page/fresh456"
+            assert (
+                mock_action.call_args_list[1][0][0] == "ws://127.0.0.1:9000/devtools/page/fresh456"
+            )
             assert mock_action.call_args_list[1][0][1] == "hello world"
 
 
@@ -65,4 +67,3 @@ async def test_resilient_invoker_returns_clean_error_when_ide_offline():
             )
             assert res["success"] is False
             assert "Offline Test failed" in res["error"]
-

@@ -34,6 +34,7 @@ class TaskMonitorService:
                 return sgd
 
         from services.chat.conversation_service import conversation_service
+
         tp = conversation_service.get_latest_transcript_path()
         if tp and tp.exists():
             sgd = tp.parent.parent.parent / ".system_generated"
@@ -51,9 +52,7 @@ class TaskMonitorService:
                 return td
         return None
 
-    def _get_active_conversation_db(
-        self, conversation_id: Optional[str] = None
-    ) -> Optional[Path]:
+    def _get_active_conversation_db(self, conversation_id: Optional[str] = None) -> Optional[Path]:
         """Find the SQLite DB for the requested or most recent conversation."""
         conv_dir = self._base_path / "conversations"
         if not conv_dir.exists():
@@ -91,12 +90,7 @@ class TaskMonitorService:
 
         # 2. Inspect transcript for manage_task kill actions
         trans_file = (
-            self._base_path
-            / "brain"
-            / conv_id
-            / ".system_generated"
-            / "logs"
-            / "transcript.jsonl"
+            self._base_path / "brain" / conv_id / ".system_generated" / "logs" / "transcript.jsonl"
         )
         if trans_file.exists():
             try:
@@ -130,12 +124,14 @@ class TaskMonitorService:
         for p in psutil.process_iter(["pid", "name", "cmdline", "create_time"]):
             try:
                 cmd_line = " ".join(p.info["cmdline"] or [])
-                procs.append({
-                    "pid": p.info["pid"],
-                    "name": p.info["name"],
-                    "cmd": cmd_line,
-                    "create_time": p.info["create_time"],
-                })
+                procs.append(
+                    {
+                        "pid": p.info["pid"],
+                        "name": p.info["name"],
+                        "cmd": cmd_line,
+                        "create_time": p.info["create_time"],
+                    }
+                )
             except Exception:
                 pass
         return procs
@@ -151,9 +147,7 @@ class TaskMonitorService:
         key_parts = [t for t in tokens if not t.endswith("python.exe") and not t.endswith("python")]
         return " ".join(key_parts[:4]) if key_parts else cmd.strip().lower()
 
-    def get_active_tasks(
-        self, conversation_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def get_active_tasks(self, conversation_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Discover actively running background tasks directly from SQLite steps table
         and verify process liveness using psutil.
@@ -237,25 +231,27 @@ class TaskMonitorService:
 
                 start_timestamp = proc_created_at if proc_created_at > 0 else log_mtime
 
-                active_tasks.append({
-                    "index": len(active_tasks),
-                    "step_index": idx,
-                    "task_id": task_id,
-                    "tooltip_id": f"task-{idx}",
-                    "id": f"task-{idx}",
-                    "command": summary,
-                    "raw_command": raw_cmd,
-                    "is_running": True,
-                    "is_daemon": parsed.get("is_daemon", False),
-                    "pid": matched_pid,
-                    "status": "running",
-                    "log_uri": log_uri,
-                    "started_at": (
-                        datetime.fromtimestamp(start_timestamp, tz=timezone.utc).isoformat()
-                        if start_timestamp
-                        else None
-                    ),
-                })
+                active_tasks.append(
+                    {
+                        "index": len(active_tasks),
+                        "step_index": idx,
+                        "task_id": task_id,
+                        "tooltip_id": f"task-{idx}",
+                        "id": f"task-{idx}",
+                        "command": summary,
+                        "raw_command": raw_cmd,
+                        "is_running": True,
+                        "is_daemon": parsed.get("is_daemon", False),
+                        "pid": matched_pid,
+                        "status": "running",
+                        "log_uri": log_uri,
+                        "started_at": (
+                            datetime.fromtimestamp(start_timestamp, tz=timezone.utc).isoformat()
+                            if start_timestamp
+                            else None
+                        ),
+                    }
+                )
 
         return active_tasks
 
@@ -281,18 +277,18 @@ class TaskMonitorService:
         for log_path in task_logs[:limit]:
             stat = log_path.stat()
             task_id = log_path.stem
-            is_active = (
-                (stat.st_mtime > (datetime.now().timestamp() - 60)) and stat.st_size == 0
+            is_active = (stat.st_mtime > (datetime.now().timestamp() - 60)) and stat.st_size == 0
+            results.append(
+                {
+                    "task_id": task_id,
+                    "size_bytes": stat.st_size,
+                    "modified_at": datetime.fromtimestamp(
+                        stat.st_mtime, tz=timezone.utc
+                    ).isoformat(),
+                    "status": "running" if is_active else "completed",
+                    "filename": log_path.name,
+                }
             )
-            results.append({
-                "task_id": task_id,
-                "size_bytes": stat.st_size,
-                "modified_at": datetime.fromtimestamp(
-                    stat.st_mtime, tz=timezone.utc
-                ).isoformat(),
-                "status": "running" if is_active else "completed",
-                "filename": log_path.name,
-            })
         return results
 
     def get_task_log(
@@ -318,7 +314,12 @@ class TaskMonitorService:
 
         log_file = next((p for p in candidates if p.exists() and p.is_file()), None)
 
-        if not log_file and tasks_dir and tasks_dir.exists() and clean_id in ("latest", "recent", "0", ""):
+        if (
+            not log_file
+            and tasks_dir
+            and tasks_dir.exists()
+            and clean_id in ("latest", "recent", "0", "")
+        ):
             recent_logs = sorted(
                 tasks_dir.glob("task-*.log"), key=lambda p: p.stat().st_mtime, reverse=True
             )

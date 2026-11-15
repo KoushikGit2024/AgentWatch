@@ -39,6 +39,7 @@ def _resolve_target_path(clean_path: str, for_mutation: bool = False) -> Path:
 
     target = Path(clean_path)
     from services.workspace.workspace_context import workspace_context
+
     active_ws = workspace_context.get_active_workspace_path()
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -105,8 +106,12 @@ def get_file_content(path: str = Query(..., description="File path to read")):
     target = _resolve_target_path(clean_path)
 
     from services.workspace.file_editor_service import file_editor_service
+
     if not file_editor_service.is_path_safe(target):
-        raise HTTPException(status_code=403, detail="Access denied: Target path outside authorized workspace boundaries")
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Target path outside authorized workspace boundaries",
+        )
 
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {Path(clean_path).name}")
@@ -260,8 +265,12 @@ def get_raw_file(path: str = Query(..., description="File path to stream directl
     target = _resolve_target_path(clean_path)
 
     from services.workspace.file_editor_service import file_editor_service
+
     if not file_editor_service.is_path_safe(target):
-        raise HTTPException(status_code=403, detail="Access denied: Target path outside authorized workspace boundaries")
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Target path outside authorized workspace boundaries",
+        )
 
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
@@ -316,13 +325,16 @@ EXCLUDED_TREE_DIRS = {
 @router.get("/api/v1/files/tree")
 def get_project_file_tree(
     subpath: str = Query(default="", description="Optional subfolder relative to workspace root"),
-    conversation_id: Optional[str] = Query(default=None, description="Optional conversation ID to scope workspace"),
+    conversation_id: Optional[str] = Query(
+        default=None, description="Optional conversation ID to scope workspace"
+    ),
 ):
     """
     Safely traverse and return a hierarchical tree of files and directories
     in the active project workspace, ignoring heavy build/cache folders.
     """
     from services.workspace.workspace_context import workspace_context
+
     ws_root, ws_name = workspace_context.get_active_workspace(conversation_id)
     base_dir = ws_root
     if subpath.strip():
@@ -334,9 +346,7 @@ def get_project_file_tree(
 
     def build_tree(current_path: Path, max_depth: int = 5) -> dict:
         is_dir = current_path.is_dir()
-        rel_path = (
-            current_path.relative_to(ws_root).as_posix() if current_path != ws_root else ""
-        )
+        rel_path = current_path.relative_to(ws_root).as_posix() if current_path != ws_root else ""
         node = {
             "name": current_path.name or ws_name,
             "path": rel_path,
@@ -373,11 +383,14 @@ def get_project_file_tree(
 
 
 @router.get("/api/v1/artifacts")
-def get_artifacts(conversation_id: Optional[str] = Query(None, description="Optional target conversation ID")):
+def get_artifacts(
+    conversation_id: Optional[str] = Query(None, description="Optional target conversation ID"),
+):
     """
     List all generated artifacts from the active or specified conversation directory.
     """
     from services.chat.artifacts_service import artifacts_service
+
     return artifacts_service.list_artifacts(conversation_id=conversation_id)
 
 

@@ -61,7 +61,11 @@ export function CommitDetailsDrawer({ commit, diffData, isLoading, onClose }) {
             title="Click to copy full SHA"
           >
             <span>{commit.sha.slice(0, 10)}...</span>
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
           </button>
         </div>
 
@@ -144,12 +148,13 @@ export function CommitDetailsDrawer({ commit, diffData, isLoading, onClose }) {
               <div className="text-[#6E7681] text-center py-8">No changed files recorded</div>
             ) : (
               files.map((f, i) => {
-                const badgeStyle = {
-                  A: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                  M: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-                  D: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-                  R: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-                }[f.status || 'M'] || 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                const badgeStyle =
+                  {
+                    A: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                    M: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                    D: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+                    R: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+                  }[f.status || 'M'] || 'bg-blue-500/20 text-blue-400 border-blue-500/30';
 
                 return (
                   <div
@@ -157,10 +162,14 @@ export function CommitDetailsDrawer({ commit, diffData, isLoading, onClose }) {
                     className="flex items-center justify-between p-1.5 rounded hover:bg-[#161B22] text-[#C9D1D9] transition"
                   >
                     <div className="flex items-center gap-1.5 min-w-0 pr-2">
-                      <span className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded text-[9px] font-bold border ${badgeStyle} flex-none`}>
+                      <span
+                        className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded text-[9px] font-bold border ${badgeStyle} flex-none`}
+                      >
                         {f.status || 'M'}
                       </span>
-                      <span className="truncate font-mono text-[11px] text-[#A5D6FF]">{f.path}</span>
+                      <span className="truncate font-mono text-[11px] text-[#A5D6FF]">
+                        {f.path}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 font-mono text-[10px] flex-none">
                       {f.additions > 0 && <span className="text-emerald-400">+{f.additions}</span>}

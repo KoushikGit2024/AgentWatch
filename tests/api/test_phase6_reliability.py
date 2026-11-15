@@ -1,4 +1,4 @@
-﻿"""Phase 6 Reliability, State Machine, CDP Target Validation, and Diagnostics Tests."""
+"""Phase 6 Reliability, State Machine, CDP Target Validation, and Diagnostics Tests."""
 
 import pytest
 import uuid

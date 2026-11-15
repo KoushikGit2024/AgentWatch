@@ -167,7 +167,11 @@ export default function WorkbenchBar({
                       >
                         <div
                           onClick={() => onInspectTask && onInspectTask(task)}
-                          title={task.raw_command ? `Command: ${task.raw_command}\nClick to view log output` : 'Click to view task log output'}
+                          title={
+                            task.raw_command
+                              ? `Command: ${task.raw_command}\nClick to view log output`
+                              : 'Click to view task log output'
+                          }
                           className="flex min-w-0 flex-1 items-start gap-x-2.5 cursor-pointer py-0.5"
                         >
                           <div className="pt-0.5 shrink-0">

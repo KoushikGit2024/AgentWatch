@@ -1,4 +1,4 @@
-﻿"""API routes for interactive user-executable terminal sessions."""
+"""API routes for interactive user-executable terminal sessions."""
 
 import logging
 from typing import Optional, List
@@ -34,8 +34,7 @@ async def list_terminal_sessions():
 async def create_terminal_session(payload: CreateSessionRequest):
     """Spawn a new interactive terminal shell session tab."""
     session = terminal_session_service.create_session(
-        shell_type=payload.shell_type,
-        cwd=payload.cwd
+        shell_type=payload.shell_type, cwd=payload.cwd
     )
     return {
         "success": True,

@@ -168,7 +168,9 @@ class TranscriptStepParser:
         elif name in ("write_file", "write_to_file"):
             verb = "Created"
             kind = "create"
-            file_target = args.get("Path") or args.get("AbsolutePath") or args.get("TargetFile") or ""
+            file_target = (
+                args.get("Path") or args.get("AbsolutePath") or args.get("TargetFile") or ""
+            )
             file_parts = re.split(r"[\\/]", file_target)
             file_short = "/".join(file_parts[-2:]) if len(file_parts) >= 2 else file_target
             target = file_short or file_target
@@ -211,12 +213,14 @@ class TranscriptStepParser:
                 for q_idx, q_item in enumerate(questions_list):
                     q_id = str(q_item.get("id") or f"q_{q_idx + 1}")
                     q_body = str(q_item.get("question") or f"Question {q_idx + 1}").strip()
-                    parsed_questions.append({
-                        "id": q_id,
-                        "question": q_body,
-                        "is_multi_select": bool(q_item.get("is_multi_select", False)),
-                        "options": cls.normalize_question_options(q_item.get("options") or []),
-                    })
+                    parsed_questions.append(
+                        {
+                            "id": q_id,
+                            "question": q_body,
+                            "is_multi_select": bool(q_item.get("is_multi_select", False)),
+                            "options": cls.normalize_question_options(q_item.get("options") or []),
+                        }
+                    )
                 question_payload = {
                     "question": q_text,
                     "title": q_text,
@@ -277,4 +281,3 @@ class TranscriptStepParser:
             "question_data": question_payload,
             "status": "done" if (not requires_perm or resolved_decision) else "pending",
         }
-

@@ -42,6 +42,7 @@ class InteractionService:
     def get_capabilities(self) -> List[CapabilityItem]:
         """Evaluate live environment conditions and return truthful capability availability."""
         from services.networking.capability_service import evaluate_system_capabilities
+
         return evaluate_system_capabilities()
 
     def create_interaction(self, doc: InteractionDocument) -> Tuple[Optional[str], bool]:
@@ -340,6 +341,7 @@ class InteractionService:
     ) -> Optional[str]:
         """Synchronize active agent questions from transcript or CDP DOM into repository."""
         from services.interactions.interaction_sync_helper import sync_question_from_transcript_data
+
         return sync_question_from_transcript_data(
             repo=self.repo,
             session_id=session_id,

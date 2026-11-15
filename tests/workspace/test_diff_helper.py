@@ -1,4 +1,4 @@
-﻿"""Unit tests for diff_helper diff calculation and formatting."""
+"""Unit tests for diff_helper diff calculation and formatting."""
 
 import pytest
 from services.workspace.diff_helper import (
@@ -116,7 +116,7 @@ def test_parse_edit_tool_diff_edit_file():
 def test_parse_edit_tool_diff_write_file():
     args = {
         "Path": "d:/All Codes/src/new_config.json",
-        "Content": "{\n  \"enabled\": true\n}\n",
+        "Content": '{\n  "enabled": true\n}\n',
     }
     target, extra, diff_info = parse_edit_tool_diff("write_file", args)
 

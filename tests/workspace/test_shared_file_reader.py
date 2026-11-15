@@ -1,4 +1,4 @@
-﻿"""Unit tests for shared file reader resilience."""
+"""Unit tests for shared file reader resilience."""
 
 import os
 import sys
@@ -32,4 +32,3 @@ def test_shared_read_nonexistent_file_raises():
     with pytest.raises(Exception):
         with open_shared_read("C:/nonexistent_path_agentwatch_test_12345.jsonl"):
             pass
-

@@ -1,4 +1,4 @@
-﻿"""CDP Dialog, Banner, and Interactive Approval Facade.
+"""CDP Dialog, Banner, and Interactive Approval Facade.
 
 Decomposed modularly:
 - Approval & Banner Actions: integrations.antigravity.cdp_approval_actions

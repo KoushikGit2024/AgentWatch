@@ -19,9 +19,7 @@ export default function AttachmentLightbox({ item, onClose }) {
     >
       <div
         className={`relative w-full overflow-hidden rounded-lg border border-[#30343A] bg-[#17191C] p-3 shadow-2xl flex flex-col transition-all duration-150 ${
-          isExpanded
-            ? 'max-w-[98vw] h-[96dvh]'
-            : 'max-w-4xl max-h-[90dvh]'
+          isExpanded ? 'max-w-[98vw] h-[96dvh]' : 'max-w-4xl max-h-[90dvh]'
         }`}
         onClick={e => e.stopPropagation()}
       >

@@ -29,7 +29,9 @@ class DeleteItemRequest(BaseModel):
 
 class RenameItemRequest(BaseModel):
     path: str = Field(..., description="Current path of the file or directory to rename")
-    new_name: str = Field(..., min_length=1, max_length=255, description="New name without parent path")
+    new_name: str = Field(
+        ..., min_length=1, max_length=255, description="New name without parent path"
+    )
 
 
 class MoveItemRequest(BaseModel):

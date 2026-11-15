@@ -2,7 +2,10 @@ import React from 'react';
 import { Icon } from '../../../constants/icons';
 
 export function ProcessRow({ proc, idx, terminatingPid, onEndTask }) {
-  const isIdeProcess = proc.name.toLowerCase().includes('antigravity') || proc.name.toLowerCase().includes('code') || proc.name.toLowerCase().includes('cursor');
+  const isIdeProcess =
+    proc.name.toLowerCase().includes('antigravity') ||
+    proc.name.toLowerCase().includes('code') ||
+    proc.name.toLowerCase().includes('cursor');
   const isChrome = proc.name.toLowerCase().includes('chrome');
   const isTerminating =
     terminatingPid && (proc.pids?.includes(terminatingPid) || proc.pid === terminatingPid);

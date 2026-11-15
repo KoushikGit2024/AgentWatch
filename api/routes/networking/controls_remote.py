@@ -48,7 +48,11 @@ async def set_model(payload: SetModelRequest):
     if is_testing:
         return {"success": True, "model": payload.model, "test_mode": True}
     res = await antigravity_adapter.set_active_model(payload.model)
-    success = res if isinstance(res, bool) else (res.get("success", False) if isinstance(res, dict) else bool(res))
+    success = (
+        res
+        if isinstance(res, bool)
+        else (res.get("success", False) if isinstance(res, dict) else bool(res))
+    )
     return {"success": bool(success), "model": payload.model, "details": res}
 
 

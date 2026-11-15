@@ -296,8 +296,12 @@ def validate_action_transition(
 class PortForwardRequest(BaseModel):
     """Request payload to expose a local port through Tailscale Serve."""
 
-    local_port: int = Field(..., ge=1024, le=65535, description="Local port to forward (1024-65535)")
-    external_port: Optional[int] = Field(None, ge=1024, le=65535, description="External Tailnet HTTPS port")
+    local_port: int = Field(
+        ..., ge=1024, le=65535, description="Local port to forward (1024-65535)"
+    )
+    external_port: Optional[int] = Field(
+        None, ge=1024, le=65535, description="External Tailnet HTTPS port"
+    )
     label: Optional[str] = Field(None, max_length=60, description="User-friendly service label")
 
 

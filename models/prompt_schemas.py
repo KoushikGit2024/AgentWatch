@@ -87,7 +87,9 @@ class PromptSubmissionRequest(BaseModel):
         has_msg = bool(self.message and self.message.strip())
         has_att = bool(self.attachments and len(self.attachments) > 0)
         if not has_msg and not has_att:
-            raise ValueError("Prompt must contain either message text or at least one file attachment")
+            raise ValueError(
+                "Prompt must contain either message text or at least one file attachment"
+            )
         return self
 
     @field_validator("idempotency_key")
@@ -104,4 +106,3 @@ class PromptSubmissionRequest(BaseModel):
 class ControlActionRequest(BaseModel):
     action: str
     parameters: Optional[Dict[str, Any]] = Field(default_factory=dict)
-

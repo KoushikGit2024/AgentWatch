@@ -54,6 +54,7 @@ async def upload_attachments(
     if not resolved_cid:
         try:
             from integrations.antigravity.core.adapter import antigravity_adapter
+
             st = antigravity_adapter.get_status()
             cid = st.get("active_conversation_id")
             if cid:
@@ -121,7 +122,13 @@ async def upload_attachments(
 
             mime_type = upload.content_type or "application/octet-stream"
             is_img = mime_type in IMAGE_MIMES or ext_lower in (
-                ".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp"
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".webp",
+                ".gif",
+                ".svg",
+                ".bmp",
             )
 
             results.append(
@@ -188,6 +195,7 @@ async def list_attachments(
     List uploaded attachments with per-chat distinction and global upload support.
     """
     from services.chat.attachment_service import attachment_service
+
     return attachment_service.list_attachments(
         conversation_id=conversation_id,
         scope=scope,

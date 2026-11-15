@@ -1,4 +1,4 @@
-﻿"""Resilient CDP Invoker with autonomous target rediscovery and transparent retry.
+"""Resilient CDP Invoker with autonomous target rediscovery and transparent retry.
 
 Intercepts socket terminations, remote resets (WinError 10054), connection timeouts,
 and stale target 404s. Automatically evicts dead targets, forces a CDP target rescan,
@@ -33,7 +33,12 @@ async def execute_with_cdp_recovery(
     """
     try:
         return await action_fn(target_url, *args, **kwargs)
-    except (ConnectionResetError, OSError, asyncio.TimeoutError, websockets.WebSocketException) as err:
+    except (
+        ConnectionResetError,
+        OSError,
+        asyncio.TimeoutError,
+        websockets.WebSocketException,
+    ) as err:
         err_type = type(err).__name__
         logger.warning(
             "[%s] Failed with %s: %s on target %s. Initiating autonomous recovery...",
@@ -51,7 +56,9 @@ async def execute_with_cdp_recovery(
         # 2. Force immediate rediscovery across candidate ports
         try:
             antigravity_adapter.discover_cdp(force=True)
-            new_target = antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+            new_target = (
+                antigravity_adapter.active_chat_url or antigravity_adapter.active_target_url
+            )
 
             if new_target and new_target != target_url and max_retries > 0:
                 logger.info(
@@ -70,4 +77,3 @@ async def execute_with_cdp_recovery(
     except Exception as exc:
         logger.error("[%s] Unexpected exception: %s", action_name, exc, exc_info=True)
         return {"success": False, "error": str(exc)}
-

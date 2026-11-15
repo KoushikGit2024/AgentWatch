@@ -1,4 +1,4 @@
-﻿"""Unit tests for task output peeking and log seeking."""
+"""Unit tests for task output peeking and log seeking."""
 
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -44,4 +44,3 @@ def test_step_log_fallback(tmp_path: Path):
     res = task_monitor_service.get_task_log("step-123", tail_bytes=500, session_dir=tmp_path)
     assert res is not None
     assert "Hello from step execution output" in res["content"]
-

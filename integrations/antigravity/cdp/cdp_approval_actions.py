@@ -1,4 +1,4 @@
-﻿"""CDP Approval and Banner Inspection Facade.
+"""CDP Approval and Banner Inspection Facade.
 
 Decomposed modularly:
 - Popup & Banner Inspection: integrations.antigravity.cdp_popup_inspector

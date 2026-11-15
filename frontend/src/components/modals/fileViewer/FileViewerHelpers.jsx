@@ -283,7 +283,11 @@ export function MarkdownPreviewViewport({ content }) {
   );
 }
 
-export function handleTabRenameSync(oldPath, newPath, { setTabs, setTabDataMap, setEditorContents, setDirtyFiles, setActiveTabPath, activeTabPath }) {
+export function handleTabRenameSync(
+  oldPath,
+  newPath,
+  { setTabs, setTabDataMap, setEditorContents, setDirtyFiles, setActiveTabPath, activeTabPath }
+) {
   const oldKey = oldPath.replace(/\\/g, '/');
   const newKey = newPath.replace(/\\/g, '/');
   const newFilename = newKey.split('/').pop();
@@ -301,7 +305,7 @@ export function handleTabRenameSync(oldPath, newPath, { setTabs, setTabDataMap, 
     )
   );
 
-  const migrateStateKey = (prev) => {
+  const migrateStateKey = prev => {
     const next = { ...prev };
     if (next[oldKey] !== undefined) {
       next[newKey] = next[oldKey];

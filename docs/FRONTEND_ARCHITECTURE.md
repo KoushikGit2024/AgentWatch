@@ -5,9 +5,9 @@
 AgentWatch uses a high-performance, low-memory **React 19 + Vite + Tailwind CSS 4** Single-Page Application (SPA) served directly by FastAPI:
 
 1. **Framework SPA (React 19 + Vite):**
-   - *Strengths:* Strict component modularity, memoized rendering (`React.memo` on `ChatTurn` and `StreamItem`), CSS `content-visibility: auto` for off-screen turns, and scroll-anchored upward lazy-loading.
-   - *Styling Engine:* **Tailwind CSS 4** integrated via `@tailwindcss/vite` provides mobile-first glassmorphism surfaces, safe-area padding (`pb-safe`), and responsive layout tokens.
-   - *Build Pipeline:* `npm run build` outputs minified production assets directly into `static/dist/` (`index.html` and hashed `assets/`).
+   - _Strengths:_ Strict component modularity, memoized rendering (`React.memo` on `ChatTurn` and `StreamItem`), CSS `content-visibility: auto` for off-screen turns, and scroll-anchored upward lazy-loading.
+   - _Styling Engine:_ **Tailwind CSS 4** integrated via `@tailwindcss/vite` provides mobile-first glassmorphism surfaces, safe-area padding (`pb-safe`), and responsive layout tokens.
+   - _Build Pipeline:_ `npm run build` outputs minified production assets directly into `static/dist/` (`index.html` and hashed `assets/`).
 
 ---
 
@@ -58,7 +58,7 @@ AgentWatch/
 ## 3. Request-Based Upward Scroll Lazy-Loading & Memory Architecture
 
 1. **Initial Window (`limit=15`):** On startup, `useAgentWatch.js` fetches only the latest 15 conversation turns (`GET /api/v1/chat/messages?limit=15`), recording `oldest_index` and `has_more`.
-2. **Upward Scroll Trigger:** When the user scrolls within `75px` of the top of `ChatStream.jsx` (or taps *"Scroll up or tap to load earlier messages"*), `loadOlderMessages()` requests `GET /api/v1/chat/messages?limit=15&before=<oldest_index>`.
+2. **Upward Scroll Trigger:** When the user scrolls within `75px` of the top of `ChatStream.jsx` (or taps _"Scroll up or tap to load earlier messages"_), `loadOlderMessages()` requests `GET /api/v1/chat/messages?limit=15&before=<oldest_index>`.
 3. **Scroll Anchoring & Persistent Blocks:**
    - The newly fetched older block is prepended to `chatMessages` and **remains in state** so the user can freely scroll back and forth.
    - `ChatStream.jsx` uses a `useLayoutEffect` scroll-height delta calculation (`el.scrollTop = prevScrollTop + (el.scrollHeight - prevScrollHeight)`) so prepending older messages never causes the viewport to jump.

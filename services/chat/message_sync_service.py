@@ -1,4 +1,4 @@
-﻿"""Service to monitor inter-agent messages and background task notifications."""
+"""Service to monitor inter-agent messages and background task notifications."""
 
 import json
 import logging
@@ -22,6 +22,7 @@ class MessageSyncService:
                 return md
 
         from services.chat.conversation_service import conversation_service
+
         tp = conversation_service.get_latest_transcript_path()
         if tp and tp.exists():
             md = tp.parent.parent.parent / ".system_generated" / "messages"
@@ -60,16 +61,18 @@ class MessageSyncService:
                     data = json.load(f)
                 msg_id = data.get("id") or jf.stem
                 is_read = bool(read_status.get(msg_id, False))
-                results.append({
-                    "id": msg_id,
-                    "sender": data.get("sender"),
-                    "recipient": data.get("recipient"),
-                    "priority": data.get("priority", "NORMAL"),
-                    "timestamp": data.get("timestamp"),
-                    "render_details": data.get("renderDetails") or {},
-                    "is_read": is_read,
-                    "content": data.get("content"),
-                })
+                results.append(
+                    {
+                        "id": msg_id,
+                        "sender": data.get("sender"),
+                        "recipient": data.get("recipient"),
+                        "priority": data.get("priority", "NORMAL"),
+                        "timestamp": data.get("timestamp"),
+                        "render_details": data.get("renderDetails") or {},
+                        "is_read": is_read,
+                        "content": data.get("content"),
+                    }
+                )
             except Exception:
                 continue
 
@@ -77,4 +80,3 @@ class MessageSyncService:
 
 
 message_sync_service = MessageSyncService()
-

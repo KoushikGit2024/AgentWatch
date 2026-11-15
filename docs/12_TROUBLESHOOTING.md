@@ -3,13 +3,13 @@
 **Document ID:** CW-DOC-012  
 **Version:** 2.1.0  
 **Project:** AgentWatch  
-**Classification:** Operational Diagnostics & Edge-Case Runbook  
+**Classification:** Operational Diagnostics & Edge-Case Runbook
 
 ---
 
 ## 1. Edge Case: Antigravity Launched with `--remote-debugging-port=9000`, But Port 9000 Is Still Closed
 
-- **Root Cause:** Electron applications (like Antigravity) use a single-instance lock. If an existing Antigravity window or background tray process was already running *without* `--remote-debugging-port=9000`, running `antigravity --remote-debugging-port=9000` simply focuses the existing process and **ignores the new command-line flag**.
+- **Root Cause:** Electron applications (like Antigravity) use a single-instance lock. If an existing Antigravity window or background tray process was already running _without_ `--remote-debugging-port=9000`, running `antigravity --remote-debugging-port=9000` simply focuses the existing process and **ignores the new command-line flag**.
 - **Exact Fix (Device-Wise):**
   - **Windows (PowerShell):**
     ```powershell

@@ -1,4 +1,4 @@
-﻿"""Routes for Web Push notification subscription and management."""
+"""Routes for Web Push notification subscription and management."""
 
 import logging
 from typing import Dict, Any, Optional

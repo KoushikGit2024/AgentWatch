@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from repositories.interaction_repository import InteractionRepository
 from services.interactions.interaction_sync_helper import sync_question_from_transcript_data
 from models.schemas import InteractionStatus, InteractionKind

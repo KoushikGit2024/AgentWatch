@@ -44,7 +44,9 @@ class WorkspaceContext:
             logger.debug("Failed to decode uri %s: %s", uri, e)
         return None
 
-    def get_workspace_for_conversation(self, conversation_id: str) -> Tuple[Optional[Path], Optional[str]]:
+    def get_workspace_for_conversation(
+        self, conversation_id: str
+    ) -> Tuple[Optional[Path], Optional[str]]:
         """Lookup workspace path and name for a specific conversation ID from SQLite summaries."""
         if not conversation_id:
             return None, None
@@ -104,7 +106,10 @@ class WorkspaceContext:
                                                 try:
                                                     clean_ts = str(mtime_val).split("+")[0].strip()
                                                     from datetime import datetime
-                                                    ts = datetime.fromisoformat(clean_ts).timestamp()
+
+                                                    ts = datetime.fromisoformat(
+                                                        clean_ts
+                                                    ).timestamp()
                                                 except Exception:
                                                     ts = 0.0
                                         matched.append((cid, ts))
@@ -117,7 +122,9 @@ class WorkspaceContext:
         matched.sort(key=lambda x: x[1], reverse=True)
         return [cid for cid, _ in matched]
 
-    def get_active_workspace(self, target_conversation_id: Optional[str] = None) -> Tuple[Path, str]:
+    def get_active_workspace(
+        self, target_conversation_id: Optional[str] = None
+    ) -> Tuple[Path, str]:
         """
         Determine the effective workspace directory:
         1. From target_conversation_id if specified.
@@ -134,6 +141,7 @@ class WorkspaceContext:
         # 2. Live Antigravity adapter CDP state
         try:
             from integrations.antigravity.core.adapter import antigravity_adapter
+
             if antigravity_adapter.active_workspace_path:
                 ws_path = Path(antigravity_adapter.active_workspace_path).resolve()
                 if ws_path.exists():
@@ -142,7 +150,9 @@ class WorkspaceContext:
 
             # Also check if adapter has an active conversation id
             if antigravity_adapter.active_conversation_id:
-                conv_path, conv_name = self.get_workspace_for_conversation(antigravity_adapter.active_conversation_id)
+                conv_path, conv_name = self.get_workspace_for_conversation(
+                    antigravity_adapter.active_conversation_id
+                )
                 if conv_path and conv_path.exists():
                     return conv_path, conv_name or conv_path.name
         except Exception as e:
@@ -161,4 +171,3 @@ class WorkspaceContext:
 
 
 workspace_context = WorkspaceContext()
-
