@@ -159,4 +159,6 @@ Mobile User                   FastAPI /send                   AntigravityAdapter
 | **Mobile Client to Host**  | Network Edge     | Tailscale WireGuard Mesh (TLS 1.3)          | Tailscale auth, session cookie, CSRF tokens            |
 | **FastAPI to MongoDB**     | Host Loopback    | Local TCP Socket (`127.0.0.1:27017`)        | Loopback binding only; no external network route       |
 | **FastAPI to Antigravity** | Host Loopback    | Chrome DevTools Protocol (`127.0.0.1:9000`) | Target domain allowlisting; command filtering          |
-| **Native IDE Dialogs**     | Desktop Boundary | None (Remote Resolution Blocked)            | Status `requires_native_ide`; user directed to desktop |
+| **Workspace File Actions** | Filesystem Root  | Local `FileEditorService`                   | `is_path_safe()` boundary check; mutation restricted to workspace |
+| **Terminal & Process Ops** | Host Supervisor  | Local Process Runner & Supervisor           | Server-side PID validation; workspace directory bounds |
+| **Native IDE Dialogs**     | Desktop Boundary | Targeted CDP Dialog Interaction             | Exact button scoring & command matching; `requires_native_ide` for elevated commands |

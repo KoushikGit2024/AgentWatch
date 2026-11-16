@@ -17,8 +17,11 @@ class AntigravityCapabilities(BaseModel):
     automatic_native_hook_injection: bool = (
         False  # Platform limitation: hooks requires workspace initialization / reload
     )
-    submit_approval_decisions: bool = False  # Non-negotiable: Native dialogs remain authoritative
-    remote_shell_execution: bool = False  # Non-negotiable: Arbitrary remote shell disabled
+    # Security boundaries & execution semantics:
+    # Arbitrary unverified remote shell is strictly disabled. Terminal actions execute only within authorized workspaces.
+    remote_shell_execution: bool = False  # Arbitrary unsandboxed remote shell disabled; workspace terminal tasks supported
+    # Native OS / IDE security dialogs remain authoritative; remote clicks cannot bypass system security barriers.
+    submit_approval_decisions: bool = False  # Simulated permission bypass disabled; CDP modal forwarding operates with exact button scoring
     public_internet_exposure: bool = (
         False  # Non-negotiable: Funnel disabled, Tailscale tailnet only
     )
