@@ -129,7 +129,7 @@ CDP_PORTS=9000,9222
 CDP_TARGET_DOMAIN=127.0.0.1
 ```
 
-_Note: For detailed information on every variable, see [04 — Configuration Guide](file:///d:/All%20Codes/AllProjects/AgentWatchV2/docs/04_CONFIGURATION.md)._
+_Note: For detailed information on every variable, see [04 — Configuration Guide](./04_CONFIGURATION.md)._
 
 ---
 

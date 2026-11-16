@@ -8,9 +8,9 @@ Monitor, approve, and steer your local **Google Antigravity** AI coding sessions
 
 - [What AgentWatch Does](#what-agentwatch-does)
 - [System Architecture & Data Flow](#system-architecture--data-flow)
-- [System Prerequisites](#system-prerequisites-what-to-install-on-your-machine)
+- [System Prerequisites (What to Install on Your Machine)](#system-prerequisites-what-to-install-on-your-machine)
 - [Getting Started & Launch Guide](#getting-started--launch-guide)
-  - [Recommended: One-Click Startup (`run.ps1`)](#recommended-one-click-startup-runps1)
+  - [Recommended: One-Click Startup (`run.bat` / `run.ps1`)](#recommended-one-click-startup-runps1)
   - [Manual Step-by-Step Launch](#manual-step-by-step-launch)
   - [Connecting Your Phone (Secure Peer-to-Peer Access)](#connecting-your-phone-secure-peer-to-peer-access)
 - [Edge Cases & Device-Specific Troubleshooting Matrix](#edge-cases--device-specific-troubleshooting-matrix)
@@ -93,7 +93,7 @@ Before launching AgentWatch, make sure your machine has the following tools inst
 | **Python**             | 3.10+           | **Yes**         | Powers the FastAPI backend & WebSocket server. (All libraries install into repo `.venv`).                         |
 | **Google Antigravity** | Any             | **Yes**         | The AI IDE you are monitoring with `--remote-debugging-port=9000`.                                                |
 | **Node.js & npm**      | 20.19+ / 22.12+ | **Optional**    | Pre-compiled bundle is included in `static/dist/`. Only needed if modifying frontend code (Vite 8 requirement).   |
-| **Tailscale**          | Any             | **Recommended** | Provides secure, private peer-to-peer HTTPS connection for mobile browser push notifications.                     |
+| **Tailscale**          | Any             | **Recommended** | Provides secure, private peer-to-peer HTTPS connection for mobile browser push notifications. Install via `winget install Tailscale.Tailscale` or from [tailscale.com/download](https://tailscale.com/download). |
 | **MongoDB**            | 6.0+            | **Optional**    | For persistent history logs. If not installed, AgentWatch **automatically uses its built-in in-memory fallback**. |
 
 > **Note on Python Packages:** You do **not** need to install Python libraries globally. When you run `run.bat` or `run.ps1`, all required packages (`fastapi`, `uvicorn`, `pywebpush`, `cryptography`, etc.) are downloaded and kept **strictly inside this repository's isolated `.venv/` directory**.
@@ -102,9 +102,10 @@ Before launching AgentWatch, make sure your machine has the following tools inst
 
 ## Getting Started & Launch Guide
 
-### 1. One-Click Automated Launch (Windows — Recommended)
+<a id="recommended-one-click-startup-runps1"></a>
+### 1. Recommended: One-Click Startup (`run.bat` / `run.ps1`)
 
-AgentWatch features a zero-configuration, self-healing launcher that automatically locates your Python and Node/NPM runtimes, builds the frontend if needed, frees port 8000 from stale instances, starts MongoDB, verifies Antigravity CDP, and opens your browser:
+AgentWatch features a zero-configuration, self-healing launcher that automatically locates your Python and Node/NPM runtimes, builds the frontend if needed, frees port 8000 from stale instances, verifies Antigravity CDP (auto-launching it on port 9000 if not open), and automatically configures a secure Tailscale Serve HTTPS tunnel (`tailscale serve --bg https / http://127.0.0.1:8000`):
 
 Simply double-click:
 
@@ -118,8 +119,11 @@ Or run in PowerShell:
 .\run.ps1
 ```
 
+> **Tailscale Automatic Setup:** When Tailscale is installed on your workstation, the launcher automatically exposes the AgentWatch backend over your private Tailnet via HTTPS (e.g. `https://<your-machine-name>.ts.net`) with valid TLS certificates for instant mobile browser access and Web Push notifications.
+
 ---
 
+<a id="manual-step-by-step-launch"></a>
 ### 2. Manual & Device-Wise Setup Guide
 
 #### A. Windows 10 / 11 (PowerShell)
@@ -158,7 +162,7 @@ $py = (Join-Path (Get-Location).Path ".venv\Scripts\python.exe")
 Start-Process $py -ArgumentList "-m uvicorn main:app --host 127.0.0.1 --port 8000" -WorkingDirectory (Get-Location).Path -WindowStyle Hidden
 ```
 
-### 2. macOS (Apple Silicon M1/M2/M3/M4 & Intel — zsh / bash)
+#### B. macOS (Apple Silicon M1/M2/M3/M4 & Intel — zsh / bash)
 
 Open **Terminal** in the project root folder and copy-paste:
 
@@ -202,7 +206,7 @@ export PYTHONPATH="$(pwd)"
 python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-### 3. Linux (Ubuntu / Debian / Fedora / Arch)
+#### C. Linux (Ubuntu / Debian / Fedora / Arch)
 
 Open your Linux terminal in the project root folder and copy-paste:
 
@@ -231,7 +235,7 @@ export PYTHONPATH="$(pwd)"
 python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-### 4. Windows Subsystem for Linux (WSL2)
+#### D. Windows Subsystem for Linux (WSL2)
 
 If you run `AgentWatch` inside **WSL2** while **Antigravity IDE** runs on the Windows desktop:
 
@@ -252,20 +256,62 @@ If you run `AgentWatch` inside **WSL2** while **Antigravity IDE** runs on the Wi
    ```
 3. Launch Antigravity on Windows with `--remote-debugging-port=9000` and start AgentWatch inside WSL2 using the Linux commands above.
 
-### 5. Android Phone / Tablet & iPhone / iPad (iOS) Setup
+<a id="connecting-your-phone-secure-peer-to-peer-access"></a>
+### 3. Connecting Your Phone (Secure Peer-to-Peer Access)
 
 #### Option A: Secure Anywhere Access via Tailscale (Recommended — Works on Mobile Data & Wi-Fi)
 
-1. Install **Tailscale** on your workstation and on your Android / iOS device, and sign in to the same account.
-2. On your workstation, expose port `8000` privately inside your Tailnet with automatic HTTPS:
-   ```bash
-   tailscale serve --bg 8000
-   tailscale serve status
-   ```
-3. Copy the `https://<your-machine>.<tailnet>.ts.net` URL printed by `tailscale serve status` and open it in **Chrome (Android)** or **Safari (iOS)**.
-4. Log in with your `APP_PASSWORD`, then install as a full-screen app:
+1. **Install and set up Tailscale on your Workstation (Desktop)**:
+   - **Windows (PowerShell / Terminal)**:
+     ```powershell
+     winget install Tailscale.Tailscale
+     ```
+     *Or download the installer from [tailscale.com/download/windows](https://tailscale.com/download/windows). After installation, launch Tailscale from your Start Menu / system tray and sign in (or run `tailscale up`).*
+   - **macOS (Terminal / Homebrew)**:
+     ```bash
+     brew install --cask tailscale
+     ```
+     *Or install from the [Mac App Store](https://apps.apple.com/app/tailscale/id1475387142).*
+   - **Linux**:
+     ```bash
+     curl -fsSL https://tailscale.com/install.sh | sh
+     sudo tailscale up
+     ```
+   - **Verify Workstation Connection**:
+     ```bash
+     tailscale status
+     ```
+     *Confirm your machine appears active on your Tailnet. You can also run `.\scripts\remote-status.ps1` to test Tailscale CLI and Serve status.*
+
+2. **Install Tailscale on your Phone / Mobile Device**:
+   - Download the official Tailscale app from [Google Play (Android)](https://play.google.com/store/apps/details?id=com.tailscale.ipn.android) or the [App Store (iOS)](https://apps.apple.com/app/tailscale/id1470499037).
+   - Sign in using the **exact same account** used on your workstation. Both devices will join your private, WireGuard-encrypted Tailnet automatically.
+
+3. **Expose AgentWatch privately over HTTPS via Tailscale Serve**:
+   - **Automated (Windows):** If using `run.bat` or `.\run.ps1`, this is configured **automatically** on startup.
+   - **Manual (PowerShell / macOS / Linux):** Run the following command in your terminal:
+     ```bash
+     tailscale serve --bg https / http://127.0.0.1:8000
+     tailscale serve status
+     ```
+   > **Why root HTTPS is required:** Tailscale Serve proxies root `/` on port 443 with valid TLS certificates (`https://<your-machine>.ts.net`). Mobile browsers (Safari on iOS 16.4+ and Chrome on Android) strictly require a valid HTTPS origin to register Service Workers, install as a PWA, and subscribe to Web Push (VAPID) lock-screen notifications.
+
+4. **Open the HTTPS URL on your phone**:
+   - Open the `https://<your-machine-name>.ts.net` URL printed in your console or by `tailscale serve status` in **Chrome (Android)** or **Safari (iOS)**.
+   - No port numbers, port-forwarding, or public IP endpoints required.
+
+5. **Install as a full-screen mobile PWA**:
    - **Android (Chrome):** Tap the **⋮** menu → **Add to Home screen** → **Install**.
    - **iPhone / iPad (Safari):** Tap the **Share** button (`↑`) → **Add to Home Screen** → **Add**.
+
+6. **Helpful Tailscale Serve commands**:
+   ```bash
+   # Check active tunnel and view your HTTPS domain
+   tailscale serve status
+
+   # Reset or clear background serve proxy
+   tailscale serve reset
+   ```
 
 #### Option B: Same-Room Local Wi-Fi Access (No Tailscale Needed)
 
@@ -320,7 +366,7 @@ When you want to verify that all AgentWatch subsystems (CDP sessions, models, ef
 1. **Prompt to Trigger:** Tell your coding agent:
    > _"Run the update protocol from `updates/Update.md` and audit all endpoints."_
 2. **What the Agent Does:**
-   - Follows the phased workflow in [updates/Update.md](file:///d:/All%20Codes/AllProjects/AgentWatchV2/updates/Update.md).
+   - Follows the phased workflow in [updates/Update.md](./updates/Update.md).
    - Executes the automated diagnostic script checking ports `9000`, `9001-9003`, and `9222`.
    - Verifies the 8 core subsystems: Model/Quota, Effort Tiers, Running Tasks (SQLite + `psutil` PIDs), Interactive Terminal sessions, Decision Cards, Queued Messages, Git Keizu DAG graph, and Database session switching.
    - If any UI selector fails, prompts you for a snippet via DevTools and calibrates the selector automatically.
@@ -337,7 +383,7 @@ When adapting AgentWatch to a new IDE (e.g. Cursor, Windsurf, or a newly release
 2. **Prompt to Trigger Migration:** Tell your coding agent:
    > _"Read `migration/Migration.md` and help me adapt AgentWatch for [Target IDE Name]."_
 3. **What the Agent Does:**
-   - Reads the comprehensive guide in [migration/Migration.md](file:///d:/All%20Codes/AllProjects/AgentWatchV2/migration/Migration.md).
+   - Reads the comprehensive guide in [migration/Migration.md](./migration/Migration.md).
    - Instructs you to open `http://localhost:9000` in Google Chrome to inspect the IDE's live webview DOM.
    - Provides the DOM audit script to paste into the DevTools Console:
      ```javascript

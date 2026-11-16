@@ -1,0 +1,13 @@
+{
+  "name": "AgentWatch",
+  "short_name": "AgentWatch",
+  "description": "Open-source, local-first companion for Google Antigravity.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#0c0e0f",
+  "theme_color": "#0c0e0f",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

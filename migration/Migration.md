@@ -377,23 +377,23 @@ To add clean, first-class support for a new IDE (e.g. `integrations/cursor/` or 
 For quick reference while coding or refactoring, these are the core files mentioned in this guide:
 
 - **CDP Actions & Drivers:**
-  - [cdp_prompt_actions.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/cdp/cdp_prompt_actions.py) — Composer inputs, send and stop buttons.
-  - [cdp_forward_approval.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/cdp/cdp_forward_approval.py) — Native modal approval and split-button actions.
-  - [cdp_model_actions.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/cdp/cdp_model_actions.py) — Model dropdown triggers and effort switches.
-  - [cdp_question_actions.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/cdp/cdp_question_actions.py) — Single/multi-choice decision dialogs.
-  - [cdp_queue_actions.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/cdp/cdp_queue_actions.py) — Queued messages card inspection.
-  - [cdp_session_actions.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/cdp/cdp_session_actions.py) — History sidebar switching and new chat.
-  - [cdp_terminal_actions.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/cdp/cdp_terminal_actions.py) — Terminal DOM buttons.
-  - [adapter.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/core/adapter.py) — Central IDE adapter singleton.
-  - [target_finder.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/core/target_finder.py) — Target webview discovery and scoring.
-  - [screenshot_service.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/integrations/antigravity/core/screenshot_service.py) — Frame buffer capture and hash caching.
+  - [cdp_prompt_actions.py](../integrations/antigravity/cdp/cdp_prompt_actions.py) — Composer inputs, send and stop buttons.
+  - [cdp_forward_approval.py](../integrations/antigravity/cdp/cdp_forward_approval.py) — Native modal approval and split-button actions.
+  - [cdp_model_actions.py](../integrations/antigravity/cdp/cdp_model_actions.py) — Model dropdown triggers and effort switches.
+  - [cdp_question_actions.py](../integrations/antigravity/cdp/cdp_question_actions.py) — Single/multi-choice decision dialogs.
+  - [cdp_queue_actions.py](../integrations/antigravity/cdp/cdp_queue_actions.py) — Queued messages card inspection.
+  - [cdp_session_actions.py](../integrations/antigravity/cdp/cdp_session_actions.py) — History sidebar switching and new chat.
+  - [cdp_terminal_actions.py](../integrations/antigravity/cdp/cdp_terminal_actions.py) — Terminal DOM buttons.
+  - [adapter.py](../integrations/antigravity/core/adapter.py) — Central IDE adapter singleton.
+  - [target_finder.py](../integrations/antigravity/core/target_finder.py) — Target webview discovery and scoring.
+  - [screenshot_service.py](../integrations/antigravity/core/screenshot_service.py) — Frame buffer capture and hash caching.
 - **Monitoring & Storage Services:**
-  - [task_monitor_service.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/services/monitoring/task_monitor_service.py) — SQLite steps query and OS process tree killer.
-  - [task_proto_helper.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/services/monitoring/task_proto_helper.py) — Pure Python protobuf step decoder.
-  - [transcript_watcher.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/services/transcripts/transcript_watcher.py) — Live observation loop and WebSocket broadcasting.
-  - [transcript_parser.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/services/transcripts/transcript_parser.py) — Parses JSONL steps into structured turns.
-  - [workspace_context.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/services/workspace/workspace_context.py) — Dynamic active project folder resolver.
+  - [task_monitor_service.py](../services/monitoring/task_monitor_service.py) — SQLite steps query and OS process tree killer.
+  - [task_proto_helper.py](../services/monitoring/task_proto_helper.py) — Pure Python protobuf step decoder.
+  - [transcript_watcher.py](../services/transcripts/transcript_watcher.py) — Live observation loop and WebSocket broadcasting.
+  - [transcript_parser.py](../services/transcripts/transcript_parser.py) — Parses JSONL steps into structured turns.
+  - [workspace_context.py](../services/workspace/workspace_context.py) — Dynamic active project folder resolver.
 - **API Transport Routers:**
-  - [controls.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/api/routes/system/controls.py) — Prompts, snapshots, stops, and terminal aliases.
-  - [tasks.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/api/routes/system/tasks.py) — Task listing and PID termination routes.
-  - [diagnostics.py](file:///d:/All%20Codes/AllProjects/AgentWatchV2/api/routes/system/diagnostics.py) — Health, CDP connection, and operation checks.
+  - [controls.py](../api/routes/system/controls.py) — Prompts, snapshots, stops, and terminal aliases.
+  - [tasks.py](../api/routes/system/tasks.py) — Task listing and PID termination routes.
+  - [diagnostics.py](../api/routes/system/diagnostics.py) — Health, CDP connection, and operation checks.

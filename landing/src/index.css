@@ -1,1 +1,262 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/*
+  AgentWatch Technical Color System:
+  - Deep technical dark foundation: Rich charcoal/slate tones for crisp contrast and low eye strain.
+  - Accent: High-clarity cerulean/sky (#4ea8de, hover: #72bde8) matching the brand logo.
+  - Semantic Status:
+    - Warning: Warm amber (#e29d38) for pending approvals, action required, pauses.
+    - Success: Balanced sage emerald (#48bb78) for allowed states, additions (+), active P2P mesh.
+    - Error: Vivid coral rose (#e56b6f) for denied actions, deletions (-).
+    - Violet/Purple: Subtle tech trace accent (#9d8cd7) for CDP transport, notifications.
+  - Zero noisy gradients; depth is derived from tonal surfaces and crisp 1px borders.
+*/
+@theme {
+  --font-sans:
+    'IBM Plex Sans Variable', 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* Rich Engineered Slate Hierarchy */
+  --color-bg-app: #0d0f12;
+  --color-bg-surface: #13171d;
+  --color-bg-elevated: #1a2028;
+  --color-bg-overlay: #212934;
+  --color-bg-code: #0a0c0e;
+
+  /* Crisp Structural Separators */
+  --color-border-subtle: #1f2631;
+  --color-border-default: #2d3746;
+  --color-border-strong: #415065;
+
+  /* Luminous High-Readability Typography */
+  --color-text-primary: #f0f3f6;
+  --color-text-secondary: #9aa5b5;
+  --color-text-muted: #677588;
+
+  /* Precision Brand & Semantic Palette */
+  --color-accent: #4ea8de;
+  --color-accent-hover: #72bde8;
+  --color-accent-ink: #071927;
+
+  --color-status-success: #48bb78;
+  --color-status-warning: #e29d38;
+  --color-status-error: #e56b6f;
+  --color-status-purple: #9d8cd7;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    scroll-padding-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-bg-app);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+    color: var(--color-text-primary);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-default) transparent;
+  }
+  /* Custom WebKit Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-default);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-strong);
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .wrap {
+    margin-inline: auto;
+    max-width: 72rem;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 640px) {
+    .wrap {
+      padding-inline: 2rem;
+    }
+  }
+
+  .section {
+    padding-block: 4.5rem;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+  @media (min-width: 1024px) {
+    .section {
+      padding-block: 7rem;
+    }
+  }
+  .section--surface {
+    background: var(--color-bg-surface);
+  }
+  .section--deep {
+    background: var(--color-bg-code);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+  .h2 {
+    margin-top: 0.75rem;
+    font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+    line-height: 1.12;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .lede {
+    margin-top: 1rem;
+    max-width: 38rem;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      color 150ms,
+      transform 150ms var(--ease-out);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+  .btn--primary {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+    font-weight: 600;
+  }
+  .btn--primary:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
+  .btn--ghost {
+    border-color: var(--color-border-default);
+    color: var(--color-text-primary);
+  }
+  .btn--ghost:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
+    background: var(--color-bg-elevated);
+  }
+  .btn .btn-arrow {
+    transition: transform 200ms var(--ease-out);
+  }
+  .btn:hover .btn-arrow {
+    transform: translateX(3px);
+  }
+
+  /* Code blocks */
+  .code {
+    overflow-x: auto;
+    border: 1px solid var(--color-border-subtle);
+    background: var(--color-bg-code);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    white-space: pre;
+    tab-size: 2;
+  }
+}
+
+/* Scroll reveal */
+@media (prefers-reduced-motion: no-preference) {
+  html.js-reveal [data-reveal] {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 600ms var(--ease-out),
+      transform 600ms var(--ease-out);
+    transition-delay: var(--d, 0ms);
+  }
+  html.js-reveal [data-reveal].is-in {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.enter {
+  animation: enter 260ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

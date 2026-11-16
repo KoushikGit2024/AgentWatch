@@ -45,7 +45,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Databases & Runtime State
-data/
 *.sqlite
 *.sqlite3
 *.db
